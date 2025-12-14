@@ -1,4 +1,4 @@
-project_id = "hcapqmwmlswpvjsfvpxv"
+project_id = "znjqpxlijraodmjrhqaz"
 
 [functions.transform-prompt]
 verify_jwt = false
