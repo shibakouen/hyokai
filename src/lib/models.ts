@@ -5,6 +5,34 @@ export interface AIModel {
   thinking?: boolean; // Enable extended thinking/reasoning mode
 }
 
+// Provider display order and favicon URLs
+export const PROVIDER_CONFIG: Record<string, { order: number; favicon: string }> = {
+  'Google': { order: 1, favicon: 'https://www.google.com/favicon.ico' },
+  'Anthropic': { order: 2, favicon: 'https://anthropic.com/favicon.ico' },
+  'xAI': { order: 3, favicon: 'https://x.ai/favicon.ico' },
+  'OpenAI': { order: 4, favicon: 'https://openai.com/favicon.ico' },
+  'DeepSeek': { order: 5, favicon: 'https://www.deepseek.com/favicon.ico' },
+  'Zhipu': { order: 6, favicon: 'https://www.zhipuai.cn/favicon.ico' },
+};
+
+export const PROVIDER_ORDER = ['Google', 'Anthropic', 'xAI', 'OpenAI', 'DeepSeek', 'Zhipu'];
+
+export interface ModelWithIndex extends AIModel {
+  originalIndex: number;
+}
+
+export const getModelsByProvider = (): Map<string, ModelWithIndex[]> => {
+  const grouped = new Map<string, ModelWithIndex[]>();
+
+  AVAILABLE_MODELS.forEach((model, index) => {
+    const existing = grouped.get(model.provider) || [];
+    existing.push({ ...model, originalIndex: index });
+    grouped.set(model.provider, existing);
+  });
+
+  return grouped;
+};
+
 export const AVAILABLE_MODELS: AIModel[] = [
   {
     id: "google/gemini-3-pro-preview",
