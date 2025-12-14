@@ -15,17 +15,17 @@ export function ProviderIcon({ provider, size = 16, className = "" }: ProviderIc
     // Fallback: colored dot based on provider
     const colors: Record<string, string> = {
       'Google': 'bg-blue-500',
-      'Anthropic': 'bg-orange-500',
-      'xAI': 'bg-neutral-800 dark:bg-neutral-200',
-      'OpenAI': 'bg-green-600',
+      'Anthropic': 'bg-orange-400',
+      'xAI': 'bg-neutral-700 dark:bg-neutral-300',
+      'OpenAI': 'bg-emerald-500',
       'DeepSeek': 'bg-indigo-500',
-      'Zhipu': 'bg-purple-500',
+      'Zhipu': 'bg-violet-500',
     };
     const colorClass = colors[provider] || 'bg-muted-foreground';
 
     return (
       <div
-        className={`rounded-full ${colorClass} ${className}`}
+        className={`rounded-full flex-shrink-0 ${colorClass} ${className}`}
         style={{ width: size * 0.75, height: size * 0.75 }}
         aria-hidden="true"
       />
@@ -34,13 +34,13 @@ export function ProviderIcon({ provider, size = 16, className = "" }: ProviderIc
 
   return (
     <img
-      src={config.favicon}
+      src={config.icon}
       alt={`${provider} icon`}
       width={size}
       height={size}
-      className={`object-contain ${className}`}
+      className={`object-contain flex-shrink-0 ${className}`}
       onError={() => setHasError(true)}
-      loading="lazy"
+      loading="eager"
     />
   );
 }

@@ -5,14 +5,14 @@ export interface AIModel {
   thinking?: boolean; // Enable extended thinking/reasoning mode
 }
 
-// Provider display order and favicon URLs
-export const PROVIDER_CONFIG: Record<string, { order: number; favicon: string }> = {
-  'Google': { order: 1, favicon: 'https://www.google.com/favicon.ico' },
-  'Anthropic': { order: 2, favicon: 'https://anthropic.com/favicon.ico' },
-  'xAI': { order: 3, favicon: 'https://x.ai/favicon.ico' },
-  'OpenAI': { order: 4, favicon: 'https://openai.com/favicon.ico' },
-  'DeepSeek': { order: 5, favicon: 'https://www.deepseek.com/favicon.ico' },
-  'Zhipu': { order: 6, favicon: 'https://www.zhipuai.cn/favicon.ico' },
+// Provider display order and local icon paths
+export const PROVIDER_CONFIG: Record<string, { order: number; icon: string }> = {
+  'Google': { order: 1, icon: '/providers/google.svg' },
+  'Anthropic': { order: 2, icon: '/providers/anthropic.svg' },
+  'xAI': { order: 3, icon: '/providers/xai.svg' },
+  'OpenAI': { order: 4, icon: '/providers/openai.svg' },
+  'DeepSeek': { order: 5, icon: '/providers/deepseek.svg' },
+  'Zhipu': { order: 6, icon: '/providers/zhipu.svg' },
 };
 
 export const PROVIDER_ORDER = ['Google', 'Anthropic', 'xAI', 'OpenAI', 'DeepSeek', 'Zhipu'];
