@@ -95,6 +95,10 @@ export const translations = {
         'context.deleteConfirmTitle': 'Delete Context?',
         'context.deleteConfirmMessage': 'Are you sure you want to delete "{name}"? This cannot be undone.',
         'context.cancel': 'Cancel',
+        'context.llmPromptTitle': 'Get Context from Your LLM',
+        'context.llmPromptDescription': 'Copy this prompt and paste it into Claude Code, Cursor, or any coding assistant to auto-generate context about your project.',
+        'context.copyPrompt': 'Copy Prompt',
+        'context.llmPromptCopied': 'Prompt copied! Paste it into your LLM, then copy the result back here.',
     },
     jp: {
         // Header
@@ -190,6 +194,10 @@ export const translations = {
         'context.deleteConfirmTitle': 'コンテキストを削除しますか？',
         'context.deleteConfirmMessage': '「{name}」を削除してもよろしいですか？この操作は元に戻せません。',
         'context.cancel': 'キャンセル',
+        'context.llmPromptTitle': 'LLMからコンテキストを取得',
+        'context.llmPromptDescription': 'このプロンプトをコピーしてClaude Code、Cursor、または任意のコーディングアシスタントに貼り付けると、プロジェクトのコンテキストを自動生成できます。',
+        'context.copyPrompt': 'プロンプトをコピー',
+        'context.llmPromptCopied': 'プロンプトをコピーしました！LLMに貼り付けて、結果をここにコピーしてください。',
     }
 } as const;
 

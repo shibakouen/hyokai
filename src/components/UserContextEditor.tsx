@@ -16,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Plus, Save, Trash2, AlertTriangle, AlertCircle } from "lucide-react";
+import { User, Plus, Save, Trash2, AlertTriangle, AlertCircle, Sparkles, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   useUserContext,
@@ -40,6 +41,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+const LLM_CONTEXT_PROMPT = `Analyze my current project and output a structured context summary for Hyokai (a prompt transformer). Format exactly as shown, under 1500 characters:
+
+PROJECT: [name] - [one-line description]
+STACK: [languages, frameworks, database, hosting]
+
+KEY FILES:
+- [path]: [purpose]
+- [path]: [purpose]
+- [path]: [purpose]
+
+PATTERNS:
+- [code organization pattern]
+- [state management approach]
+- [API/data fetching style]
+
+STYLE:
+- [CSS/UI framework]
+- [component conventions]
+
+CONSTRAINTS:
+- [important rules or limitations]
+
+Be dense and factual. No explanations, just the data. This context helps transform vague prompts into detailed specs matching my project's patterns.`;
 
 export function UserContextEditor() {
   const {
@@ -131,6 +156,15 @@ export function UserContextEditor() {
     setContextName("");
   };
 
+  const handleCopyLLMPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(LLM_CONTEXT_PROMPT);
+      toast.success(t('context.llmPromptCopied'));
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
+  };
+
   const hasContext = userContext.trim().length > 0;
   const { chars, tokens, warning } = getContextSize(draft);
 
@@ -176,6 +210,28 @@ export function UserContextEditor() {
             <p className="text-sm text-muted-foreground">
               {t('context.description')}
             </p>
+
+            {/* Get Context from LLM */}
+            <div className="p-3 rounded-lg bg-ice-glow/10 border border-ice-glow/30">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-ice-glow flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{t('context.llmPromptTitle')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('context.llmPromptDescription')}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyLLMPrompt}
+                  className="flex-shrink-0"
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  {t('context.copyPrompt')}
+                </Button>
+              </div>
+            </div>
 
             {/* Context Selector */}
             <div className="space-y-2">
