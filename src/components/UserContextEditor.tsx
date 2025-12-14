@@ -8,24 +8,65 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { User, Plus, Save, Trash2, AlertTriangle, AlertCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useUserContext, USER_CONTEXT_MAX_LENGTH } from "@/contexts/UserContextContext";
+import {
+  useUserContext,
+  MAX_SAVED_CONTEXTS_COUNT,
+  CONTEXT_TOKEN_SOFT_LIMIT,
+  CONTEXT_TOKEN_HARD_LIMIT,
+  type SavedContext,
+} from "@/contexts/UserContextContext";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function UserContextEditor() {
-  const { userContext, setUserContext } = useUserContext();
+  const {
+    userContext,
+    setUserContext,
+    savedContexts,
+    activeContextId,
+    saveContext,
+    updateContext,
+    deleteContext,
+    switchContext,
+    getContextSize,
+  } = useUserContext();
   const { t } = useLanguage();
+
   const [draft, setDraft] = useState(userContext);
   const [open, setOpen] = useState(false);
+  const [contextName, setContextName] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contextToDelete, setContextToDelete] = useState<SavedContext | null>(null);
 
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) {
       setDraft(userContext);
+      // Set name from active context if exists
+      const activeCtx = savedContexts.find(c => c.id === activeContextId);
+      setContextName(activeCtx?.name || "");
     }
     setOpen(isOpen);
   };
@@ -35,55 +76,201 @@ export function UserContextEditor() {
     setOpen(false);
   };
 
+  const handleSaveAsNew = () => {
+    if (draft.trim()) {
+      const ctx = saveContext(contextName || `Context ${savedContexts.length + 1}`, draft);
+      setContextName(ctx.name);
+    }
+  };
+
+  const handleUpdateCurrent = () => {
+    if (activeContextId && draft.trim()) {
+      updateContext(activeContextId, {
+        name: contextName || undefined,
+        content: draft,
+      });
+      setUserContext(draft);
+    }
+  };
+
+  const handleSwitchContext = (id: string) => {
+    if (id === "new") {
+      switchContext(null);
+      setDraft("");
+      setContextName("");
+    } else {
+      switchContext(id);
+      const ctx = savedContexts.find(c => c.id === id);
+      if (ctx) {
+        setDraft(ctx.content);
+        setContextName(ctx.name);
+      }
+    }
+  };
+
+  const handleDeleteClick = (ctx: SavedContext, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setContextToDelete(ctx);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (contextToDelete) {
+      deleteContext(contextToDelete.id);
+      if (contextToDelete.id === activeContextId) {
+        setDraft("");
+        setContextName("");
+      }
+    }
+    setDeleteDialogOpen(false);
+    setContextToDelete(null);
+  };
+
   const handleClear = () => {
     setDraft("");
+    setContextName("");
   };
 
   const hasContext = userContext.trim().length > 0;
+  const { chars, tokens, warning } = getContextSize(draft);
+
+  const getWarningMessage = () => {
+    if (warning === 'error') {
+      return t('context.tokenError');
+    } else if (warning === 'warning') {
+      return t('context.tokenWarning');
+    }
+    return null;
+  };
 
   return (
-    <Sheet open={open} onOpenChange={handleOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative h-8 w-8"
-            >
-              <User className="h-4 w-4" />
-              {hasContext && (
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-ice-glow" />
+    <>
+      <Sheet open={open} onOpenChange={handleOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-8 w-8"
+              >
+                <User className="h-4 w-4" />
+                {hasContext && (
+                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-ice-glow" />
+                )}
+              </Button>
+            </SheetTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            {hasContext ? t('context.active') : t('context.title')}
+          </TooltipContent>
+        </Tooltip>
+        <SheetContent className="frost-glass w-[400px] sm:w-[600px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              {t('context.title')}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t('context.description')}
+            </p>
+
+            {/* Context Selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('context.savedContexts')}</label>
+              <Select
+                value={activeContextId || "new"}
+                onValueChange={handleSwitchContext}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('context.selectContext')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">
+                    <span className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      {t('context.newContext')}
+                    </span>
+                  </SelectItem>
+                  {savedContexts.map((ctx) => (
+                    <SelectItem key={ctx.id} value={ctx.id}>
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <span className="truncate">{ctx.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {Math.ceil(ctx.content.length / 4)}t
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {savedContexts.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {savedContexts.length}/{MAX_SAVED_CONTEXTS_COUNT} {t('context.slotsUsed')}
+                </p>
               )}
-            </Button>
-          </SheetTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          {hasContext ? t('context.active') : t('context.title')}
-        </TooltipContent>
-      </Tooltip>
-      <SheetContent className="frost-glass w-[400px] sm:w-[540px]">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {t('context.title')}
-          </SheetTitle>
-        </SheetHeader>
-        <div className="mt-6 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {t('context.description')}
-          </p>
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value.slice(0, USER_CONTEXT_MAX_LENGTH))}
-            placeholder={t('context.placeholder')}
-            className="min-h-[200px] resize-none"
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {draft.length}/{USER_CONTEXT_MAX_LENGTH}
-            </span>
-            <div className="flex gap-2">
+            </div>
+
+            {/* Context Name */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('context.contextName')}</label>
+              <Input
+                value={contextName}
+                onChange={(e) => setContextName(e.target.value)}
+                placeholder={t('context.namePlaceholder')}
+                className="w-full"
+              />
+            </div>
+
+            {/* Context Content */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('context.content')}</label>
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={t('context.placeholder')}
+                className="min-h-[300px] resize-y font-mono text-sm"
+              />
+            </div>
+
+            {/* Size Info & Warnings */}
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-4">
+                <span className="text-muted-foreground">
+                  {chars.toLocaleString()} {t('context.chars')} · ~{tokens.toLocaleString()} {t('context.tokens')}
+                </span>
+                {warning && (
+                  <span className={`flex items-center gap-1 ${warning === 'error' ? 'text-red-500' : 'text-yellow-500'}`}>
+                    {warning === 'error' ? (
+                      <AlertCircle className="h-3 w-3" />
+                    ) : (
+                      <AlertTriangle className="h-3 w-3" />
+                    )}
+                    {getWarningMessage()}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Token Limit Info */}
+            {warning && (
+              <div className={`p-3 rounded-lg text-sm ${warning === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-yellow-500/10 text-yellow-600'}`}>
+                {warning === 'error' ? (
+                  <>
+                    <strong>{t('context.tooLarge')}</strong> {t('context.tokenErrorDetail').replace('{limit}', CONTEXT_TOKEN_HARD_LIMIT.toLocaleString())}
+                  </>
+                ) : (
+                  <>
+                    <strong>{t('context.largeContext')}</strong> {t('context.tokenWarningDetail').replace('{limit}', CONTEXT_TOKEN_SOFT_LIMIT.toLocaleString())}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -92,17 +279,114 @@ export function UserContextEditor() {
               >
                 {t('context.clear')}
               </Button>
+
+              {activeContextId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const ctx = savedContexts.find(c => c.id === activeContextId);
+                    if (ctx) {
+                      setContextToDelete(ctx);
+                      setDeleteDialogOpen(true);
+                    }
+                  }}
+                  className="text-red-500 hover:text-red-600"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  {t('context.delete')}
+                </Button>
+              )}
+
+              <div className="flex-1" />
+
+              {activeContextId ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUpdateCurrent}
+                  disabled={draft.length === 0}
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  {t('context.update')}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveAsNew}
+                  disabled={draft.length === 0 || savedContexts.length >= MAX_SAVED_CONTEXTS_COUNT}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {t('context.saveNew')}
+                </Button>
+              )}
+
               <Button
                 size="sm"
                 onClick={handleSave}
                 className="bg-ice-glow hover:bg-ice-glow/90"
+                disabled={warning === 'error'}
               >
-                {t('context.save')}
+                {t('context.apply')}
               </Button>
             </div>
+
+            {/* Saved Contexts List */}
+            {savedContexts.length > 0 && (
+              <div className="space-y-2 pt-4 border-t">
+                <label className="text-sm font-medium">{t('context.allContexts')}</label>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {savedContexts.map((ctx) => (
+                    <div
+                      key={ctx.id}
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                        ctx.id === activeContextId
+                          ? 'bg-ice-glow/20 border border-ice-glow/50'
+                          : 'bg-white/5 hover:bg-white/10'
+                      }`}
+                      onClick={() => handleSwitchContext(ctx.id)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{ctx.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {ctx.content.length.toLocaleString()} {t('context.chars')} · ~{Math.ceil(ctx.content.length / 4).toLocaleString()} {t('context.tokens')}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                        onClick={(e) => handleDeleteClick(ctx, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('context.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('context.deleteConfirmMessage').replace('{name}', contextToDelete?.name || '')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('context.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+              {t('context.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -410,7 +410,20 @@ serve(async (req) => {
       throw new Error("userPrompt is required and must be a string");
     }
 
-    // Construct user message with optional context
+    // Estimate total tokens (rough: 1 token ≈ 4 chars)
+    const contextChars = userContext?.length || 0;
+    const promptChars = userPrompt.length;
+    const systemChars = systemPrompt.length;
+    const totalChars = contextChars + promptChars + systemChars;
+    const estimatedTokens = Math.ceil(totalChars / 4);
+
+    // Warn if approaching limits but don't block (let the API handle it)
+    const TOKEN_WARNING_THRESHOLD = 100000; // ~100k tokens is very large
+    if (estimatedTokens > TOKEN_WARNING_THRESHOLD) {
+      console.warn(`Large request: ~${estimatedTokens} estimated tokens`);
+    }
+
+    // Construct user message with optional context (no size limit)
     const userMessage = userContext
       ? `BACKGROUND CONTEXT:\n${userContext}\n\n---\n\nTransform this prompt:\n${userPrompt}`
       : userPrompt;
@@ -422,17 +435,18 @@ serve(async (req) => {
     console.log(`User context: ${userContext ? `${userContext.length} chars` : 'none'}`);
     console.log(`User prompt (${userPrompt.length} chars): ${userPrompt.substring(0, 100)}...`);
     console.log(`System prompt length: ${systemPrompt.length} chars`);
-    console.log(`System prompt starts with: ${systemPrompt.substring(0, 200)}...`);
+    console.log(`Estimated total tokens: ~${estimatedTokens}`);
 
     // Build request body - OpenRouter uses OpenAI-compatible format for ALL models
     // System prompt goes in messages array with role: "system"
+    // Increase max_tokens for larger contexts to allow complete transformations
     const requestBody: Record<string, unknown> = {
       model: model || "google/gemini-3-pro-preview",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      max_tokens: 4096,
+      max_tokens: 8192, // Increased to handle larger context transformations
       temperature: 0.3,
     };
 
@@ -477,6 +491,10 @@ serve(async (req) => {
       }
       if (response.status === 402) {
         throw new Error("Insufficient credits on OpenRouter. Please add credits to your account.");
+      }
+      // Handle context length errors
+      if (response.status === 400 && (errorText.includes("context") || errorText.includes("token") || errorText.includes("length"))) {
+        throw new Error(`Context too large for this model. Try reducing your context size or selecting a model with a larger context window. (${estimatedTokens} estimated tokens)`);
       }
       throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
