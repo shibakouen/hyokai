@@ -3,6 +3,7 @@ import { AVAILABLE_MODELS } from "@/lib/models";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
+import { useUserContext } from "@/contexts/UserContextContext";
 
 const STORAGE_KEY = "hyokai-selected-model-index";
 
@@ -14,6 +15,7 @@ export function usePromptTransformer() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const { mode } = useMode();
+  const { userContext } = useUserContext();
   // Store index instead of ID since multiple models can have same ID (thinking variant)
   const [selectedModelIndex, setSelectedModelIndex] = useState(() => {
     if (typeof window !== "undefined") {
@@ -85,6 +87,7 @@ export function usePromptTransformer() {
       const { data, error } = await supabase.functions.invoke("transform-prompt", {
         body: {
           userPrompt: input,
+          userContext: userContext || undefined,
           model: selectedModel.id,
           mode: mode,
           thinking: selectedModel.thinking || false,
@@ -111,7 +114,7 @@ export function usePromptTransformer() {
       stopTimer();
       setIsLoading(false);
     }
-  }, [input, selectedModel, mode, startTimer, stopTimer]);
+  }, [input, selectedModel, mode, userContext, startTimer, stopTimer]);
 
   return {
     input,

@@ -64,6 +64,14 @@ export const translations = {
         'history.restore': 'Restore',
         'history.delete': 'Delete',
         'history.legend': 'Legend',
+
+        // User Context
+        'context.title': 'Your Context',
+        'context.description': 'Tell the AI about yourself, your project, or preferences. This will be included with every prompt transformation.',
+        'context.placeholder': "e.g., 'I'm a Python developer working on a Django REST API for an e-commerce platform. I prefer clean, well-documented code with type hints.'",
+        'context.save': 'Save Context',
+        'context.clear': 'Clear',
+        'context.active': 'Context Active',
     },
     jp: {
         // Header
@@ -128,6 +136,14 @@ export const translations = {
         'history.restore': '復元',
         'history.delete': '削除',
         'history.legend': '凡例',
+
+        // User Context
+        'context.title': 'コンテキスト',
+        'context.description': 'あなた自身、プロジェクト、好みについてAIに伝えてください。すべてのプロンプト変換に含まれます。',
+        'context.placeholder': "例：「私はDjangoのREST APIでeコマースプラットフォームを開発しているPython開発者です。型ヒント付きのクリーンで文書化されたコードを好みます。」",
+        'context.save': '保存',
+        'context.clear': 'クリア',
+        'context.active': 'コンテキスト有効',
     }
 } as const;
 

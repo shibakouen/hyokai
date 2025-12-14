@@ -399,7 +399,7 @@ serve(async (req) => {
       throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
-    const { userPrompt, model, mode, thinking } = await req.json();
+    const { userPrompt, userContext, model, mode, thinking } = await req.json();
 
     // Select system prompt based on mode
     const systemPrompt = mode === 'prompting'
@@ -410,10 +410,16 @@ serve(async (req) => {
       throw new Error("userPrompt is required and must be a string");
     }
 
+    // Construct user message with optional context
+    const userMessage = userContext
+      ? `BACKGROUND CONTEXT:\n${userContext}\n\n---\n\nTransform this prompt:\n${userPrompt}`
+      : userPrompt;
+
     console.log(`=== HYOKAI REQUEST DEBUG ===`);
     console.log(`Model: ${model}`);
     console.log(`Mode: ${mode}`);
     console.log(`Thinking: ${thinking}`);
+    console.log(`User context: ${userContext ? `${userContext.length} chars` : 'none'}`);
     console.log(`User prompt (${userPrompt.length} chars): ${userPrompt.substring(0, 100)}...`);
     console.log(`System prompt length: ${systemPrompt.length} chars`);
     console.log(`System prompt starts with: ${systemPrompt.substring(0, 200)}...`);
@@ -424,7 +430,7 @@ serve(async (req) => {
       model: model || "google/gemini-3-pro-preview",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        { role: "user", content: userMessage },
       ],
       max_tokens: 4096,
       temperature: 0.3,

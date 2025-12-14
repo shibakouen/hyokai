@@ -3,6 +3,7 @@ import { AVAILABLE_MODELS, AIModel } from "@/lib/models";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
+import { useUserContext } from "@/contexts/UserContextContext";
 
 const STORAGE_KEY = "hyokai-compare-model-indices";
 
@@ -38,6 +39,7 @@ export function useModelComparison() {
   const [results, setResults] = useState<ComparisonResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { mode } = useMode();
+  const { userContext } = useUserContext();
   const startTimesRef = useRef<Map<number, number>>(new Map());
   const timersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
@@ -90,7 +92,8 @@ export function useModelComparison() {
   const transformWithModel = useCallback(async (
     modelIndex: number,
     userPrompt: string,
-    currentMode: string
+    currentMode: string,
+    currentUserContext: string
   ): Promise<{ output: string | null; error: string | null }> => {
     const model = AVAILABLE_MODELS[modelIndex];
 
@@ -98,6 +101,7 @@ export function useModelComparison() {
       const { data, error } = await supabase.functions.invoke("transform-prompt", {
         body: {
           userPrompt,
+          userContext: currentUserContext || undefined,
           model: model.id,
           mode: currentMode,
           thinking: model.thinking || false,
@@ -174,7 +178,7 @@ export function useModelComparison() {
 
     // Run all transformations concurrently
     const promises = selectedIndices.map(async (index) => {
-      const result = await transformWithModel(index, input, mode);
+      const result = await transformWithModel(index, input, mode, userContext);
       const startTime = startTimesRef.current.get(index);
       const finalTime = startTime ? Date.now() - startTime : null;
 
@@ -203,7 +207,7 @@ export function useModelComparison() {
 
     await Promise.all(promises);
     setIsLoading(false);
-  }, [input, selectedIndices, mode, transformWithModel, clearAllTimers]);
+  }, [input, selectedIndices, mode, userContext, transformWithModel, clearAllTimers]);
 
   // Reset comparison
   const resetComparison = useCallback(() => {

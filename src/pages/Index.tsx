@@ -14,6 +14,7 @@ import { CompareToggle } from "@/components/CompareToggle";
 import { ModelMultiSelector } from "@/components/ModelMultiSelector";
 import { ComparisonPanel } from "@/components/ComparisonPanel";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { UserContextEditor } from "@/components/UserContextEditor";
 import { useMode } from "@/contexts/ModeContext";
 import { AVAILABLE_MODELS } from "@/lib/models";
 import { addHistoryEntry, HistoryEntry } from "@/lib/history";
@@ -171,8 +172,9 @@ const Index = () => {
       {/* Language selector - top left */}
       <LanguageSelector />
 
-      {/* History panel - top right */}
-      <div className="absolute top-4 right-4 z-50">
+      {/* Controls - top right */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <UserContextEditor />
         <HistoryPanel onRestore={handleRestore} />
       </div>
 
