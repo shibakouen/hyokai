@@ -96,9 +96,11 @@ export const translations = {
         'context.deleteConfirmMessage': 'Are you sure you want to delete "{name}"? This cannot be undone.',
         'context.cancel': 'Cancel',
         'context.llmPromptTitle': 'Get Context from Your LLM',
-        'context.llmPromptDescription': 'Copy this prompt and paste it into Claude Code, Cursor, or any coding assistant to auto-generate context about your project.',
+        'context.llmPromptDescription': 'Copy this prompt and paste it into any AI assistant to auto-generate context.',
         'context.copyPrompt': 'Copy Prompt',
         'context.llmPromptCopied': 'Prompt copied! Paste it into your LLM, then copy the result back here.',
+        'context.promptTypeCoding': 'Coding',
+        'context.promptTypePrompting': 'General',
     },
     jp: {
         // Header
@@ -195,9 +197,11 @@ export const translations = {
         'context.deleteConfirmMessage': '「{name}」を削除してもよろしいですか？この操作は元に戻せません。',
         'context.cancel': 'キャンセル',
         'context.llmPromptTitle': 'LLMからコンテキストを取得',
-        'context.llmPromptDescription': 'このプロンプトをコピーしてClaude Code、Cursor、または任意のコーディングアシスタントに貼り付けると、プロジェクトのコンテキストを自動生成できます。',
+        'context.llmPromptDescription': '任意のAIアシスタントにこのプロンプトを貼り付けて、コンテキストを自動生成できます。',
         'context.copyPrompt': 'プロンプトをコピー',
         'context.llmPromptCopied': 'プロンプトをコピーしました！LLMに貼り付けて、結果をここにコピーしてください。',
+        'context.promptTypeCoding': 'コーディング',
+        'context.promptTypePrompting': '一般',
     }
 } as const;
 

@@ -16,8 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Plus, Save, Trash2, AlertTriangle, AlertCircle, Sparkles, Copy } from "lucide-react";
+import { User, Plus, Save, Trash2, AlertTriangle, AlertCircle, Sparkles, Copy, Code, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   useUserContext,
@@ -42,7 +43,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const LLM_CONTEXT_PROMPT = `Analyze my current project and output a structured context summary for Hyokai (a prompt transformer). Format exactly as shown, under 1500 characters:
+const CODING_CONTEXT_PROMPT = `Analyze my current project and output a structured context summary for Hyokai (a prompt transformer). Format exactly as shown, under 1500 characters:
 
 PROJECT: [name] - [one-line description]
 STACK: [languages, frameworks, database, hosting]
@@ -66,6 +67,32 @@ CONSTRAINTS:
 
 Be dense and factual. No explanations, just the data. This context helps transform vague prompts into detailed specs matching my project's patterns.`;
 
+const PROMPTING_CONTEXT_PROMPT = `Create a personal context profile for Hyokai (a prompt transformer for AI assistants). Format exactly as shown, under 1500 characters:
+
+ROLE: [your profession/expertise, e.g., Marketing Manager, Student, Researcher]
+GOALS: [what you typically use AI for]
+
+PREFERENCES:
+- Tone: [Professional/Casual/Academic/Creative]
+- Format: [Bullet points/Paragraphs/Tables/Mixed]
+- Length: [Concise/Detailed/Comprehensive]
+- Language style: [Simple/Technical/Formal]
+
+DOMAINS:
+- [area of expertise or interest]
+- [another relevant domain]
+
+CONSTRAINTS:
+- [e.g., Must cite sources, Avoid jargon, Kid-friendly]
+- [e.g., Focus on actionable advice]
+
+AUDIENCE:
+- [who you're usually creating content for]
+
+Be dense and factual. No explanations, just the data. This context helps transform vague prompts into detailed, personalized outputs matching your style.`;
+
+type PromptType = 'coding' | 'prompting';
+
 export function UserContextEditor() {
   const {
     userContext,
@@ -85,6 +112,7 @@ export function UserContextEditor() {
   const [contextName, setContextName] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contextToDelete, setContextToDelete] = useState<SavedContext | null>(null);
+  const [promptType, setPromptType] = useState<PromptType>('coding');
 
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) {
@@ -158,7 +186,8 @@ export function UserContextEditor() {
 
   const handleCopyLLMPrompt = async () => {
     try {
-      await navigator.clipboard.writeText(LLM_CONTEXT_PROMPT);
+      const promptToCopy = promptType === 'coding' ? CODING_CONTEXT_PROMPT : PROMPTING_CONTEXT_PROMPT;
+      await navigator.clipboard.writeText(promptToCopy);
       toast.success(t('context.llmPromptCopied'));
     } catch {
       toast.error('Failed to copy to clipboard');
@@ -220,6 +249,18 @@ export function UserContextEditor() {
                   <p className="text-xs text-muted-foreground mt-1">
                     {t('context.llmPromptDescription')}
                   </p>
+                  <Tabs value={promptType} onValueChange={(v) => setPromptType(v as PromptType)} className="mt-3">
+                    <TabsList className="h-8">
+                      <TabsTrigger value="coding" className="text-xs px-3 gap-1.5">
+                        <Code className="h-3.5 w-3.5" />
+                        {t('context.promptTypeCoding')}
+                      </TabsTrigger>
+                      <TabsTrigger value="prompting" className="text-xs px-3 gap-1.5">
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        {t('context.promptTypePrompting')}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
                 <Button
                   variant="outline"
