@@ -67,29 +67,28 @@ CONSTRAINTS:
 
 Be dense and factual. No explanations, just the data. This context helps transform vague prompts into detailed specs matching my project's patterns.`;
 
-const PROMPTING_CONTEXT_PROMPT = `Create a personal context profile for Hyokai (a prompt transformer for AI assistants). Format exactly as shown, under 1500 characters:
+const PROMPTING_CONTEXT_PROMPT = `Analyze our current conversation and create a context summary for Hyokai (a prompt transformer). This will help me create better follow-up prompts for our discussion.
 
-ROLE: [your profession/expertise, e.g., Marketing Manager, Student, Researcher]
-GOALS: [what you typically use AI for]
+Format exactly as shown, under 1500 characters:
 
-PREFERENCES:
-- Tone: [Professional/Casual/Academic/Creative]
-- Format: [Bullet points/Paragraphs/Tables/Mixed]
-- Length: [Concise/Detailed/Comprehensive]
-- Language style: [Simple/Technical/Formal]
+CONVERSATION TOPIC: [what we're discussing/working on]
+CURRENT STATUS: [where we are in the task/discussion]
+KEY DECISIONS: [important choices or directions established]
 
-DOMAINS:
-- [area of expertise or interest]
-- [another relevant domain]
+USER CONTEXT:
+- Role/Background: [what you know about me from this conversation]
+- Goal: [what I'm trying to accomplish]
+- Preferences: [tone, format, or style I seem to prefer]
 
-CONSTRAINTS:
-- [e.g., Must cite sources, Avoid jargon, Kid-friendly]
-- [e.g., Focus on actionable advice]
+IMPORTANT DETAILS:
+- [key fact or constraint from our conversation]
+- [another relevant detail]
+- [any specific requirements mentioned]
 
-AUDIENCE:
-- [who you're usually creating content for]
+NEXT STEPS:
+- [what we're about to work on or need to address]
 
-Be dense and factual. No explanations, just the data. This context helps transform vague prompts into detailed, personalized outputs matching your style.`;
+Be dense and factual. Extract only what's relevant from our conversation. This context helps transform my vague follow-up requests into detailed prompts that continue our work seamlessly.`;
 
 type PromptType = 'coding' | 'prompting';
 

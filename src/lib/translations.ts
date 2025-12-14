@@ -100,7 +100,7 @@ export const translations = {
         'context.copyPrompt': 'Copy Prompt',
         'context.llmPromptCopied': 'Prompt copied! Paste it into your LLM, then copy the result back here.',
         'context.promptTypeCoding': 'Coding',
-        'context.promptTypePrompting': 'General',
+        'context.promptTypePrompting': 'Conversation',
     },
     jp: {
         // Header
@@ -201,7 +201,7 @@ export const translations = {
         'context.copyPrompt': 'プロンプトをコピー',
         'context.llmPromptCopied': 'プロンプトをコピーしました！LLMに貼り付けて、結果をここにコピーしてください。',
         'context.promptTypeCoding': 'コーディング',
-        'context.promptTypePrompting': '一般',
+        'context.promptTypePrompting': '会話',
     }
 } as const;
 
