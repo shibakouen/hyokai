@@ -31,7 +31,7 @@ function ResultCard({ result }: { result: ComparisonResult }) {
   const charCount = result.output ? result.output.length : 0;
 
   return (
-    <div className="frost-glass rounded-lg flex flex-col h-full">
+    <div className="frost-glass rounded-2xl flex flex-col h-full transition-all duration-300">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border/30">
         <div className="flex-1 min-w-0">
@@ -108,7 +108,7 @@ export function ComparisonPanel({ results, isLoading }: ComparisonPanelProps) {
 
   if (results.length === 0) {
     return (
-      <div className="frost-glass rounded-lg min-h-[200px] p-4 flex items-center justify-center">
+      <div className="frost-glass rounded-2xl min-h-[200px] p-4 flex items-center justify-center">
         <div className="text-muted-foreground text-sm text-center">
           {t('compare.placeholder')}
         </div>
@@ -133,7 +133,7 @@ export function ComparisonPanel({ results, isLoading }: ComparisonPanelProps) {
 
       {/* Summary comparison */}
       {!isLoading && results.every(r => r.output && !r.error) && (
-        <div className="frost-glass rounded-lg p-4">
+        <div className="frost-glass rounded-2xl p-4">
           <h4 className="font-medium text-sm mb-3">{t('compare.summary')}</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             {results.map((result) => {

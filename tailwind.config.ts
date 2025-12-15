@@ -19,6 +19,13 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        'cb-blue': {
+          DEFAULT: '#0ca2e7',
+          light: '#38bdf8',
+          dark: '#0284c7',
+        },
+        'deep-water': '#0f172a',
+        'ice-white': '#f8fafc',
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -70,6 +77,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
+        sans: ["'Poppins'", "sans-serif"],
         mono: ["'Geist Mono'", "ui-monospace", "monospace"],
       },
       keyframes: {

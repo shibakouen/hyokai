@@ -11,7 +11,7 @@ export function Header() {
           <Snowflake className="w-10 h-10 md:w-12 md:h-12 text-primary animate-float" />
           <div className="absolute inset-0 w-10 h-10 md:w-12 md:h-12 bg-primary/20 blur-xl rounded-full" />
         </div>
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-gradient-blue">
           {t('header.title')}
         </h1>
         <span className="text-2xl md:text-3xl lg:text-4xl text-muted-foreground font-light">

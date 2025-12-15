@@ -23,7 +23,7 @@ export function PromptInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || t('input.placeholder')}
         disabled={disabled}
-        className="min-h-[160px] resize-none frost-glass text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+        className="min-h-[160px] resize-none frost-glass rounded-2xl text-foreground placeholder:text-muted-foreground/60 focus:border-white/60 focus:ring-cb-blue/20 transition-all duration-300"
       />
       <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
         {value.length} chars

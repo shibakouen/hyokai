@@ -21,7 +21,7 @@ export function OutputPanel({ content, isLoading = false }: OutputPanelProps) {
 
   return (
     <div className="relative">
-      <div className="frost-glass rounded-lg min-h-[200px] p-4 overflow-auto">
+      <div className="frost-glass rounded-2xl min-h-[200px] p-5 overflow-auto transition-all duration-300">
         {isLoading ? (
           <div className="flex items-center justify-center h-[168px]">
             <div className="flex items-center gap-3 text-muted-foreground">

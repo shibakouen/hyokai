@@ -184,7 +184,7 @@ export function BeginnerView() {
             onKeyDown={handleKeyDown}
             placeholder={t("beginner.inputPlaceholder")}
             disabled={isLoading}
-            className="min-h-[140px] text-lg leading-relaxed resize-none bg-white/5 border-white/20 focus:border-primary/50 placeholder:text-muted-foreground/60"
+            className="min-h-[140px] text-lg leading-relaxed resize-none frost-glass rounded-2xl border-white/30 focus:border-white/60 placeholder:text-muted-foreground/60"
             aria-label={t("beginner.inputAria")}
           />
           <p className="text-sm text-muted-foreground text-center">
@@ -206,7 +206,7 @@ export function BeginnerView() {
                 size="lg"
                 onClick={handleTransform}
                 disabled={isLoading || !input.trim()}
-                className="min-w-[220px] h-14 text-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                className="min-w-[220px] h-14 text-lg"
                 aria-label={t("beginner.transformAria")}
               >
                 {isLoading ? (
@@ -267,7 +267,7 @@ export function BeginnerView() {
           </div>
           <div className="relative">
             <div
-              className={`min-h-[180px] p-5 rounded-xl bg-white/5 border border-white/20 text-lg leading-relaxed whitespace-pre-wrap ${
+              className={`min-h-[180px] p-5 frost-glass rounded-2xl text-lg leading-relaxed whitespace-pre-wrap ${
                 !output ? "text-muted-foreground/60 italic" : ""
               }`}
               role="region"

@@ -171,7 +171,19 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Layered background - matching lander */}
+      <div className="fixed inset-0 bg-[#f0f9ff]" />
+      <div className="fixed inset-0 bg-gradient-to-b from-sky-50 to-blue-100/50" />
+
+      {/* Animated blobs */}
+      <div className="fixed top-20 left-10 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl animate-blob mix-blend-multiply" />
+      <div className="fixed top-40 right-20 w-72 h-72 bg-cyan-200/30 rounded-full blur-3xl animate-blob animation-delay-2000 mix-blend-multiply" />
+      <div className="fixed bottom-20 left-1/3 w-72 h-72 bg-blue-200/30 rounded-full blur-3xl animate-blob animation-delay-4000 mix-blend-multiply" />
+
+      {/* Noise texture overlay */}
+      <div className="noise-overlay" />
+
       {/* Language selector - top left */}
       <LanguageSelector />
 
@@ -186,13 +198,6 @@ const Index = () => {
           </>
         )}
       </div>
-
-      {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-ice-frost via-background to-ice-crystal opacity-50 pointer-events-none" />
-
-      {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
 
       <div className={`relative z-10 container mx-auto px-4 py-8 md:py-16 ${isBeginnerMode ? 'max-w-2xl' : isCompareMode ? 'max-w-6xl' : 'max-w-3xl'}`}>
         <Header />
@@ -258,7 +263,7 @@ const Index = () => {
                   size="lg"
                   onClick={isCompareMode ? compare : transform}
                   disabled={isLoading || !input.trim() || (isCompareMode && selectedIndices.length < 2)}
-                  className="min-w-[200px] bg-primary text-black hover:bg-primary/90"
+                  className="min-w-[200px]"
                 >
                   {isLoading ? (
                     <>
