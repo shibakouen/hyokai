@@ -188,12 +188,18 @@ serve(async (req) => {
           );
         }
 
-        // Limit number of files to fetch
-        const limitedPaths = paths.slice(0, 20);
+        // Process files in batches of 20 to avoid overwhelming the API
+        const BATCH_SIZE = 20;
+        const MAX_FILES = 100; // Safety limit
+        const limitedPaths = paths.slice(0, MAX_FILES);
+        const allContents: Array<{ path: string; content?: string; error?: string; truncated?: boolean }> = [];
 
-        // Fetch contents of specific files
-        const contents = await Promise.all(
-          limitedPaths.map(async (path: string) => {
+        // Process in batches
+        for (let i = 0; i < limitedPaths.length; i += BATCH_SIZE) {
+          const batch = limitedPaths.slice(i, i + BATCH_SIZE);
+
+          const batchContents = await Promise.all(
+            batch.map(async (path: string) => {
             try {
               const response = await fetch(
                 `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${branch}`,
@@ -250,10 +256,13 @@ serve(async (req) => {
               return { path, error: e instanceof Error ? e.message : "Unknown error" };
             }
           })
-        );
+          );
+
+          allContents.push(...batchContents);
+        }
 
         return new Response(
-          JSON.stringify({ contents }),
+          JSON.stringify({ contents: allContents }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

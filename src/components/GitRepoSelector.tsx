@@ -358,11 +358,13 @@ export function GitRepoSelector({
       {/* Stats */}
       <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
         <span>
-          {selectedPaths.length}/{LIMITS.MAX_SELECTED_PATHS} {t("git.filesSelected")}
+          {selectedPaths.length} {t("git.filesSelected")}
         </span>
         <span
           className={
-            totalTokens > LIMITS.MAX_CONTEXT_TOKENS * 0.8
+            totalTokens > LIMITS.MAX_CONTEXT_TOKENS
+              ? "text-red-500"
+              : totalTokens > LIMITS.MAX_CONTEXT_TOKENS * 0.8
               ? "text-yellow-500"
               : ""
           }
@@ -393,10 +395,25 @@ export function GitRepoSelector({
         )}
       </div>
 
-      {/* Limit Warning */}
+      {/* Token/Selection Warnings */}
+      {totalTokens > LIMITS.MAX_CONTEXT_TOKENS && (
+        <p className="text-xs text-red-500 text-center">
+          {t("git.tokenLimitExceeded")}
+        </p>
+      )}
+      {totalTokens <= LIMITS.MAX_CONTEXT_TOKENS && totalTokens > LIMITS.MAX_CONTEXT_TOKENS * 0.8 && (
+        <p className="text-xs text-yellow-500 text-center">
+          {t("git.tokenLimitWarning")}
+        </p>
+      )}
       {selectedPaths.length >= LIMITS.MAX_SELECTED_PATHS && (
         <p className="text-xs text-yellow-500 text-center">
           {t("git.maxFilesReached")}
+        </p>
+      )}
+      {selectedPaths.length >= 50 && selectedPaths.length < LIMITS.MAX_SELECTED_PATHS && (
+        <p className="text-xs text-muted-foreground text-center">
+          {t("git.manyFilesSelected")}
         </p>
       )}
     </div>
