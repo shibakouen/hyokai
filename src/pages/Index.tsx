@@ -16,6 +16,8 @@ import { ComparisonPanel } from "@/components/ComparisonPanel";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { UserContextEditor } from "@/components/UserContextEditor";
 import { GitRepoEditor } from "@/components/GitRepoEditor";
+import { BeginnerModeToggle } from "@/components/BeginnerModeToggle";
+import { BeginnerView } from "@/components/BeginnerView";
 import { useMode } from "@/contexts/ModeContext";
 import { AVAILABLE_MODELS } from "@/lib/models";
 import { addHistoryEntry, HistoryEntry } from "@/lib/history";
@@ -51,7 +53,7 @@ const Index = () => {
   } = useModelComparison();
 
   // Task mode context
-  const { mode: taskMode } = useMode();
+  const { mode: taskMode, isBeginnerMode } = useMode();
 
   // Track previous loading states to detect when transformation completes
   const prevSingleLoadingRef = useRef(singleIsLoading);
@@ -175,9 +177,14 @@ const Index = () => {
 
       {/* Controls - top right */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-        <GitRepoEditor />
-        <UserContextEditor />
-        <HistoryPanel onRestore={handleRestore} />
+        <BeginnerModeToggle />
+        {!isBeginnerMode && (
+          <>
+            <GitRepoEditor />
+            <UserContextEditor />
+            <HistoryPanel onRestore={handleRestore} />
+          </>
+        )}
       </div>
 
       {/* Subtle background gradient */}
@@ -187,105 +194,122 @@ const Index = () => {
       <div className="absolute top-20 left-10 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
 
-      <div className={`relative z-10 container mx-auto px-4 py-8 md:py-16 ${isCompareMode ? 'max-w-6xl' : 'max-w-3xl'}`}>
+      <div className={`relative z-10 container mx-auto px-4 py-8 md:py-16 ${isBeginnerMode ? 'max-w-2xl' : isCompareMode ? 'max-w-6xl' : 'max-w-3xl'}`}>
         <Header />
 
-        <ModeToggle />
+        {isBeginnerMode ? (
+          /* Beginner Mode - Simplified View */
+          <>
+            <BeginnerView />
 
-        {/* Compare Mode Toggle */}
-        <CompareToggle
-          isCompareMode={isCompareMode}
-          onToggle={handleCompareModeToggle}
-        />
+            {/* Footer */}
+            <footer className="mt-12 text-center text-xs text-muted-foreground">
+              <p>
+                {t('footer.text')}
+              </p>
+            </footer>
+          </>
+        ) : (
+          /* Advanced Mode - Full Interface */
+          <>
+            <ModeToggle />
 
-        <div className="space-y-8 mt-8">
-          {/* Model Selection - conditional based on mode */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              {t('model.label')}
-            </label>
-            {isCompareMode ? (
-              <ModelMultiSelector
-                selectedIndices={selectedIndices}
-                onToggle={toggleModel}
-              />
-            ) : (
-              <ModelSelector
-                value={selectedModelIndex}
-                onChange={setSelectedModelIndex}
-              />
-            )}
-          </div>
-
-          {/* Input Section */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              {t('input.label')}
-            </label>
-            <PromptInput
-              value={input}
-              onChange={setInput}
-              disabled={isLoading}
-              placeholder={t('input.placeholder')}
+            {/* Compare Mode Toggle */}
+            <CompareToggle
+              isCompareMode={isCompareMode}
+              onToggle={handleCompareModeToggle}
             />
-          </div>
 
-          {/* Generate Button */}
-          <div className="flex flex-col items-center gap-2">
-            <Button
-              size="lg"
-              onClick={isCompareMode ? compare : transform}
-              disabled={isLoading || !input.trim() || (isCompareMode && selectedIndices.length < 2)}
-              className="min-w-[200px] bg-primary text-black hover:bg-primary/90"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  {t('button.generating')}
-                </>
-              ) : isCompareMode ? (
-                <>
-                  <GitCompare className="w-4 h-4" />
-                  {t('compare.generate')}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  {t('button.generate')}
-                </>
-              )}
-            </Button>
-            {!isCompareMode && elapsedTime !== null && (
-              <span className={`text-sm tabular-nums ${isLoading ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground/70'}`}>
-                {formatTime(elapsedTime)}
-              </span>
-            )}
-          </div>
+            <div className="space-y-8 mt-8">
+              {/* Model Selection - conditional based on mode */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t('model.label')}
+                </label>
+                {isCompareMode ? (
+                  <ModelMultiSelector
+                    selectedIndices={selectedIndices}
+                    onToggle={toggleModel}
+                  />
+                ) : (
+                  <ModelSelector
+                    value={selectedModelIndex}
+                    onChange={setSelectedModelIndex}
+                  />
+                )}
+              </div>
 
-          {/* Arrow indicator */}
-          <div className="flex justify-center">
-            <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
-          </div>
+              {/* Input Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t('input.label')}
+                </label>
+                <PromptInput
+                  value={input}
+                  onChange={setInput}
+                  disabled={isLoading}
+                  placeholder={t('input.placeholder')}
+                />
+              </div>
 
-          {/* Output Section - conditional based on mode */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              {t('output.label')}
-            </label>
-            {isCompareMode ? (
-              <ComparisonPanel results={results} isLoading={isLoading} />
-            ) : (
-              <OutputPanel content={output} isLoading={singleIsLoading} />
-            )}
-          </div>
-        </div>
+              {/* Generate Button */}
+              <div className="flex flex-col items-center gap-2">
+                <Button
+                  size="lg"
+                  onClick={isCompareMode ? compare : transform}
+                  disabled={isLoading || !input.trim() || (isCompareMode && selectedIndices.length < 2)}
+                  className="min-w-[200px] bg-primary text-black hover:bg-primary/90"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      {t('button.generating')}
+                    </>
+                  ) : isCompareMode ? (
+                    <>
+                      <GitCompare className="w-4 h-4" />
+                      {t('compare.generate')}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      {t('button.generate')}
+                    </>
+                  )}
+                </Button>
+                {!isCompareMode && elapsedTime !== null && (
+                  <span className={`text-sm tabular-nums ${isLoading ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground/70'}`}>
+                    {formatTime(elapsedTime)}
+                  </span>
+                )}
+              </div>
 
-        {/* Footer */}
-        <footer className="mt-12 text-center text-xs text-muted-foreground">
-          <p>
-            {t('footer.text')}
-          </p>
-        </footer>
+              {/* Arrow indicator */}
+              <div className="flex justify-center">
+                <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
+              </div>
+
+              {/* Output Section - conditional based on mode */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t('output.label')}
+                </label>
+                {isCompareMode ? (
+                  <ComparisonPanel results={results} isLoading={isLoading} />
+                ) : (
+                  <OutputPanel content={output} isLoading={singleIsLoading} />
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <footer className="mt-12 text-center text-xs text-muted-foreground">
+              <p>
+                {t('footer.text')}
+              </p>
+            </footer>
+          </>
+        )}
       </div>
     </div>
   );
