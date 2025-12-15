@@ -100,8 +100,8 @@ export const LIMITS = {
   MAX_TREE_ENTRIES: 5000,        // Truncate tree if larger
   MAX_SELECTED_PATHS: 100,       // User can select up to 100 files/dirs (real limit is token budget)
   MAX_FILE_SIZE: 10000,          // Truncate files over 10KB
-  MAX_CONTEXT_TOKENS: 8000,      // Total git context token limit
-  DEFAULT_CONTEXT_TOKENS: 4000,  // Default limit
+  MAX_CONTEXT_TOKENS: 32000,     // Total git context token limit (32K)
+  DEFAULT_CONTEXT_TOKENS: 16000, // Default limit (16K)
   MAX_REPOS: 5,                  // Max connected repositories
   FILES_PER_BATCH: 20,           // Files to fetch per API call (for chunking)
 } as const;
