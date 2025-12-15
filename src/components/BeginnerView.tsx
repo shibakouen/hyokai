@@ -21,6 +21,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SimpleHistoryPanel } from "@/components/SimpleHistoryPanel";
+import { addSimpleHistoryEntry, SimpleHistoryEntry } from "@/lib/simpleHistory";
 
 // Grok 4 Fast model ID - fast and reliable for beginners
 const BEGINNER_MODEL_ID = "x-ai/grok-4-fast";
@@ -215,7 +217,16 @@ export function BeginnerView() {
         throw new Error(data.error);
       }
 
-      setOutput(data?.result || t("beginner.noOutput"));
+      const resultOutput = data?.result || t("beginner.noOutput");
+      setOutput(resultOutput);
+
+      // Save to history
+      const finalElapsedTime = startTimeRef.current ? Date.now() - startTimeRef.current : null;
+      addSimpleHistoryEntry({
+        input: currentInput,
+        output: resultOutput,
+        elapsedTime: finalElapsedTime,
+      });
     } catch (error) {
       console.error("Transform error:", error);
       toast({
@@ -272,6 +283,15 @@ export function BeginnerView() {
     setOutput('');
     setEditedOutput('');
     setInput('');
+  };
+
+  // Handle restoring from history
+  const handleRestoreFromHistory = (entry: SimpleHistoryEntry) => {
+    setInput(entry.input);
+    setOutput(entry.output);
+    setEditedOutput(entry.output);
+    setIsOutputEdited(false);
+    setElapsedTime(entry.elapsedTime);
   };
 
   return (
@@ -362,14 +382,16 @@ export function BeginnerView() {
       )}
 
       <div className="space-y-5 sm:space-y-8">
-        {/* Step indicator - hero badge */}
-        <div className="flex justify-center">
+        {/* Step indicator and history */}
+        <div className="flex items-center justify-between">
+          <div className="w-8" /> {/* Spacer for centering */}
           <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full frost-glass border border-cb-blue/20 shadow-lg shadow-cb-blue/10">
             <Lightbulb className="w-4 h-4 text-cb-blue" />
             <span className="text-sm font-semibold text-cb-blue">
               {t("beginner.threeSteps")}
             </span>
           </div>
+          <SimpleHistoryPanel onRestore={handleRestoreFromHistory} />
         </div>
 
         {/* Step 1: Input - Card style */}

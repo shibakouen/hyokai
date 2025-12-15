@@ -64,7 +64,7 @@ export const translations = {
         'compare.summary': 'Comparison Summary',
         'compare.generate': 'Compare All Models',
 
-        // History
+        // History (Advanced Mode)
         'history.title': 'History',
         'history.empty': 'No history yet',
         'history.clearAll': 'Clear All',
@@ -73,6 +73,17 @@ export const translations = {
         'history.restore': 'Restore',
         'history.delete': 'Delete',
         'history.legend': 'Legend',
+
+        // Simple History (Simple Mode)
+        'simpleHistory.title': 'History',
+        'simpleHistory.empty': 'No history yet',
+        'simpleHistory.emptyHint': 'Your transformed prompts will appear here',
+        'simpleHistory.clearAll': 'Clear All',
+        'simpleHistory.input': 'Original',
+        'simpleHistory.output': 'Improved',
+        'simpleHistory.restore': 'Use Again',
+        'simpleHistory.delete': 'Delete',
+        'simpleHistory.count': '{count} saved prompts',
 
         // User Context
         'context.title': 'Your Context',
@@ -282,6 +293,17 @@ export const translations = {
         'history.restore': '復元',
         'history.delete': '削除',
         'history.legend': '凡例',
+
+        // Simple History (Simple Mode)
+        'simpleHistory.title': '履歴',
+        'simpleHistory.empty': '履歴がありません',
+        'simpleHistory.emptyHint': '変換したプロンプトがここに表示されます',
+        'simpleHistory.clearAll': 'すべて削除',
+        'simpleHistory.input': '元のプロンプト',
+        'simpleHistory.output': '改善後',
+        'simpleHistory.restore': '再使用',
+        'simpleHistory.delete': '削除',
+        'simpleHistory.count': '{count}件のプロンプト',
 
         // User Context
         'context.title': 'コンテキスト',
