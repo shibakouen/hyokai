@@ -342,7 +342,7 @@ Be specific - reference actual file paths and patterns you see in the code. This
               "X-Title": "Hyokai",
             },
             body: JSON.stringify({
-              model: "anthropic/claude-3-haiku",
+              model: "x-ai/grok-4-fast",
               messages: [{ role: "user", content: prompt }],
               max_tokens: 1500,
               temperature: 0.3,
