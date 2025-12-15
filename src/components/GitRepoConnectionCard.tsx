@@ -61,20 +61,20 @@ export function GitRepoConnectionCard({
 
   return (
     <>
-      <div className="p-3 rounded-lg bg-white/5 border border-border/50 space-y-3">
+      <div className="p-3 rounded-lg bg-white/30 dark:bg-slate-700/30 border border-foreground/10 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             {repository.isPrivate ? (
               <Lock className="h-4 w-4 text-yellow-500 flex-shrink-0" />
             ) : (
-              <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Globe className="h-4 w-4 text-foreground/60 flex-shrink-0" />
             )}
             <div className="min-w-0">
-              <div className="font-medium truncate text-sm">
+              <div className="font-medium truncate text-sm text-foreground">
                 {repository.fullName}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-foreground/60">
                 {repository.defaultBranch} · {t("git.lastRefreshed")}:{" "}
                 {formatTimestamp(repository.lastRefreshed)}
               </div>
@@ -98,7 +98,7 @@ export function GitRepoConnectionCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-red-500"
+              className="h-7 w-7 text-foreground/60 hover:text-red-500"
               onClick={() => setShowDeleteDialog(true)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -111,7 +111,7 @@ export function GitRepoConnectionCard({
           <div className="flex items-center justify-between text-xs">
             <button
               onClick={() => setShowSelector(!showSelector)}
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 text-foreground/70 hover:text-foreground transition-colors"
             >
               {showSelector ? (
                 <ChevronDown className="h-3.5 w-3.5" />
@@ -122,7 +122,7 @@ export function GitRepoConnectionCard({
               {t("git.selectFiles")}
             </button>
 
-            <span className="text-muted-foreground">
+            <span className="text-foreground/60">
               {selectedCount > 0 ? (
                 <>
                   {selectedCount} {t("git.filesSelected")} · ~{estimatedTokens}{" "}
@@ -137,14 +137,14 @@ export function GitRepoConnectionCard({
 
         {/* Not cached warning */}
         {!hasCache && !isRefreshing && (
-          <div className="text-xs text-muted-foreground text-center py-2">
+          <div className="text-xs text-foreground/60 text-center py-2">
             {t("git.clickRefreshToLoad")}
           </div>
         )}
 
         {/* Loading indicator */}
         {isRefreshing && (
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+          <div className="flex items-center justify-center gap-2 text-xs text-foreground/60 py-2">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             {t("git.loadingTree")}
           </div>

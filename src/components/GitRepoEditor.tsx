@@ -170,12 +170,12 @@ export function GitRepoEditor() {
           </SheetHeader>
 
           <div className="mt-6 space-y-6">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground/80">
               {t("git.description")}
             </p>
 
             {/* PAT Section */}
-            <div className="space-y-3 p-4 rounded-lg bg-white/5 border border-border/50">
+            <div className="space-y-3 p-4 rounded-lg bg-white/30 dark:bg-slate-700/30 border border-foreground/10">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">{t("git.patTitle")}</Label>
                 {patStatus === "valid" && patUsername && (
@@ -192,13 +192,13 @@ export function GitRepoEditor() {
                 )}
               </div>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-foreground/70">
                 {t("git.patDescription")}{" "}
                 <a
                   href="https://github.com/settings/tokens?type=beta"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-ice-glow hover:underline inline-flex items-center gap-1"
+                  className="text-cb-blue hover:underline inline-flex items-center gap-1"
                 >
                   GitHub Settings
                   <ExternalLink className="h-3 w-3" />
@@ -234,8 +234,8 @@ export function GitRepoEditor() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-sm">{t("git.autoInclude")}</Label>
-                  <p className="text-xs text-muted-foreground">
+                  <Label className="text-sm text-foreground">{t("git.autoInclude")}</Label>
+                  <p className="text-xs text-foreground/70">
                     {t("git.autoIncludeDescription")}
                   </p>
                 </div>
@@ -264,15 +264,15 @@ export function GitRepoEditor() {
               </div>
 
               {connections.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
+                <div className="text-center py-8 text-foreground/60 text-sm">
                   {patStatus !== "valid" ? (
                     <div className="flex flex-col items-center gap-2">
-                      <AlertCircle className="h-8 w-8 opacity-50" />
+                      <AlertCircle className="h-8 w-8 opacity-60" />
                       <p>{t("git.enterPatFirst")}</p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2">
-                      <GitBranch className="h-8 w-8 opacity-50" />
+                      <GitBranch className="h-8 w-8 opacity-60" />
                       <p>{t("git.noRepos")}</p>
                     </div>
                   )}
@@ -298,7 +298,7 @@ export function GitRepoEditor() {
               )}
 
               {connections.length > 0 && (
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-foreground/60 text-center">
                   {connections.length}/{LIMITS.MAX_REPOS} {t("git.reposConnected")}
                 </p>
               )}
@@ -333,10 +333,10 @@ export function GitRepoEditor() {
             <div className="flex-1 overflow-y-auto space-y-1 min-h-[200px] max-h-[400px]">
               {isFetchingRepos ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-6 w-6 animate-spin text-foreground/60" />
                 </div>
               ) : filteredRepos.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
+                <div className="text-center py-8 text-foreground/60 text-sm">
                   {repoSearchQuery ? t("git.noMatchingRepos") : t("git.noReposAvailable")}
                 </div>
               ) : (
@@ -349,25 +349,25 @@ export function GitRepoEditor() {
                       disabled={connected}
                       className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
                         connected
-                          ? "bg-ice-glow/10 border border-ice-glow/30 cursor-not-allowed"
-                          : "hover:bg-white/10"
+                          ? "bg-cb-blue/15 border border-cb-blue/40 cursor-not-allowed"
+                          : "hover:bg-white/30 dark:hover:bg-slate-700/30"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         {repo.private ? (
                           <Lock className="h-4 w-4 text-yellow-500 flex-shrink-0" />
                         ) : (
-                          <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <Globe className="h-4 w-4 text-foreground/60 flex-shrink-0" />
                         )}
                         <div className="min-w-0">
-                          <div className="font-medium truncate">{repo.full_name}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="font-medium truncate text-foreground">{repo.full_name}</div>
+                          <div className="text-xs text-foreground/60">
                             {repo.default_branch}
                           </div>
                         </div>
                       </div>
                       {connected && (
-                        <span className="flex items-center gap-1 text-xs text-ice-glow flex-shrink-0">
+                        <span className="flex items-center gap-1 text-xs text-cb-blue flex-shrink-0">
                           <Check className="h-3 w-3" />
                           {t("git.connected")}
                         </span>
