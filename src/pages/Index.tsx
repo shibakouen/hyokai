@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { Header } from "@/components/Header";
 import { ModelSelector } from "@/components/ModelSelector";
 import { PromptInput } from "@/components/PromptInput";
@@ -55,6 +55,9 @@ const Index = () => {
 
   // Task mode context
   const { mode: taskMode, isBeginnerMode } = useMode();
+
+  // Language hook - must be before useEffects that use t()
+  const { t } = useLanguage();
 
   // Track previous loading states to detect when transformation completes
   const prevSingleLoadingRef = useRef(singleIsLoading);
@@ -184,7 +187,6 @@ const Index = () => {
     const seconds = ms / 1000;
     return `${seconds.toFixed(1)}s`;
   };
-  const { t } = useLanguage();
 
   // Handle mode toggle - reset comparison results when switching
   const handleCompareModeToggle = (value: boolean) => {
