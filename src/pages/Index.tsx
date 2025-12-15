@@ -176,10 +176,10 @@ const Index = () => {
       <div className="fixed inset-0 bg-[#f0f9ff]" />
       <div className="fixed inset-0 bg-gradient-to-b from-sky-50 to-blue-100/50" />
 
-      {/* Animated blobs */}
-      <div className="fixed top-20 left-10 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl animate-blob mix-blend-multiply" />
-      <div className="fixed top-40 right-20 w-72 h-72 bg-cyan-200/30 rounded-full blur-3xl animate-blob animation-delay-2000 mix-blend-multiply" />
-      <div className="fixed bottom-20 left-1/3 w-72 h-72 bg-blue-200/30 rounded-full blur-3xl animate-blob animation-delay-4000 mix-blend-multiply" />
+      {/* Animated blobs - hidden on mobile to prevent overflow */}
+      <div className="hidden md:block fixed top-20 left-10 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl animate-blob mix-blend-multiply" />
+      <div className="hidden md:block fixed top-40 right-20 w-72 h-72 bg-cyan-200/30 rounded-full blur-3xl animate-blob animation-delay-2000 mix-blend-multiply" />
+      <div className="hidden md:block fixed bottom-20 left-1/3 w-72 h-72 bg-blue-200/30 rounded-full blur-3xl animate-blob animation-delay-4000 mix-blend-multiply" />
 
       {/* Noise texture overlay */}
       <div className="noise-overlay" />
@@ -187,8 +187,8 @@ const Index = () => {
       {/* Language selector - top left */}
       <LanguageSelector />
 
-      {/* Controls - top right */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+      {/* Controls - top right, responsive */}
+      <div className="absolute top-3 right-3 md:top-4 md:right-4 z-50 flex items-center gap-1.5 md:gap-2 flex-wrap justify-end max-w-[calc(100%-4rem)]">
         <BeginnerModeToggle />
         {!isBeginnerMode && (
           <>
@@ -267,7 +267,7 @@ const Index = () => {
                 >
                   {isLoading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       {t('button.generating')}
                     </>
                   ) : isCompareMode ? (

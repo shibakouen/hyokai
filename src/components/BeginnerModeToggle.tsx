@@ -44,8 +44,8 @@ export function BeginnerModeToggle() {
   return (
     <>
       <TooltipProvider>
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+          <div className="flex items-center gap-1.5 md:gap-2">
             {isBeginnerMode ? (
               <Sparkles className="w-4 h-4 text-primary" />
             ) : (
@@ -53,14 +53,14 @@ export function BeginnerModeToggle() {
             )}
             <Label
               htmlFor="beginner-mode"
-              className="text-sm font-medium cursor-pointer"
+              className="text-xs md:text-sm font-medium cursor-pointer hidden sm:inline"
             >
               {isBeginnerMode ? t("beginner.simpleMode") : t("beginner.advancedMode")}
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors hidden md:inline-flex"
                   aria-label={t("beginner.modeHelpAria")}
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
