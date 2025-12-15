@@ -10,6 +10,7 @@ import {
   GitHubApiResponse,
   STORAGE_KEYS,
   LIMITS,
+  KEY_FILE_PATTERNS,
   generateRepoId,
   getDefaultSettings,
   encodePAT,
@@ -221,7 +222,7 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     ));
   }, []);
 
-  // Refresh cache for a repo
+  // Refresh cache for a repo - fetches tree, key files, and generates AI summary
   const refreshCache = useCallback(async (repoId: string) => {
     if (!pat || patStatus !== 'valid' || isRefreshing) return;
 
@@ -233,7 +234,7 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     try {
       const { repository } = connection;
 
-      // Fetch tree
+      // Step 1: Fetch tree
       const { data, error } = await supabase.functions.invoke('github-api', {
         body: {
           action: 'getTree',
@@ -251,7 +252,56 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
 
       const tree = filterTreeEntries(data?.tree || []);
 
-      // Create or update cache
+      // Step 2: Identify key files that exist in this repo
+      const existingKeyFiles = KEY_FILE_PATTERNS.filter(pattern =>
+        tree.some(entry => entry.path === pattern && entry.type === 'blob')
+      );
+
+      // Step 3: Fetch key file contents
+      let keyFiles: Record<string, string> = {};
+      if (existingKeyFiles.length > 0) {
+        const { data: keyFilesData, error: keyFilesError } = await supabase.functions.invoke('github-api', {
+          body: {
+            action: 'getFileContents',
+            pat,
+            owner: repository.owner,
+            repo: repository.name,
+            branch: repository.defaultBranch,
+            paths: existingKeyFiles.slice(0, 10), // Limit to 10 key files
+          },
+        });
+
+        if (!keyFilesError && keyFilesData?.contents) {
+          for (const item of keyFilesData.contents) {
+            if (item.content && !item.error) {
+              keyFiles[item.path] = item.content;
+            }
+          }
+        }
+      }
+
+      // Step 4: Generate AI summary
+      let summary: string | undefined;
+      try {
+        const { data: summaryData, error: summaryError } = await supabase.functions.invoke('github-api', {
+          body: {
+            action: 'generateSummary',
+            pat, // Still needed for auth
+            tree: tree.slice(0, 500), // Limit tree size for summary
+            keyFiles,
+            repoFullName: repository.fullName,
+          },
+        });
+
+        if (!summaryError && summaryData?.summary) {
+          summary = summaryData.summary;
+        }
+      } catch (summaryErr) {
+        console.error('Failed to generate summary:', summaryErr);
+        // Continue without summary - it's optional
+      }
+
+      // Step 5: Create or update cache with all data
       const newCache: CachedRepoData = {
         repoId,
         branch: repository.defaultBranch,
@@ -259,6 +309,8 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
         selectedPaths: connection.cache?.selectedPaths || [],
         fileContents: connection.cache?.fileContents || {},
         fetchedAt: Date.now(),
+        summary,
+        keyFiles,
       };
 
       // Update repository's lastRefreshed
@@ -349,8 +401,9 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
   const getActiveGitContext = useCallback((): GitContext | null => {
     if (!settings.enabled || !settings.autoIncludeInCoding) return null;
 
+    // Include repos that have summary/keyFiles OR selected paths
     const activeConnections = connections.filter(c =>
-      c.cache && c.cache.selectedPaths.length > 0
+      c.cache && (c.cache.summary || c.cache.selectedPaths.length > 0)
     );
 
     if (activeConnections.length === 0) return null;
@@ -363,8 +416,10 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
 
       const { repository, cache } = conn;
 
-      // Build tree structure for selected paths
-      const structure = buildTreeString(cache.tree, cache.selectedPaths);
+      // Build tree structure (full tree if no selections, otherwise filtered)
+      const structure = cache.selectedPaths.length > 0
+        ? buildTreeString(cache.tree, cache.selectedPaths)
+        : buildTreeString(cache.tree, [], 3); // Show top 3 levels for full tree
 
       // Get file contents for selected files
       const selectedFiles: Array<{ path: string; content: string }> = [];
@@ -375,9 +430,14 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Estimate tokens for this repo
-      const repoContext = `${structure}\n${selectedFiles.map(f => f.content).join('\n')}`;
-      const repoTokens = estimateTokens(repoContext);
+      // Estimate tokens for this repo (including summary and key files)
+      const summaryTokens = cache.summary ? estimateTokens(cache.summary) : 0;
+      const keyFilesTokens = cache.keyFiles
+        ? estimateTokens(Object.values(cache.keyFiles).join('\n'))
+        : 0;
+      const structureTokens = estimateTokens(structure);
+      const selectedFilesTokens = estimateTokens(selectedFiles.map(f => f.content).join('\n'));
+      const repoTokens = summaryTokens + keyFilesTokens + structureTokens + selectedFilesTokens;
 
       // Check if adding this repo would exceed limit
       if (totalTokens + repoTokens > settings.maxContextTokens) {
@@ -390,6 +450,8 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
         fullName: repository.fullName,
         branch: cache.branch,
         structure,
+        summary: cache.summary,
+        keyFiles: cache.keyFiles,
         selectedFiles,
       });
     }
@@ -397,10 +459,10 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     return repositories.length > 0 ? { repositories } : null;
   }, [settings, connections]);
 
-  // Computed: has active git context
+  // Computed: has active git context (summary/keyFiles OR selected paths)
   const hasActiveGitContext = settings.enabled &&
     settings.autoIncludeInCoding &&
-    connections.some(c => c.cache && c.cache.selectedPaths.length > 0);
+    connections.some(c => c.cache && (c.cache.summary || c.cache.selectedPaths.length > 0));
 
   return (
     <GitRepoContext.Provider value={{

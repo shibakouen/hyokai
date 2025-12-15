@@ -27,6 +27,8 @@ export interface CachedRepoData {
   selectedPaths: string[];       // User-selected directories/files for context
   fileContents: Record<string, string>; // Cached file contents
   fetchedAt: number;
+  summary?: string;              // AI-generated codebase summary
+  keyFiles?: Record<string, string>;  // Auto-fetched key files
 }
 
 export interface GitRepoConnection {
@@ -77,6 +79,8 @@ export interface GitContext {
     fullName: string;
     branch: string;
     structure: string;           // Formatted tree structure
+    summary?: string;            // AI-generated codebase summary
+    keyFiles?: Record<string, string>;  // Auto-fetched key files
     selectedFiles: Array<{
       path: string;
       content: string;
@@ -120,6 +124,41 @@ export const EXCLUDED_PATTERNS = [
   /yarn\.lock$/,
   /pnpm-lock\.yaml$/,
 ];
+
+// Key files to auto-fetch for codebase understanding
+export const KEY_FILE_PATTERNS = [
+  // Package managers & configs
+  'package.json',
+  'tsconfig.json',
+  'vite.config.ts',
+  'vite.config.js',
+  'next.config.js',
+  'next.config.mjs',
+  'next.config.ts',
+  'tailwind.config.ts',
+  'tailwind.config.js',
+  // Entry points
+  'src/main.tsx',
+  'src/main.ts',
+  'src/index.tsx',
+  'src/index.ts',
+  'src/App.tsx',
+  'src/App.jsx',
+  'app/layout.tsx',
+  'app/page.tsx',
+  // Documentation
+  'README.md',
+  // Python
+  'requirements.txt',
+  'pyproject.toml',
+  'setup.py',
+  // Rust
+  'Cargo.toml',
+  // Go
+  'go.mod',
+  // Other
+  '.env.example',
+] as const;
 
 // ==================== Utilities ====================
 

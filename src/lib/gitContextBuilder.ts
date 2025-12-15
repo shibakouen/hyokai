@@ -3,6 +3,12 @@ import { GitContext, getFileExtension } from './gitRepo';
 /**
  * Format git context for injection into prompt transformation.
  * Creates a structured text representation of repository context.
+ *
+ * Order of sections (most valuable first):
+ * 1. AI Summary - concise overview of the codebase
+ * 2. Project Structure - file tree
+ * 3. Key Files - auto-detected important files (package.json, configs, etc.)
+ * 4. Selected Files - user-selected files
  */
 export function formatGitContextForPrompt(context: GitContext): string {
   if (!context.repositories || context.repositories.length === 0) {
@@ -18,6 +24,13 @@ export function formatGitContextForPrompt(context: GitContext): string {
     repoSection.push(`=== REPOSITORY: ${repo.fullName} (${repo.branch}) ===`);
     repoSection.push('');
 
+    // AI Summary (most valuable, most compact)
+    if (repo.summary) {
+      repoSection.push('CODEBASE OVERVIEW:');
+      repoSection.push(repo.summary);
+      repoSection.push('');
+    }
+
     // File structure
     if (repo.structure.trim()) {
       repoSection.push('PROJECT STRUCTURE:');
@@ -27,7 +40,24 @@ export function formatGitContextForPrompt(context: GitContext): string {
       repoSection.push('');
     }
 
-    // Selected files with contents
+    // Key files (auto-detected important files)
+    if (repo.keyFiles && Object.keys(repo.keyFiles).length > 0) {
+      repoSection.push('KEY FILES:');
+      repoSection.push('');
+
+      for (const [path, content] of Object.entries(repo.keyFiles)) {
+        const ext = getFileExtension(path);
+        const langHint = getLanguageHint(ext);
+
+        repoSection.push(`--- ${path} ---`);
+        repoSection.push(`\`\`\`${langHint}`);
+        repoSection.push(content);
+        repoSection.push('```');
+        repoSection.push('');
+      }
+    }
+
+    // Selected files with contents (user-selected)
     if (repo.selectedFiles.length > 0) {
       repoSection.push('SELECTED FILES:');
       repoSection.push('');

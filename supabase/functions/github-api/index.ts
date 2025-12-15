@@ -6,6 +6,7 @@ const corsHeaders = {
 };
 
 const GITHUB_API_BASE = "https://api.github.com";
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 // Files and directories to always exclude
 const EXCLUDED_PATTERNS = [
@@ -255,6 +256,113 @@ serve(async (req) => {
           JSON.stringify({ contents }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      case "generateSummary": {
+        const { tree, keyFiles, repoFullName } = await req.json();
+
+        if (!tree || !repoFullName) {
+          return new Response(
+            JSON.stringify({ error: "tree and repoFullName are required for generateSummary" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+        if (!OPENROUTER_API_KEY) {
+          return new Response(
+            JSON.stringify({ error: "OPENROUTER_API_KEY not configured" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Build tree structure string (limit to prevent token overflow)
+        interface TreeItem { path: string; type: string }
+        const limitedTree = (tree as TreeItem[]).slice(0, 300);
+        const treeString = limitedTree
+          .map((entry: TreeItem) => {
+            const depth = entry.path.split('/').length - 1;
+            const indent = '  '.repeat(Math.min(depth, 4));
+            const name = entry.path.split('/').pop() || entry.path;
+            const icon = entry.type === 'tree' ? '/' : '';
+            return `${indent}${name}${icon}`;
+          })
+          .join('\n');
+
+        // Build key files content
+        const keyFilesContent = keyFiles && typeof keyFiles === 'object'
+          ? Object.entries(keyFiles as Record<string, string>)
+              .map(([path, content]) => {
+                // Truncate very long files in summary context
+                const truncatedContent = content.length > 3000
+                  ? content.slice(0, 3000) + '\n... [truncated]'
+                  : content;
+                return `--- ${path} ---\n${truncatedContent}`;
+              })
+              .join('\n\n')
+          : 'No key files available';
+
+        const prompt = `Analyze this repository and provide a concise summary for a developer who needs to understand this codebase quickly.
+
+Repository: ${repoFullName}
+
+File Structure:
+\`\`\`
+${treeString}
+\`\`\`
+
+Key Files:
+${keyFilesContent}
+
+Provide a summary (400-600 words) covering:
+1. **Project Type**: What this project is (web app, API, library, etc.) and its main purpose
+2. **Tech Stack**: Languages, frameworks, key dependencies
+3. **Architecture**: Main directories and their purposes, how code is organized
+4. **Key Patterns**: State management, API approach, styling method, etc.
+5. **Entry Points**: Where the app starts, main components/modules
+
+Be specific - reference actual file paths and patterns you see in the code. This summary will help developers write better prompts for this codebase.`;
+
+        try {
+          const response = await fetch(OPENROUTER_API_URL, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://hyokai.app",
+              "X-Title": "Hyokai",
+            },
+            body: JSON.stringify({
+              model: "anthropic/claude-3-haiku",
+              messages: [{ role: "user", content: prompt }],
+              max_tokens: 1500,
+              temperature: 0.3,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("OpenRouter API error:", errorText);
+            return new Response(
+              JSON.stringify({ error: "Failed to generate summary", details: errorText }),
+              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          const data = await response.json();
+          const summary = data?.choices?.[0]?.message?.content || null;
+
+          return new Response(
+            JSON.stringify({ summary }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } catch (e) {
+          console.error("Summary generation error:", e);
+          return new Response(
+            JSON.stringify({ error: e instanceof Error ? e.message : "Failed to generate summary" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
 
       default:
