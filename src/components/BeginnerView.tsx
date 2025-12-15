@@ -46,6 +46,18 @@ export function BeginnerView() {
     setIsOutputEdited(false);
   }, [output]);
 
+  // Auto-resize output textarea to fit content
+  useEffect(() => {
+    const textarea = outputRef.current;
+    if (!textarea || !editedOutput) return;
+
+    // Reset height to auto to get accurate scrollHeight
+    textarea.style.height = 'auto';
+    // Set height to scrollHeight (content height), minimum 140px
+    const newHeight = Math.max(textarea.scrollHeight, 140);
+    textarea.style.height = `${newHeight}px`;
+  }, [editedOutput]);
+
   // Load saved heights from localStorage
   useEffect(() => {
     const savedInputHeight = localStorage.getItem(INPUT_STORAGE_KEY);
@@ -248,7 +260,7 @@ export function BeginnerView() {
             onKeyDown={handleKeyDown}
             placeholder={t("beginner.inputPlaceholder")}
             disabled={isLoading}
-            style={{ minHeight: "120px" }}
+            style={{ minHeight: "160px" }}
             className="resize-y sm:resize text-base sm:text-lg leading-relaxed bg-white/40 dark:bg-slate-900/40 rounded-xl sm:rounded-2xl border-white/50 focus:border-cb-blue/50 focus:ring-2 focus:ring-cb-blue/20 placeholder:text-muted-foreground/50 shadow-inner"
             aria-label={t("beginner.inputAria")}
           />

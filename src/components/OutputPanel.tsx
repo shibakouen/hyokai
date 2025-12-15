@@ -26,6 +26,18 @@ export function OutputPanel({ content, isLoading = false, onChange }: OutputPane
     setIsEdited(false);
   }, [content]);
 
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea || !editedContent) return;
+
+    // Reset height to auto to get accurate scrollHeight
+    textarea.style.height = 'auto';
+    // Set height to scrollHeight (content height)
+    const newHeight = Math.max(textarea.scrollHeight, DEFAULT_HEIGHT);
+    textarea.style.height = `${newHeight}px`;
+  }, [editedContent]);
+
   // Load saved height from localStorage
   useEffect(() => {
     const savedHeight = localStorage.getItem(STORAGE_KEY);

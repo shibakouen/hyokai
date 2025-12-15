@@ -3,7 +3,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useRef, useCallback } from "react";
 
 const STORAGE_KEY = "hyokai-input-height";
-const DEFAULT_HEIGHT = 160;
+const DEFAULT_HEIGHT = 200;
 
 interface PromptInputProps {
   value: string;
