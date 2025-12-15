@@ -377,8 +377,8 @@ export function BeginnerView() {
                 />
                 {/* Stats and edit indicator */}
                 <div className="absolute bottom-3 left-4 text-xs text-muted-foreground/70 pointer-events-none flex gap-2">
-                  <span>{editedOutput.length} chars</span>
-                  {isOutputEdited && <span className="text-cb-blue">(edited)</span>}
+                  <span>{editedOutput.length} {t("beginner.chars")}</span>
+                  {isOutputEdited && <span className="text-cb-blue">{t("beginner.edited")}</span>}
                 </div>
                 {/* Action buttons */}
                 <div className="mt-3 flex justify-center gap-2 sm:flex-row">
@@ -388,10 +388,10 @@ export function BeginnerView() {
                       variant="ghost"
                       onClick={handleResetOutput}
                       className="h-10 px-3 text-muted-foreground hover:text-foreground"
-                      title="Reset to original"
+                      title={t("beginner.resetToOriginal")}
                     >
                       <RotateCcw className="w-4 h-4 mr-1.5" />
-                      <span className="text-sm">Reset</span>
+                      <span className="text-sm">{t("beginner.reset")}</span>
                     </Button>
                   )}
                   <Button

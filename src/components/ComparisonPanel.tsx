@@ -119,7 +119,7 @@ function ResultCard({ result }: { result: ComparisonResult }) {
               size="sm"
               onClick={handleReset}
               className="h-8 px-2 text-muted-foreground hover:text-foreground"
-              title="Reset to original"
+              title={t('output.resetToOriginal')}
             >
               <RotateCcw className="w-4 h-4" />
             </Button>
@@ -175,9 +175,9 @@ function ResultCard({ result }: { result: ComparisonResult }) {
       {/* Footer with stats */}
       {editedContent && !result.isLoading && (
         <div className="px-3 py-2 border-t border-border/30 text-xs text-muted-foreground flex gap-3">
-          <span>{wordCount} words</span>
-          <span>{charCount} chars</span>
-          {isEdited && <span className="text-cb-blue">(edited)</span>}
+          <span>{wordCount} {t('output.words')}</span>
+          <span>{charCount} {t('output.chars')}</span>
+          {isEdited && <span className="text-cb-blue">{t('output.edited')}</span>}
         </div>
       )}
     </div>
@@ -223,7 +223,7 @@ export function ComparisonPanel({ results, isLoading }: ComparisonPanelProps) {
                 <div key={result.modelIndex} className="text-center">
                   <div className="font-medium truncate">{result.model.name}</div>
                   <div className="text-muted-foreground text-xs mt-1">
-                    {formatTime(result.elapsedTime)} • {wordCount} words
+                    {formatTime(result.elapsedTime)} • {wordCount} {t('output.words')}
                   </div>
                 </div>
               );

@@ -111,9 +111,9 @@ export function OutputPanel({ content, isLoading = false, onChange }: OutputPane
           />
           {/* Stats footer */}
           <div className="absolute bottom-3 left-4 text-xs text-muted-foreground/70 pointer-events-none flex gap-3">
-            <span>{wordCount} words</span>
-            <span>{charCount} chars</span>
-            {isEdited && <span className="text-cb-blue">(edited)</span>}
+            <span>{wordCount} {t('output.words')}</span>
+            <span>{charCount} {t('output.chars')}</span>
+            {isEdited && <span className="text-cb-blue">{t('output.edited')}</span>}
           </div>
           {/* Action buttons */}
           <div className="absolute top-3 right-3 flex gap-2">
@@ -123,7 +123,7 @@ export function OutputPanel({ content, isLoading = false, onChange }: OutputPane
                 size="sm"
                 onClick={handleReset}
                 className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                title="Reset to original"
+                title={t('output.resetToOriginal')}
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>

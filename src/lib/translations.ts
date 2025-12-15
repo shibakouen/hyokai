@@ -23,6 +23,10 @@ export const translations = {
         'output.placeholder': 'Technical prompt will appear here...',
         'output.copy': 'Copy to clipboard',
         'output.copied': 'Copied!',
+        'output.words': 'words',
+        'output.chars': 'chars',
+        'output.edited': '(edited)',
+        'output.resetToOriginal': 'Reset to original',
 
         // Footer
         'footer.text': 'Transform natural language into precise technical specifications',
@@ -196,6 +200,10 @@ export const translations = {
         'beginner.noOutput': 'No result received. Please try again.',
         'beginner.copyError': 'Could not copy',
         'beginner.copyErrorMessage': 'Please select the text and copy it manually.',
+        'beginner.chars': 'chars',
+        'beginner.edited': '(edited)',
+        'beginner.resetToOriginal': 'Reset to original',
+        'beginner.reset': 'Reset',
     },
     jp: {
         // Header
@@ -219,6 +227,10 @@ export const translations = {
         'output.placeholder': '技術プロンプトがここに表示されます...',
         'output.copy': 'クリップボードにコピー',
         'output.copied': 'コピーしました！',
+        'output.words': '単語',
+        'output.chars': '文字',
+        'output.edited': '(編集済み)',
+        'output.resetToOriginal': '元に戻す',
 
         // Footer
         'footer.text': '自然言語を正確な技術仕様に変換します',
@@ -392,6 +404,10 @@ export const translations = {
         'beginner.noOutput': '結果が受信されませんでした。もう一度お試しください。',
         'beginner.copyError': 'コピーできませんでした',
         'beginner.copyErrorMessage': 'テキストを選択して手動でコピーしてください。',
+        'beginner.chars': '文字',
+        'beginner.edited': '(編集済み)',
+        'beginner.resetToOriginal': '元に戻す',
+        'beginner.reset': 'リセット',
     }
 } as const;
 
