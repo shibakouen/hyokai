@@ -235,26 +235,26 @@ export function UserContextEditor() {
             </SheetTitle>
           </SheetHeader>
           <div className="mt-6 space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground/80">
               {t('context.description')}
             </p>
 
             {/* Get Context from LLM */}
-            <div className="p-3 rounded-lg bg-ice-glow/10 border border-ice-glow/30">
+            <div className="p-3 rounded-lg bg-cb-blue/15 border border-cb-blue/40">
               <div className="flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-ice-glow flex-shrink-0 mt-0.5" />
+                <Sparkles className="h-5 w-5 text-cb-blue flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{t('context.llmPromptTitle')}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-sm font-medium text-foreground">{t('context.llmPromptTitle')}</p>
+                  <p className="text-xs text-foreground/70 mt-1">
                     {t('context.llmPromptDescription')}
                   </p>
                   <Tabs value={promptType} onValueChange={(v) => setPromptType(v as PromptType)} className="mt-3">
-                    <TabsList className="h-8">
-                      <TabsTrigger value="coding" className="text-xs px-3 gap-1.5">
+                    <TabsList className="h-8 bg-white/50 dark:bg-slate-800/50">
+                      <TabsTrigger value="coding" className="text-xs px-3 gap-1.5 data-[state=active]:bg-cb-blue data-[state=active]:text-white">
                         <Code className="h-3.5 w-3.5" />
                         {t('context.promptTypeCoding')}
                       </TabsTrigger>
-                      <TabsTrigger value="prompting" className="text-xs px-3 gap-1.5">
+                      <TabsTrigger value="prompting" className="text-xs px-3 gap-1.5 data-[state=active]:bg-cb-blue data-[state=active]:text-white">
                         <MessageSquare className="h-3.5 w-3.5" />
                         {t('context.promptTypePrompting')}
                       </TabsTrigger>
@@ -265,7 +265,7 @@ export function UserContextEditor() {
                   variant="outline"
                   size="sm"
                   onClick={handleCopyLLMPrompt}
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 border-cb-blue/50 text-cb-blue hover:bg-cb-blue/10"
                 >
                   <Copy className="h-4 w-4 mr-1" />
                   {t('context.copyPrompt')}
@@ -275,12 +275,12 @@ export function UserContextEditor() {
 
             {/* Context Selector */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('context.savedContexts')}</label>
+              <label className="text-sm font-medium text-foreground">{t('context.savedContexts')}</label>
               <Select
                 value={activeContextId || "new"}
                 onValueChange={handleSwitchContext}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full bg-white/60 dark:bg-slate-800/60">
                   <SelectValue placeholder={t('context.selectContext')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,7 +294,7 @@ export function UserContextEditor() {
                     <SelectItem key={ctx.id} value={ctx.id}>
                       <div className="flex items-center justify-between w-full gap-2">
                         <span className="truncate">{ctx.name}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-foreground/60">
                           {Math.ceil(ctx.content.length / 4)}t
                         </span>
                       </div>
@@ -303,7 +303,7 @@ export function UserContextEditor() {
                 </SelectContent>
               </Select>
               {savedContexts.length > 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-foreground/60">
                   {savedContexts.length}/{MAX_SAVED_CONTEXTS_COUNT} {t('context.slotsUsed')}
                 </p>
               )}
@@ -311,30 +311,30 @@ export function UserContextEditor() {
 
             {/* Context Name */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('context.contextName')}</label>
+              <label className="text-sm font-medium text-foreground">{t('context.contextName')}</label>
               <Input
                 value={contextName}
                 onChange={(e) => setContextName(e.target.value)}
                 placeholder={t('context.namePlaceholder')}
-                className="w-full"
+                className="w-full bg-white/60 dark:bg-slate-800/60"
               />
             </div>
 
             {/* Context Content */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('context.content')}</label>
+              <label className="text-sm font-medium text-foreground">{t('context.content')}</label>
               <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder={t('context.placeholder')}
-                className="min-h-[300px] resize-y font-mono text-sm"
+                className="min-h-[300px] resize-y font-mono text-sm bg-white/60 dark:bg-slate-800/60"
               />
             </div>
 
             {/* Size Info & Warnings */}
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-4">
-                <span className="text-muted-foreground">
+                <span className="text-foreground/70">
                   {chars.toLocaleString()} {t('context.chars')} · ~{tokens.toLocaleString()} {t('context.tokens')}
                 </span>
                 {warning && (
@@ -421,7 +421,7 @@ export function UserContextEditor() {
               <Button
                 size="sm"
                 onClick={handleSave}
-                className="bg-ice-glow hover:bg-ice-glow/90"
+                className="bg-cb-blue hover:bg-cb-blue-dark text-white"
                 disabled={warning === 'error'}
               >
                 {t('context.apply')}
@@ -430,29 +430,29 @@ export function UserContextEditor() {
 
             {/* Saved Contexts List */}
             {savedContexts.length > 0 && (
-              <div className="space-y-2 pt-4 border-t">
-                <label className="text-sm font-medium">{t('context.allContexts')}</label>
+              <div className="space-y-2 pt-4 border-t border-foreground/10">
+                <label className="text-sm font-medium text-foreground">{t('context.allContexts')}</label>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {savedContexts.map((ctx) => (
                     <div
                       key={ctx.id}
                       className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
                         ctx.id === activeContextId
-                          ? 'bg-ice-glow/20 border border-ice-glow/50'
-                          : 'bg-white/5 hover:bg-white/10'
+                          ? 'bg-cb-blue/20 border border-cb-blue/50'
+                          : 'bg-white/30 dark:bg-slate-700/30 hover:bg-white/50 dark:hover:bg-slate-700/50'
                       }`}
                       onClick={() => handleSwitchContext(ctx.id)}
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{ctx.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="font-medium truncate text-foreground">{ctx.name}</div>
+                        <div className="text-xs text-foreground/60">
                           {ctx.content.length.toLocaleString()} {t('context.chars')} · ~{Math.ceil(ctx.content.length / 4).toLocaleString()} {t('context.tokens')}
                         </div>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                        className="h-8 w-8 text-foreground/60 hover:text-red-500"
                         onClick={(e) => handleDeleteClick(ctx, e)}
                       >
                         <Trash2 className="h-4 w-4" />
