@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Sparkles,
   ArrowDown,
+  ArrowLeft,
   Copy,
   Check,
   Lightbulb,
@@ -45,6 +46,9 @@ export function BeginnerView() {
   // Ref to track previous loading state for detecting transformation completion
   const prevLoadingRef = useRef(isLoading);
 
+  // Mobile full-screen output view state
+  const [showMobileOutput, setShowMobileOutput] = useState(false);
+
   // Keep ref in sync with state (ensures callbacks always have latest value)
   useEffect(() => {
     inputValueRef.current = input;
@@ -56,17 +60,20 @@ export function BeginnerView() {
     setIsOutputEdited(false);
   }, [output]);
 
-  // Handle post-transformation UX: auto-scroll and auto-copy
+  // Handle post-transformation UX: auto-scroll, auto-copy, and mobile output view
   useEffect(() => {
     const wasLoading = prevLoadingRef.current;
     prevLoadingRef.current = isLoading;
 
     // Check if loading just finished and we have output
     if (wasLoading && !isLoading && output) {
-      // Auto-scroll to output section
+      // Auto-scroll to output section (desktop)
       if (outputSectionRef.current) {
         outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+
+      // Trigger mobile full-screen output view
+      setShowMobileOutput(true);
 
       // Auto-copy to clipboard
       navigator.clipboard.writeText(output).then(() => {
@@ -254,8 +261,107 @@ export function BeginnerView() {
     return `${seconds.toFixed(1)}s`;
   };
 
+  // Handle mobile back button - return to input view
+  const handleMobileBack = () => {
+    setShowMobileOutput(false);
+  };
+
+  // Handle new prompt on mobile - clear output and return to input
+  const handleMobileNewPrompt = () => {
+    setShowMobileOutput(false);
+    setOutput('');
+    setEditedOutput('');
+    setInput('');
+  };
+
   return (
     <TooltipProvider>
+      {/* Mobile Full-Screen Output View - only visible on mobile after successful generation */}
+      {showMobileOutput && editedOutput && (
+        <div className="md:hidden fixed inset-0 z-[100] flex flex-col bg-gradient-to-b from-sky-50 to-blue-100">
+          {/* Mobile output header */}
+          <div className="flex items-center justify-between p-4 border-b border-white/30">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMobileBack}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              aria-label={t('output.backToInput')}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{t('output.backToInput')}</span>
+            </Button>
+            <Button
+              variant="frost"
+              size="sm"
+              onClick={handleMobileNewPrompt}
+              className="gap-1.5"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{t('output.newPrompt')}</span>
+            </Button>
+          </div>
+
+          {/* Mobile output content */}
+          <div className="flex-1 overflow-auto p-4">
+            <div className="frost-glass rounded-2xl p-4 space-y-4">
+              <h2 className="text-lg font-semibold text-center">
+                {t('output.mobileResultTitle')}
+              </h2>
+              <Textarea
+                value={editedOutput}
+                onChange={(e) => handleOutputChange(e.target.value)}
+                style={{ minHeight: "200px" }}
+                className="resize-y text-base leading-relaxed bg-white/40 dark:bg-slate-900/40 rounded-xl border-white/50 focus:border-cb-blue/50 focus:ring-2 focus:ring-cb-blue/20 shadow-inner"
+                aria-label={t("beginner.outputAria")}
+              />
+              {/* Stats */}
+              <div className="text-xs text-muted-foreground/70 flex gap-2 justify-center">
+                <span>{editedOutput.length} {t("beginner.chars")}</span>
+                {isOutputEdited && <span className="text-cb-blue">{t("beginner.edited")}</span>}
+              </div>
+              {/* Action buttons */}
+              <div className="flex justify-center gap-2">
+                {isOutputEdited && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleResetOutput}
+                    className="h-10 px-3 text-muted-foreground hover:text-foreground"
+                    title={t("beginner.resetToOriginal")}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1.5" />
+                    <span className="text-sm">{t("beginner.reset")}</span>
+                  </Button>
+                )}
+                <Button
+                  size="lg"
+                  onClick={handleCopy}
+                  className="gap-2 min-w-[160px] h-11 rounded-xl bg-cb-blue hover:bg-cb-blue-dark text-white shadow-lg shadow-cb-blue/25"
+                  aria-label={t("beginner.copyAria")}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-5 h-5" />
+                      <span>{t("output.copied")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-5 h-5" />
+                      <span>{t("beginner.copyButton")}</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+              {/* Hint */}
+              <p className="text-xs text-cb-blue/70 text-center font-medium">
+                {t("beginner.outputHint")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-5 sm:space-y-8">
         {/* Step indicator - hero badge */}
         <div className="flex justify-center">

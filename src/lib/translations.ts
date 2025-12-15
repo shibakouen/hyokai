@@ -29,6 +29,9 @@ export const translations = {
         'output.chars': 'chars',
         'output.edited': '(edited)',
         'output.resetToOriginal': 'Reset to original',
+        'output.backToInput': 'Back to input',
+        'output.newPrompt': 'New Prompt',
+        'output.mobileResultTitle': 'Your Technical Prompt',
 
         // Footer
         'footer.text': 'Transform natural language into precise technical specifications',
@@ -235,6 +238,9 @@ export const translations = {
         'output.chars': '文字',
         'output.edited': '(編集済み)',
         'output.resetToOriginal': '元に戻す',
+        'output.backToInput': '入力に戻る',
+        'output.newPrompt': '新しいプロンプト',
+        'output.mobileResultTitle': '技術プロンプト',
 
         // Footer
         'footer.text': '自然言語を正確な技術仕様に変換します',

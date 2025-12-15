@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { ModelSelector } from "@/components/ModelSelector";
 import { PromptInput } from "@/components/PromptInput";
@@ -6,7 +6,7 @@ import { OutputPanel } from "@/components/OutputPanel";
 import { Button } from "@/components/ui/button";
 import { usePromptTransformer } from "@/hooks/usePromptTransformer";
 import { useModelComparison } from "@/hooks/useModelComparison";
-import { Sparkles, ArrowDown, GitCompare } from "lucide-react";
+import { Sparkles, ArrowDown, GitCompare, ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "@/hooks/use-toast";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -66,6 +66,9 @@ const Index = () => {
   // Ref for output section to enable auto-scroll
   const outputSectionRef = useRef<HTMLDivElement>(null);
 
+  // Mobile full-screen output view state (triggered on successful generation)
+  const [showMobileOutput, setShowMobileOutput] = useState(false);
+
   // Save to history and handle post-transformation UX when single model transformation completes
   useEffect(() => {
     const wasLoading = prevSingleLoadingRef.current;
@@ -86,10 +89,13 @@ const Index = () => {
         },
       });
 
-      // Auto-scroll to output section
+      // Auto-scroll to output section (desktop) or show mobile output view
       if (outputSectionRef.current) {
         outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+
+      // Trigger mobile full-screen output view
+      setShowMobileOutput(true);
 
       // Auto-copy to clipboard (single model mode only)
       navigator.clipboard.writeText(output).then(() => {
@@ -132,6 +138,9 @@ const Index = () => {
         if (outputSectionRef.current) {
           outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+
+        // Trigger mobile full-screen output view
+        setShowMobileOutput(true);
       }
     }
   }, [compareIsLoading, results, compareInput, taskMode]);
@@ -188,6 +197,23 @@ const Index = () => {
     return `${seconds.toFixed(1)}s`;
   };
 
+  // Handle mobile back button - return to input view
+  const handleMobileBack = () => {
+    setShowMobileOutput(false);
+  };
+
+  // Handle new prompt on mobile - clear output and return to input
+  const handleMobileNewPrompt = () => {
+    setShowMobileOutput(false);
+    if (isCompareMode) {
+      resetComparison();
+    } else {
+      setOutput('');
+    }
+    setSingleInput('');
+    setCompareInput('');
+  };
+
   // Handle mode toggle - reset comparison results when switching
   const handleCompareModeToggle = (value: boolean) => {
     if (!value) {
@@ -209,6 +235,48 @@ const Index = () => {
 
       {/* Noise texture overlay */}
       <div className="noise-overlay" />
+
+      {/* Mobile Full-Screen Output View - only visible on mobile after successful generation */}
+      {showMobileOutput && !isBeginnerMode && (output || results.some(r => r.output && !r.error)) && (
+        <div className="md:hidden fixed inset-0 z-[100] flex flex-col bg-gradient-to-b from-sky-50 to-blue-100">
+          {/* Mobile output header */}
+          <div className="flex items-center justify-between p-4 border-b border-white/30">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMobileBack}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              aria-label={t('output.backToInput')}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{t('output.backToInput')}</span>
+            </Button>
+            <Button
+              variant="frost"
+              size="sm"
+              onClick={handleMobileNewPrompt}
+              className="gap-1.5"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{t('output.newPrompt')}</span>
+            </Button>
+          </div>
+
+          {/* Mobile output content */}
+          <div className="flex-1 overflow-auto p-4">
+            <div className="frost-glass rounded-2xl p-4 min-h-full">
+              <h2 className="text-lg font-semibold mb-4 text-center">
+                {t('output.mobileResultTitle')}
+              </h2>
+              {isCompareMode ? (
+                <ComparisonPanel results={results} isLoading={false} />
+              ) : (
+                <OutputPanel content={output} isLoading={false} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Language selector - top left */}
       <LanguageSelector />
