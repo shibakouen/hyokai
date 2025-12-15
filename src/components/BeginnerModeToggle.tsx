@@ -57,21 +57,32 @@ export function BeginnerModeToggle() {
             >
               {isBeginnerMode ? t("beginner.simpleMode") : t("beginner.advancedMode")}
             </Label>
-            <Tooltip>
+            <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
-                  className="text-muted-foreground hover:text-foreground transition-colors hidden md:inline-flex"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                   aria-label={t("beginner.modeHelpAria")}
                 >
-                  <HelpCircle className="w-3.5 h-3.5" />
+                  <HelpCircle className="w-4 h-4" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[250px] text-center">
-                <p className="text-sm">
+              <TooltipContent
+                side="bottom"
+                className="max-w-[280px] p-3 frost-glass rounded-xl border-white/20"
+              >
+                <p className="text-sm font-medium mb-1">
+                  {isBeginnerMode ? t("beginner.simpleModeTitle") : t("beginner.advancedModeTitle")}
+                </p>
+                <p className="text-sm text-muted-foreground">
                   {isBeginnerMode
                     ? t("beginner.simpleModeTooltip")
                     : t("beginner.advancedModeTooltip")}
                 </p>
+                {!isBeginnerMode && (
+                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                    ⚠️ {t("beginner.advancedModeWarning")}
+                  </p>
+                )}
               </TooltipContent>
             </Tooltip>
           </div>
