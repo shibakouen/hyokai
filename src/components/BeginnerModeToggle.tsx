@@ -68,7 +68,7 @@ export function BeginnerModeToggle() {
               </TooltipTrigger>
               <TooltipContent
                 side="bottom"
-                className="max-w-[280px] p-3 frost-glass rounded-xl border-white/20"
+                className="max-w-[280px] p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg"
               >
                 <p className="text-sm font-medium mb-1">
                   {isBeginnerMode ? t("beginner.simpleModeTitle") : t("beginner.advancedModeTitle")}
