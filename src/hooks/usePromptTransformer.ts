@@ -15,6 +15,8 @@ export function usePromptTransformer() {
   const [elapsedTime, setElapsedTime] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  // Ref to always have latest input value (fixes mobile stale closure issues)
+  const inputValueRef = useRef(input);
   const { mode } = useMode();
   const { userContext } = useUserContext();
   const { gitContext } = useGitContext();
@@ -31,6 +33,11 @@ export function usePromptTransformer() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, selectedModelIndex.toString());
   }, [selectedModelIndex]);
+
+  // Keep ref in sync with state (ensures callbacks always have latest value)
+  useEffect(() => {
+    inputValueRef.current = input;
+  }, [input]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -72,7 +79,10 @@ export function usePromptTransformer() {
   const selectedModel = AVAILABLE_MODELS[selectedModelIndex];
 
   const transform = useCallback(async () => {
-    if (!input.trim()) {
+    // Use ref to get latest input value (fixes mobile stale closure issues)
+    const currentInput = inputValueRef.current;
+
+    if (!currentInput.trim()) {
       toast({
         title: "Empty input",
         description: "Please enter a prompt to transform.",
@@ -88,7 +98,7 @@ export function usePromptTransformer() {
     try {
       const { data, error } = await supabase.functions.invoke("transform-prompt", {
         body: {
-          userPrompt: input,
+          userPrompt: currentInput,
           userContext: userContext || undefined,
           gitContext: gitContext || undefined,
           model: selectedModel.id,
@@ -117,7 +127,7 @@ export function usePromptTransformer() {
       stopTimer();
       setIsLoading(false);
     }
-  }, [input, selectedModel, mode, userContext, gitContext, startTimer, stopTimer]);
+  }, [selectedModel, mode, userContext, gitContext, startTimer, stopTimer]);
 
   return {
     input,

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { AVAILABLE_MODELS, AIModel } from "@/lib/models";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -18,6 +18,8 @@ export interface ComparisonResult {
 
 export function useModelComparison() {
   const [input, setInput] = useState("");
+  // Ref to always have latest input value (fixes mobile stale closure issues)
+  const inputValueRef = useRef(input);
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<number[]>(() => {
     if (typeof window !== "undefined") {
@@ -42,6 +44,11 @@ export function useModelComparison() {
   const { userContext } = useUserContext();
   const startTimesRef = useRef<Map<number, number>>(new Map());
   const timersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
+
+  // Keep ref in sync with state (ensures callbacks always have latest value)
+  useEffect(() => {
+    inputValueRef.current = input;
+  }, [input]);
 
   // Persist selected indices
   const updateSelectedIndices = useCallback((indices: number[]) => {
@@ -127,7 +134,10 @@ export function useModelComparison() {
 
   // Run comparison
   const compare = useCallback(async () => {
-    if (!input.trim()) {
+    // Use ref to get latest input value (fixes mobile stale closure issues)
+    const currentInput = inputValueRef.current;
+
+    if (!currentInput.trim()) {
       toast({
         title: "Empty input",
         description: "Please enter a prompt to transform.",
@@ -178,7 +188,7 @@ export function useModelComparison() {
 
     // Run all transformations concurrently
     const promises = selectedIndices.map(async (index) => {
-      const result = await transformWithModel(index, input, mode, userContext);
+      const result = await transformWithModel(index, currentInput, mode, userContext);
       const startTime = startTimesRef.current.get(index);
       const finalTime = startTime ? Date.now() - startTime : null;
 
@@ -207,7 +217,7 @@ export function useModelComparison() {
 
     await Promise.all(promises);
     setIsLoading(false);
-  }, [input, selectedIndices, mode, userContext, transformWithModel, clearAllTimers]);
+  }, [selectedIndices, mode, userContext, transformWithModel, clearAllTimers]);
 
   // Reset comparison
   const resetComparison = useCallback(() => {

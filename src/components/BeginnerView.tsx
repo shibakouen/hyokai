@@ -39,6 +39,13 @@ export function BeginnerView() {
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLTextAreaElement>(null);
+  // Ref to always have latest input value (fixes mobile stale closure issues)
+  const inputValueRef = useRef(input);
+
+  // Keep ref in sync with state (ensures callbacks always have latest value)
+  useEffect(() => {
+    inputValueRef.current = input;
+  }, [input]);
 
   // Sync editedOutput when new output comes from transformation
   useEffect(() => {
@@ -141,7 +148,10 @@ export function BeginnerView() {
   }, []);
 
   const handleTransform = useCallback(async () => {
-    if (!input.trim()) {
+    // Use ref to get latest input value (fixes mobile stale closure issues)
+    const currentInput = inputValueRef.current;
+
+    if (!currentInput.trim()) {
       toast({
         title: t("beginner.emptyPromptTitle"),
         description: t("beginner.emptyPromptMessage"),
@@ -156,7 +166,7 @@ export function BeginnerView() {
     try {
       const { data, error } = await supabase.functions.invoke("transform-prompt", {
         body: {
-          userPrompt: input,
+          userPrompt: currentInput,
           model: BEGINNER_MODEL_ID,
           mode: "prompting",
           beginnerMode: true,
@@ -183,7 +193,7 @@ export function BeginnerView() {
       stopTimer();
       setIsLoading(false);
     }
-  }, [input, startTimer, stopTimer, t]);
+  }, [startTimer, stopTimer, t]);
 
   const handleCopy = useCallback(async () => {
     if (!editedOutput) return;
@@ -278,32 +288,27 @@ export function BeginnerView() {
             <span className="text-base sm:text-lg font-semibold">{t("beginner.step2Label")}</span>
           </div>
           <div className="p-1 overflow-visible">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="lg"
-                  onClick={handleTransform}
-                  disabled={isLoading || !input.trim()}
-                  className="min-w-[200px] sm:min-w-[240px] h-12 sm:h-14 text-base sm:text-lg rounded-xl sm:rounded-2xl shadow-xl shadow-cb-blue/30 hover:shadow-cb-blue/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                  aria-label={t("beginner.transformAria")}
-                >
-                  {isLoading ? (
-                    <>
-                      <RefreshCw className="w-5 h-5 animate-spin" />
-                      <span>{t("beginner.transforming")}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      <span>{t("beginner.transformButton")}</span>
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                <p className="text-sm">{t("beginner.transformTooltip")}</p>
-              </TooltipContent>
-            </Tooltip>
+            {/* Button without Tooltip wrapper - tooltips interfere with mobile touch events */}
+            <Button
+              size="lg"
+              onClick={handleTransform}
+              disabled={isLoading || !input.trim()}
+              className="min-w-[200px] sm:min-w-[240px] h-12 sm:h-14 text-base sm:text-lg rounded-xl sm:rounded-2xl shadow-xl shadow-cb-blue/30 hover:shadow-cb-blue/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
+              aria-label={t("beginner.transformAria")}
+              title={t("beginner.transformTooltip")}
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <span>{t("beginner.transforming")}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  <span>{t("beginner.transformButton")}</span>
+                </>
+              )}
+            </Button>
           </div>
           {elapsedTime !== null && (
             <span

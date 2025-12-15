@@ -263,7 +263,7 @@ const Index = () => {
                   size="lg"
                   onClick={isCompareMode ? compare : transform}
                   disabled={isLoading || !input.trim() || (isCompareMode && selectedIndices.length < 2)}
-                  className="min-w-[200px]"
+                  className="min-w-[200px] touch-manipulation"
                 >
                   {isLoading ? (
                     <>
