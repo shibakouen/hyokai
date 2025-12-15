@@ -187,8 +187,8 @@ const Index = () => {
       {/* Language selector - top left */}
       <LanguageSelector />
 
-      {/* Controls - top right, responsive */}
-      <div className="absolute top-3 right-3 md:top-4 md:right-4 z-50 flex items-center gap-1.5 md:gap-2 flex-wrap justify-end max-w-[calc(100%-4rem)]">
+      {/* Controls - top right, responsive with beginner mode optimization */}
+      <div className={`absolute top-3 right-3 md:top-4 md:right-4 z-50 flex items-center gap-1.5 md:gap-2 flex-wrap justify-end ${isBeginnerMode ? 'max-w-[calc(100%-5rem)]' : 'max-w-[calc(100%-4rem)]'}`}>
         <BeginnerModeToggle />
         {!isBeginnerMode && (
           <>
@@ -199,16 +199,16 @@ const Index = () => {
         )}
       </div>
 
-      <div className={`relative z-10 container mx-auto px-4 py-8 md:py-16 ${isBeginnerMode ? 'max-w-2xl' : isCompareMode ? 'max-w-6xl' : 'max-w-3xl'}`}>
+      <div className={`relative z-10 container mx-auto py-6 sm:py-8 md:py-16 ${isBeginnerMode ? 'px-3 sm:px-4 max-w-xl sm:max-w-2xl' : 'px-4 ' + (isCompareMode ? 'max-w-6xl' : 'max-w-3xl')}`}>
         <Header />
 
         {isBeginnerMode ? (
-          /* Beginner Mode - Simplified View */
+          /* Beginner Mode - Simplified View with optimized mobile layout */
           <>
             <BeginnerView />
 
-            {/* Footer */}
-            <footer className="mt-12 text-center text-xs text-muted-foreground">
+            {/* Footer - hidden on mobile in beginner mode to reduce clutter */}
+            <footer className="mt-8 sm:mt-12 text-center text-xs text-muted-foreground/50 hidden sm:block">
               <p>
                 {t('footer.text')}
               </p>

@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Copy, Check, AlertCircle, Clock } from "lucide-react";
-import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Copy, Check, AlertCircle, Clock, RotateCcw } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ComparisonResult } from "@/hooks/useModelComparison";
+
+const STORAGE_KEY_PREFIX = "hyokai-compare-height-";
+const DEFAULT_HEIGHT = 200;
 
 interface ComparisonPanelProps {
   results: ComparisonResult[];
@@ -17,21 +21,68 @@ function formatTime(ms: number | null): string {
 
 function ResultCard({ result }: { result: ComparisonResult }) {
   const [copied, setCopied] = useState(false);
+  const [editedContent, setEditedContent] = useState(result.output || "");
+  const [isEdited, setIsEdited] = useState(false);
   const { t } = useLanguage();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const storageKey = `${STORAGE_KEY_PREFIX}${result.modelIndex}`;
+
+  // Sync editedContent when new content comes from transformation
+  useEffect(() => {
+    setEditedContent(result.output || "");
+    setIsEdited(false);
+  }, [result.output]);
+
+  // Load saved height from localStorage
+  useEffect(() => {
+    const savedHeight = localStorage.getItem(storageKey);
+    if (savedHeight && textareaRef.current) {
+      textareaRef.current.style.height = `${savedHeight}px`;
+    }
+  }, [storageKey]);
+
+  // Save height to localStorage on resize
+  const handleResize = useCallback(() => {
+    if (textareaRef.current) {
+      const height = textareaRef.current.offsetHeight;
+      localStorage.setItem(storageKey, height.toString());
+    }
+  }, [storageKey]);
+
+  // Use ResizeObserver to detect resize
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(textarea);
+
+    return () => resizeObserver.disconnect();
+  }, [handleResize]);
 
   const handleCopy = async () => {
-    if (!result.output) return;
-    await navigator.clipboard.writeText(result.output);
+    if (!editedContent) return;
+    await navigator.clipboard.writeText(editedContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleChange = (value: string) => {
+    setEditedContent(value);
+    setIsEdited(value !== result.output);
+  };
+
+  const handleReset = () => {
+    setEditedContent(result.output || "");
+    setIsEdited(false);
+  };
+
   // Calculate word count for comparison
-  const wordCount = result.output ? result.output.split(/\s+/).filter(Boolean).length : 0;
-  const charCount = result.output ? result.output.length : 0;
+  const wordCount = editedContent ? editedContent.split(/\s+/).filter(Boolean).length : 0;
+  const charCount = editedContent ? editedContent.length : 0;
 
   return (
-    <div className="frost-glass rounded-2xl flex flex-col h-full transition-all duration-300">
+    <div className="frost-glass rounded-2xl flex flex-col transition-all duration-300">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border/30">
         <div className="flex-1 min-w-0">
@@ -49,26 +100,39 @@ function ResultCard({ result }: { result: ComparisonResult }) {
             )}
           </div>
         </div>
-        {result.output && !result.isLoading && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            className="h-8 px-2"
-          >
-            {copied ? (
-              <Check className="w-4 h-4 text-green-500" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {isEdited && editedContent && !result.isLoading && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              title="Reset to original"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
+          )}
+          {editedContent && !result.isLoading && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              className="h-8 px-2"
+            >
+              {copied ? (
+                <Check className="w-4 h-4 text-green-500" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-3 overflow-auto min-h-[200px] max-h-[400px]">
+      <div className="flex-1 p-3">
         {result.isLoading ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
             <div className="flex items-center gap-3 text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse" />
               <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse [animation-delay:200ms]" />
@@ -77,26 +141,31 @@ function ResultCard({ result }: { result: ComparisonResult }) {
             </div>
           </div>
         ) : result.error ? (
-          <div className="flex items-center gap-2 text-destructive text-sm">
+          <div className="flex items-center gap-2 text-destructive text-sm" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{result.error}</span>
           </div>
-        ) : result.output ? (
-          <pre className="whitespace-pre-wrap text-sm text-foreground font-mono leading-relaxed">
-            {result.output}
-          </pre>
+        ) : editedContent ? (
+          <Textarea
+            ref={textareaRef}
+            value={editedContent}
+            onChange={(e) => handleChange(e.target.value)}
+            style={{ minHeight: `${DEFAULT_HEIGHT}px` }}
+            className="resize-y sm:resize bg-white/20 dark:bg-slate-900/20 rounded-xl text-sm text-foreground font-mono leading-relaxed border-white/30 focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
+          />
         ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+          <div className="flex items-center justify-center text-muted-foreground text-sm" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
             {t('output.placeholder')}
           </div>
         )}
       </div>
 
       {/* Footer with stats */}
-      {result.output && !result.isLoading && (
+      {editedContent && !result.isLoading && (
         <div className="px-3 py-2 border-t border-border/30 text-xs text-muted-foreground flex gap-3">
           <span>{wordCount} words</span>
           <span>{charCount} chars</span>
+          {isEdited && <span className="text-cb-blue">(edited)</span>}
         </div>
       )}
     </div>

@@ -44,31 +44,31 @@ export function BeginnerModeToggle() {
   return (
     <>
       <TooltipProvider>
-        <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-          <div className="flex items-center gap-1.5 md:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 p-1.5 sm:p-2 md:p-3 rounded-lg sm:rounded-xl frost-glass border-white/20 shadow-sm">
+          <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
             {isBeginnerMode ? (
-              <Sparkles className="w-4 h-4 text-primary" />
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cb-blue" />
             ) : (
-              <GraduationCap className="w-4 h-4 text-muted-foreground" />
+              <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
             )}
             <Label
               htmlFor="beginner-mode"
-              className="text-xs md:text-sm font-medium cursor-pointer hidden sm:inline"
+              className="text-[10px] sm:text-xs md:text-sm font-medium cursor-pointer hidden xs:inline"
             >
               {isBeginnerMode ? t("beginner.simpleMode") : t("beginner.advancedMode")}
             </Label>
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-cb-blue transition-colors p-0.5 sm:p-1 rounded-full hover:bg-cb-blue/10"
                   aria-label={t("beginner.modeHelpAria")}
                 >
-                  <HelpCircle className="w-4 h-4" />
+                  <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent
                 side="bottom"
-                className="max-w-[280px] p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg"
+                className="max-w-[260px] sm:max-w-[280px] p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg"
               >
                 <p className="text-sm font-medium mb-1">
                   {isBeginnerMode ? t("beginner.simpleModeTitle") : t("beginner.advancedModeTitle")}
@@ -91,6 +91,7 @@ export function BeginnerModeToggle() {
             checked={isBeginnerMode}
             onCheckedChange={handleToggle}
             aria-label={t("beginner.toggleAria")}
+            className="scale-90 sm:scale-100"
           />
         </div>
       </TooltipProvider>
