@@ -303,25 +303,24 @@ export function BeginnerView() {
           </div>
 
           {/* Mobile output content */}
-          <div className="flex-1 overflow-auto p-4">
-            <div className="frost-glass rounded-2xl p-4 space-y-4">
-              <h2 className="text-lg font-semibold text-center">
+          <div className="flex-1 overflow-auto p-4 min-h-0">
+            <div className="frost-glass rounded-2xl p-4 space-y-4 h-full flex flex-col">
+              <h2 className="text-lg font-semibold text-center flex-shrink-0">
                 {t('output.mobileResultTitle')}
               </h2>
               <Textarea
                 value={editedOutput}
                 onChange={(e) => handleOutputChange(e.target.value)}
-                style={{ minHeight: "200px" }}
-                className="resize-y text-base leading-relaxed bg-white/40 dark:bg-slate-900/40 rounded-xl border-white/50 focus:border-cb-blue/50 focus:ring-2 focus:ring-cb-blue/20 shadow-inner"
+                className="flex-1 min-h-[200px] text-base leading-relaxed bg-white/40 dark:bg-slate-900/40 rounded-xl border-white/50 focus:border-cb-blue/50 focus:ring-2 focus:ring-cb-blue/20 shadow-inner resize-none"
                 aria-label={t("beginner.outputAria")}
               />
               {/* Stats */}
-              <div className="text-xs text-muted-foreground/70 flex gap-2 justify-center">
+              <div className="text-xs text-muted-foreground/70 flex gap-2 justify-center flex-shrink-0">
                 <span>{editedOutput.length} {t("beginner.chars")}</span>
                 {isOutputEdited && <span className="text-cb-blue">{t("beginner.edited")}</span>}
               </div>
               {/* Action buttons */}
-              <div className="flex justify-center gap-2">
+              <div className="flex justify-center gap-2 flex-shrink-0">
                 {isOutputEdited && (
                   <Button
                     size="sm"
@@ -354,7 +353,7 @@ export function BeginnerView() {
                 </Button>
               </div>
               {/* Hint */}
-              <p className="text-xs text-cb-blue/70 text-center font-medium">
+              <p className="text-xs text-cb-blue/70 text-center font-medium flex-shrink-0">
                 {t("beginner.outputHint")}
               </p>
             </div>

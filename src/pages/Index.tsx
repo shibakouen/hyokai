@@ -263,16 +263,18 @@ const Index = () => {
           </div>
 
           {/* Mobile output content */}
-          <div className="flex-1 overflow-auto p-4">
-            <div className="frost-glass rounded-2xl p-4 min-h-full">
-              <h2 className="text-lg font-semibold mb-4 text-center">
+          <div className="flex-1 overflow-auto p-4 min-h-0">
+            <div className="frost-glass rounded-2xl p-4 h-full flex flex-col">
+              <h2 className="text-lg font-semibold mb-4 text-center flex-shrink-0">
                 {t('output.mobileResultTitle')}
               </h2>
-              {isCompareMode ? (
-                <ComparisonPanel results={results} isLoading={false} />
-              ) : (
-                <OutputPanel content={output} isLoading={false} />
-              )}
+              <div className="flex-1 min-h-0 overflow-auto">
+                {isCompareMode ? (
+                  <ComparisonPanel results={results} isLoading={false} />
+                ) : (
+                  <OutputPanel content={output} isLoading={false} />
+                )}
+              </div>
             </div>
           </div>
         </div>
