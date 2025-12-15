@@ -25,7 +25,7 @@ export const translations = {
         'output.copied': 'Copied!',
 
         // Footer
-        'footer.text': 'Powered by OpenRouter • Transform natural language into precise technical specifications',
+        'footer.text': 'Transform natural language into precise technical specifications',
 
         // Errors
         'error.empty': 'Please enter a prompt to transform.',
@@ -218,7 +218,7 @@ export const translations = {
         'output.copied': 'コピーしました！',
 
         // Footer
-        'footer.text': 'OpenRouter提供 • 自然言語を正確な技術仕様に変換します',
+        'footer.text': '自然言語を正確な技術仕様に変換します',
 
         // Errors
         'error.empty': '変換するプロンプトを入力してください。',
