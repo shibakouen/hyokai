@@ -387,6 +387,29 @@ CRITICAL: Output ONLY the improved prompt text. Do NOT include:
 
 Just output the prompt content directly, ready to paste.`;
 
+// Helper to manage quotes
+const preserveQuotes = (text: string) => {
+  const placeholders: Record<string, string> = {};
+  let counter = 0;
+  
+  // Match double or single quoted strings, handling escapes
+  const masked = text.replace(/("(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')/g, (match) => {
+    const placeholder = \`{{QUOTE_\${counter++}}}\`;
+    placeholders[placeholder] = match;
+    return placeholder;
+  });
+  
+  return { masked, placeholders };
+};
+
+const restoreQuotes = (text: string, placeholders: Record<string, string>) => {
+  let result = text;
+  for (const [placeholder, original] of Object.entries(placeholders)) {
+    result = result.split(placeholder).join(original);
+  }
+  return result;
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -410,6 +433,9 @@ serve(async (req) => {
       throw new Error("userPrompt is required and must be a string");
     }
 
+    // Preserve quotes
+    const { masked: maskedPrompt, placeholders } = preserveQuotes(userPrompt);
+
     // Estimate total tokens (rough: 1 token ≈ 4 chars)
     const contextChars = userContext?.length || 0;
     const promptChars = userPrompt.length;
@@ -425,8 +451,8 @@ serve(async (req) => {
 
     // Construct user message with optional context (no size limit)
     const userMessage = userContext
-      ? `BACKGROUND CONTEXT:\n${userContext}\n\n---\n\nTransform this prompt:\n${userPrompt}`
-      : userPrompt;
+      ? `BACKGROUND CONTEXT:\n${userContext}\n\n---\n\nTransform this prompt:\n${maskedPrompt}`
+      : maskedPrompt;
 
     console.log(`=== HYOKAI REQUEST DEBUG ===`);
     console.log(`Model: ${model}`);
@@ -505,6 +531,9 @@ serve(async (req) => {
     if (!result) {
       throw new Error("No response received from the model");
     }
+
+    // Restore preserved quotes
+    result = restoreQuotes(result, placeholders);
 
     // Strip unwanted prefixes that models add despite instructions
     result = result.trim();
