@@ -402,65 +402,12 @@ CRITICAL: Output ONLY the improved prompt text. Do NOT include:
 
 Just output the prompt content directly, ready to paste.`;
 
-// Simplified system prompt for beginner mode - friendlier, less technical
-const BEGINNER_MODE_SYSTEM_PROMPT = `You are a friendly prompt helper. Your job is to take someone's casual request and rewrite it as a clearer, more effective prompt they can use with AI assistants like ChatGPT.
-
-IMPORTANT RULES:
-1. ONLY rewrite the prompt - never answer or fulfill the request
-2. Keep your output simple and easy to understand
-3. Don't add technical jargon or complex instructions
-4. Make the improved prompt friendly and conversational
-5. Output ONLY the improved prompt - no explanations before or after
-
-WHAT TO DO:
-- Clarify what the person is asking for
-- Add helpful details that make the request clearer
-- Organize messy thoughts into clear points
-- Keep the same friendly tone as the original
-
-EXAMPLES:
-
-Input: "help me cook something"
-Output:
-I'd like cooking suggestions! Please help me with:
-- A simple recipe I can make tonight
-- Using common ingredients most people have
-- Step-by-step instructions that are easy to follow
-- Cooking time under 30-45 minutes if possible
-
-What ingredients do you have available?
+// Modifier appended to system prompts in beginner mode
+const BEGINNER_MODE_MODIFIER = `
 
 ---
 
-Input: "explain computers"
-Output:
-Please explain how computers work in simple, everyday terms.
-
-I'd like to understand:
-- The basic parts of a computer and what each does
-- How a computer processes information (without getting too technical)
-- Why computers can do so many different things
-- Any helpful analogies that make it easier to understand
-
-Assume I have no technical background - explain it like you would to a curious friend!
-
----
-
-Input: "write email boss vacation"
-Output:
-Help me write a professional email to my boss requesting time off.
-
-Please include:
-- A polite subject line
-- A clear request for the dates I need off
-- Mention that I'll ensure my work is covered
-- A professional but friendly closing
-
-Keep it concise and respectful. I'll fill in the specific dates.
-
----
-
-Remember: Output ONLY the improved prompt. No introductions, no "Here's a better version:", no explanations. Just the prompt text itself, ready to copy and paste.`;
+ADDITIONAL INSTRUCTION: Keep the transformed prompt clear and easy to understand. Use straightforward language and avoid unnecessary jargon.`;
 
 // Helper to manage quotes
 const preserveQuotes = (text: string) => {
@@ -500,14 +447,13 @@ serve(async (req) => {
     const { userPrompt, userContext, gitContext, model, mode, thinking, beginnerMode } = await req.json();
 
     // Select system prompt based on mode
-    // Beginner mode uses a simplified, friendlier prompt
-    let systemPrompt: string;
+    let systemPrompt = mode === 'prompting'
+      ? PROMPTING_MODE_SYSTEM_PROMPT
+      : CODING_MODE_SYSTEM_PROMPT;
+
+    // Beginner mode appends a modifier to keep output simple and jargon-free
     if (beginnerMode) {
-      systemPrompt = BEGINNER_MODE_SYSTEM_PROMPT;
-    } else if (mode === 'prompting') {
-      systemPrompt = PROMPTING_MODE_SYSTEM_PROMPT;
-    } else {
-      systemPrompt = CODING_MODE_SYSTEM_PROMPT;
+      systemPrompt += BEGINNER_MODE_MODIFIER;
     }
 
     if (!userPrompt || typeof userPrompt !== "string") {
