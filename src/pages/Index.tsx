@@ -15,6 +15,7 @@ import { ModelMultiSelector } from "@/components/ModelMultiSelector";
 import { ComparisonPanel } from "@/components/ComparisonPanel";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { UserContextEditor } from "@/components/UserContextEditor";
+import { GitRepoEditor } from "@/components/GitRepoEditor";
 import { useMode } from "@/contexts/ModeContext";
 import { AVAILABLE_MODELS } from "@/lib/models";
 import { addHistoryEntry, HistoryEntry } from "@/lib/history";
@@ -174,6 +175,7 @@ const Index = () => {
 
       {/* Controls - top right */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <GitRepoEditor />
         <UserContextEditor />
         <HistoryPanel onRestore={handleRestore} />
       </div>

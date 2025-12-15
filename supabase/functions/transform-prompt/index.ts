@@ -394,7 +394,7 @@ const preserveQuotes = (text: string) => {
   
   // Match double or single quoted strings, handling escapes
   const masked = text.replace(/("(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')/g, (match) => {
-    const placeholder = \`{{QUOTE_\${counter++}}}\`;
+    const placeholder = `{{QUOTE_${counter++}}}`;
     placeholders[placeholder] = match;
     return placeholder;
   });
@@ -422,7 +422,7 @@ serve(async (req) => {
       throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
-    const { userPrompt, userContext, model, mode, thinking } = await req.json();
+    const { userPrompt, userContext, gitContext, model, mode, thinking } = await req.json();
 
     // Select system prompt based on mode
     const systemPrompt = mode === 'prompting'
@@ -437,10 +437,11 @@ serve(async (req) => {
     const { masked: maskedPrompt, placeholders } = preserveQuotes(userPrompt);
 
     // Estimate total tokens (rough: 1 token ≈ 4 chars)
-    const contextChars = userContext?.length || 0;
+    const userContextChars = userContext?.length || 0;
+    const gitContextChars = gitContext?.length || 0;
     const promptChars = userPrompt.length;
     const systemChars = systemPrompt.length;
-    const totalChars = contextChars + promptChars + systemChars;
+    const totalChars = userContextChars + gitContextChars + promptChars + systemChars;
     const estimatedTokens = Math.ceil(totalChars / 4);
 
     // Warn if approaching limits but don't block (let the API handle it)
@@ -450,15 +451,32 @@ serve(async (req) => {
     }
 
     // Construct user message with optional context (no size limit)
-    const userMessage = userContext
-      ? `BACKGROUND CONTEXT:\n${userContext}\n\n---\n\nTransform this prompt:\n${maskedPrompt}`
-      : maskedPrompt;
+    let userMessage = maskedPrompt;
+
+    // Build context section if any context is provided
+    const contextParts: string[] = [];
+
+    // Add user context if provided
+    if (userContext) {
+      contextParts.push(`BACKGROUND CONTEXT:\n${userContext}`);
+    }
+
+    // Add git context if provided (only in coding mode)
+    if (gitContext && mode === 'coding') {
+      contextParts.push(`REPOSITORY CONTEXT:\n${gitContext}`);
+    }
+
+    // Combine context with prompt
+    if (contextParts.length > 0) {
+      userMessage = `${contextParts.join('\n\n')}\n\n---\n\nTransform this prompt:\n${maskedPrompt}`;
+    }
 
     console.log(`=== HYOKAI REQUEST DEBUG ===`);
     console.log(`Model: ${model}`);
     console.log(`Mode: ${mode}`);
     console.log(`Thinking: ${thinking}`);
     console.log(`User context: ${userContext ? `${userContext.length} chars` : 'none'}`);
+    console.log(`Git context: ${gitContext ? `${gitContext.length} chars` : 'none'}`);
     console.log(`User prompt (${userPrompt.length} chars): ${userPrompt.substring(0, 100)}...`);
     console.log(`System prompt length: ${systemPrompt.length} chars`);
     console.log(`Estimated total tokens: ~${estimatedTokens}`);

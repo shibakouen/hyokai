@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
 import { useUserContext } from "@/contexts/UserContextContext";
+import { useGitContext } from "@/hooks/useGitContext";
 
 const STORAGE_KEY = "hyokai-selected-model-index";
 
@@ -16,6 +17,7 @@ export function usePromptTransformer() {
   const startTimeRef = useRef<number | null>(null);
   const { mode } = useMode();
   const { userContext } = useUserContext();
+  const { gitContext } = useGitContext();
   // Store index instead of ID since multiple models can have same ID (thinking variant)
   const [selectedModelIndex, setSelectedModelIndex] = useState(() => {
     if (typeof window !== "undefined") {
@@ -88,6 +90,7 @@ export function usePromptTransformer() {
         body: {
           userPrompt: input,
           userContext: userContext || undefined,
+          gitContext: gitContext || undefined,
           model: selectedModel.id,
           mode: mode,
           thinking: selectedModel.thinking || false,
@@ -114,7 +117,7 @@ export function usePromptTransformer() {
       stopTimer();
       setIsLoading(false);
     }
-  }, [input, selectedModel, mode, userContext, startTimer, stopTimer]);
+  }, [input, selectedModel, mode, userContext, gitContext, startTimer, stopTimer]);
 
   return {
     input,
