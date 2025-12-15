@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { ModelSelector } from "@/components/ModelSelector";
 import { PromptInput } from "@/components/PromptInput";
@@ -8,6 +8,7 @@ import { usePromptTransformer } from "@/hooks/usePromptTransformer";
 import { useModelComparison } from "@/hooks/useModelComparison";
 import { Sparkles, ArrowDown, GitCompare } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { toast } from "@/hooks/use-toast";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { ModeToggle } from "@/components/ModeToggle";
 import { CompareToggle } from "@/components/CompareToggle";
@@ -59,7 +60,10 @@ const Index = () => {
   const prevSingleLoadingRef = useRef(singleIsLoading);
   const prevCompareLoadingRef = useRef(compareIsLoading);
 
-  // Save to history when single model transformation completes
+  // Ref for output section to enable auto-scroll
+  const outputSectionRef = useRef<HTMLDivElement>(null);
+
+  // Save to history and handle post-transformation UX when single model transformation completes
   useEffect(() => {
     const wasLoading = prevSingleLoadingRef.current;
     prevSingleLoadingRef.current = singleIsLoading;
@@ -78,10 +82,25 @@ const Index = () => {
           elapsedTime,
         },
       });
-    }
-  }, [singleIsLoading, output, singleInput, selectedModelIndex, taskMode, elapsedTime]);
 
-  // Save to history when compare mode transformation completes
+      // Auto-scroll to output section
+      if (outputSectionRef.current) {
+        outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Auto-copy to clipboard (single model mode only)
+      navigator.clipboard.writeText(output).then(() => {
+        toast({
+          title: t('output.autoCopied'),
+          description: t('output.autoCopiedMessage'),
+        });
+      }).catch(() => {
+        // Silently fail - user can manually copy
+      });
+    }
+  }, [singleIsLoading, output, singleInput, selectedModelIndex, taskMode, elapsedTime, t]);
+
+  // Save to history and handle post-transformation UX when compare mode transformation completes
   useEffect(() => {
     const wasLoading = prevCompareLoadingRef.current;
     prevCompareLoadingRef.current = compareIsLoading;
@@ -105,6 +124,11 @@ const Index = () => {
             })),
           },
         });
+
+        // Auto-scroll to output section (no auto-copy for compare mode)
+        if (outputSectionRef.current) {
+          outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
     }
   }, [compareIsLoading, results, compareInput, taskMode]);
@@ -295,7 +319,7 @@ const Index = () => {
               </div>
 
               {/* Output Section - conditional based on mode */}
-              <div className="space-y-2">
+              <div ref={outputSectionRef} className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">
                   {t('output.label')}
                 </label>

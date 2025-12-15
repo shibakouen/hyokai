@@ -39,8 +39,11 @@ export function BeginnerView() {
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLTextAreaElement>(null);
+  const outputSectionRef = useRef<HTMLDivElement>(null);
   // Ref to always have latest input value (fixes mobile stale closure issues)
   const inputValueRef = useRef(input);
+  // Ref to track previous loading state for detecting transformation completion
+  const prevLoadingRef = useRef(isLoading);
 
   // Keep ref in sync with state (ensures callbacks always have latest value)
   useEffect(() => {
@@ -52,6 +55,30 @@ export function BeginnerView() {
     setEditedOutput(output);
     setIsOutputEdited(false);
   }, [output]);
+
+  // Handle post-transformation UX: auto-scroll and auto-copy
+  useEffect(() => {
+    const wasLoading = prevLoadingRef.current;
+    prevLoadingRef.current = isLoading;
+
+    // Check if loading just finished and we have output
+    if (wasLoading && !isLoading && output) {
+      // Auto-scroll to output section
+      if (outputSectionRef.current) {
+        outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Auto-copy to clipboard
+      navigator.clipboard.writeText(output).then(() => {
+        toast({
+          title: t('output.autoCopied'),
+          description: t('output.autoCopiedMessage'),
+        });
+      }).catch(() => {
+        // Silently fail - user can manually copy
+      });
+    }
+  }, [isLoading, output, t]);
 
   // Auto-resize output textarea to fit content
   useEffect(() => {
@@ -331,7 +358,7 @@ export function BeginnerView() {
         </div>
 
         {/* Step 3: Output - Card style */}
-        <div className="frost-glass rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-lg">
+        <div ref={outputSectionRef} className="frost-glass rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-lg">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-cb-blue to-cb-blue-light text-white font-bold text-base sm:text-lg shadow-md shadow-cb-blue/30">
               3
