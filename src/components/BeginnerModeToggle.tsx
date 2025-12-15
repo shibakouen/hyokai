@@ -101,7 +101,7 @@ export function BeginnerModeToggle() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmAdvancedMode}
-              className="bg-white/10 hover:bg-white/20 border border-white/20"
+              className="bg-cb-blue hover:bg-cb-blue-dark text-white border-0 shadow-lg shadow-cb-blue/25"
             >
               {t("beginner.switchAdvanced")}
             </AlertDialogAction>
