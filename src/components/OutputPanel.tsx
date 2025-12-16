@@ -3,6 +3,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Copy, Check, RotateCcw, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ChatGPTButton } from "@/components/ChatGPTButton";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const STORAGE_KEY = "hyokai-output-height";
 const DEFAULT_HEIGHT = 200;
@@ -146,6 +148,9 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
                 </>
               )}
             </Button>
+            <TooltipProvider>
+              <ChatGPTButton prompt={editedContent} />
+            </TooltipProvider>
             {onNewPrompt && (
               <Button
                 variant="frost"

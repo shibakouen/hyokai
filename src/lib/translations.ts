@@ -32,6 +32,9 @@ export const translations = {
         'output.backToInput': 'Back to input',
         'output.newPrompt': 'New Prompt',
         'output.mobileResultTitle': 'Your Technical Prompt',
+        'output.sendToChatGPT': 'Send to ChatGPT',
+        'output.sendToChatGPTAria': 'Open in ChatGPT',
+        'output.sendToChatGPTTooltip': 'Send to ChatGPT for chatting',
 
         // Footer
         'footer.text': 'Transform natural language into precise technical specifications',
@@ -551,6 +554,9 @@ export const translations = {
         'output.backToInput': '入力に戻る',
         'output.newPrompt': '新しいプロンプト',
         'output.mobileResultTitle': '技術プロンプト',
+        'output.sendToChatGPT': 'ChatGPTに送信',
+        'output.sendToChatGPTAria': 'ChatGPTで開く',
+        'output.sendToChatGPTTooltip': 'ChatGPTに送信してチャット',
 
         // Footer
         'footer.text': '自然言語を正確な技術仕様に変換します',

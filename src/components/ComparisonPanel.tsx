@@ -4,6 +4,8 @@ import { Copy, Check, AlertCircle, Clock, RotateCcw } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ComparisonResult } from "@/hooks/useModelComparison";
+import { ChatGPTButton } from "@/components/ChatGPTButton";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const STORAGE_KEY_PREFIX = "hyokai-compare-height-";
 const DEFAULT_HEIGHT = 200;
@@ -125,18 +127,23 @@ function ResultCard({ result }: { result: ComparisonResult }) {
             </Button>
           )}
           {editedContent && !result.isLoading && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopy}
-              className="h-8 px-2"
-            >
-              {copied ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                className="h-8 px-2"
+              >
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+              <TooltipProvider>
+                <ChatGPTButton prompt={editedContent} variant="compact" />
+              </TooltipProvider>
+            </>
           )}
         </div>
       </div>

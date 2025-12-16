@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { ChatGPTButton } from "@/components/ChatGPTButton";
 import {
   Sparkles,
   ArrowDown,
@@ -388,6 +389,7 @@ export function BeginnerView() {
                     </>
                   )}
                 </Button>
+                <ChatGPTButton prompt={editedOutput} variant="compact" />
               </div>
               {/* Hint */}
               <p className="text-xs text-cb-blue/70 text-center font-medium flex-shrink-0">
@@ -641,6 +643,7 @@ export function BeginnerView() {
                       </>
                     )}
                   </Button>
+                  <ChatGPTButton prompt={editedOutput} />
                   <Button
                     variant="frost"
                     size="sm"
