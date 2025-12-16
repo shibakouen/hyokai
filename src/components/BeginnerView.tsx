@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { SimpleHistoryPanel } from "@/components/SimpleHistoryPanel";
 import { addSimpleHistoryEntry, SimpleHistoryEntry } from "@/lib/simpleHistory";
+import { BEGINNER_PROMPTS, BeginnerPrompt } from "@/lib/beginnerPrompts";
 
 // Grok 4 Fast model ID - fast and reliable for beginners
 const BEGINNER_MODEL_ID = "x-ai/grok-4-fast";
@@ -52,6 +53,9 @@ export function BeginnerView() {
 
   // Mobile full-screen output view state
   const [showMobileOutput, setShowMobileOutput] = useState(false);
+
+  // Selected prompt suggestion (for inspiration grid)
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
 
   // Keep ref in sync with state (ensures callbacks always have latest value)
   useEffect(() => {
@@ -296,6 +300,17 @@ export function BeginnerView() {
     setElapsedTime(entry.elapsedTime);
   };
 
+  // Handle selecting a prompt suggestion
+  const handleSelectPrompt = useCallback((prompt: BeginnerPrompt) => {
+    // Toggle selection - clicking same prompt deselects it
+    setSelectedPromptId(prev => prev === prompt.id ? null : prompt.id);
+  }, []);
+
+  // Get the currently selected prompt object
+  const selectedPrompt = selectedPromptId
+    ? BEGINNER_PROMPTS.find(p => p.id === selectedPromptId)
+    : null;
+
   return (
     <TooltipProvider>
       {/* Mobile Full-Screen Output View - only visible on mobile after successful generation */}
@@ -434,6 +449,66 @@ export function BeginnerView() {
             <div className="absolute bottom-3 right-3 text-xs text-muted-foreground pointer-events-none">
               {input.length} chars
             </div>
+          </div>
+
+          {/* Suggestion text display - shows when a prompt card is selected */}
+          {selectedPrompt && (
+            <div className="frost-glass rounded-xl p-3 border border-cb-blue/30 bg-cb-blue/5 animate-in fade-in slide-in-from-top-2 duration-200">
+              <p className="text-xs font-medium text-cb-blue mb-1">
+                {t("suggestions.tryThis")}
+              </p>
+              <p className="text-sm text-foreground leading-relaxed">
+                {t(selectedPrompt.promptKey as any)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                {t("suggestions.editHint")}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Suggestions Grid - "Things AI Can Do" */}
+        <div className="space-y-3">
+          <div className="text-center">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t("suggestions.sectionTitle")}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("suggestions.sectionSubtitle")}
+            </p>
+          </div>
+
+          {/* 5x5 grid on desktop, 3 columns on tablet, 2 columns on mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+            {BEGINNER_PROMPTS.map((prompt) => {
+              const isSelected = selectedPromptId === prompt.id;
+              return (
+                <button
+                  key={prompt.id}
+                  onClick={() => handleSelectPrompt(prompt)}
+                  className={`
+                    aspect-square rounded-2xl p-2 sm:p-3
+                    flex items-center justify-center text-center
+                    transition-all duration-200 ease-out
+                    touch-manipulation cursor-pointer
+                    ${prompt.colorClass}
+                    ${isSelected
+                      ? 'ring-2 ring-cb-blue ring-offset-2 scale-[1.02] shadow-lg shadow-cb-blue/20'
+                      : 'hover:scale-[1.02] hover:shadow-md hover:brightness-95 active:scale-[0.98]'
+                    }
+                  `}
+                  aria-pressed={isSelected}
+                  aria-label={t(prompt.titleKey as any)}
+                >
+                  <span className={`
+                    text-xs sm:text-sm font-medium leading-tight
+                    ${isSelected ? 'text-cb-blue' : 'text-slate-700'}
+                  `}>
+                    {t(prompt.titleKey as any)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

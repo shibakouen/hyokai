@@ -220,6 +220,79 @@ export const translations = {
         'beginner.edited': '(edited)',
         'beginner.resetToOriginal': 'Reset to original',
         'beginner.reset': 'Reset',
+
+        // Suggestions Grid
+        'suggestions.sectionTitle': 'Things AI Can Help You With',
+        'suggestions.sectionSubtitle': 'Click any card for inspiration',
+        'suggestions.tryThis': 'Try something like:',
+        'suggestions.editHint': 'Edit the text above to make it your own!',
+
+        // Category Labels
+        'suggestions.category.business': 'Business',
+        'suggestions.category.personal': 'Personal',
+        'suggestions.category.health': 'Family',
+        'suggestions.category.hobbies': 'Hobbies',
+        'suggestions.category.learning': 'Learning',
+
+        // Business Prompts
+        'suggestions.bizEmail.title': 'Email Helper',
+        'suggestions.bizEmail.prompt': 'Help me write a friendly email to a client about [your topic, e.g., a project update or meeting request]',
+        'suggestions.bizMarketing.title': 'Marketing Ideas',
+        'suggestions.bizMarketing.prompt': 'Give me 5 creative marketing ideas for [your business type, e.g., a local bakery or online store]',
+        'suggestions.bizMeeting.title': 'Meeting Notes',
+        'suggestions.bizMeeting.prompt': 'Summarize the key points and action items from [your meeting topic or paste your notes]',
+        'suggestions.bizSocial.title': 'Social Media Post',
+        'suggestions.bizSocial.prompt': 'Write an engaging social media post about [your product, event, or announcement]',
+        'suggestions.bizPricing.title': 'Pricing Strategy',
+        'suggestions.bizPricing.prompt': 'Help me think through pricing for [your product or service] considering [your market or constraints]',
+
+        // Personal Prompts
+        'suggestions.personalTravel.title': 'Trip Planner',
+        'suggestions.personalTravel.prompt': 'Plan a [number of days]-day trip to [destination] with activities I might enjoy based on [your interests]',
+        'suggestions.personalShopping.title': 'Shopping List',
+        'suggestions.personalShopping.prompt': 'Create an organized weekly grocery list for [number of people] who like [dietary preferences or favorite foods]',
+        'suggestions.personalBudget.title': 'Budget Helper',
+        'suggestions.personalBudget.prompt': 'Help me create a simple monthly budget for [your income] with goals like [saving for something specific]',
+        'suggestions.personalLetter.title': 'Thank You Note',
+        'suggestions.personalLetter.prompt': 'Write a heartfelt thank you note to [person] for [what they did for you]',
+        'suggestions.personalDeclutter.title': 'Declutter Plan',
+        'suggestions.personalDeclutter.prompt': 'Give me a step-by-step plan to declutter my [room or area] in just [time available]',
+
+        // Health & Family Prompts
+        'suggestions.healthMeal.title': 'Meal Planning',
+        'suggestions.healthMeal.prompt': 'Create a week of simple, healthy dinner ideas for [family size] that take under [time] to prepare',
+        'suggestions.healthExercise.title': 'Easy Exercise',
+        'suggestions.healthExercise.prompt': 'Suggest a gentle [duration]-minute exercise routine I can do at home with no equipment',
+        'suggestions.familyGift.title': 'Gift Ideas',
+        'suggestions.familyGift.prompt': 'Suggest thoughtful gift ideas for [person, e.g., my mom who loves gardening] under [budget]',
+        'suggestions.familyEvent.title': 'Party Planning',
+        'suggestions.familyEvent.prompt': 'Help me plan a [type of celebration, e.g., birthday party] for [person] with [number] guests',
+        'suggestions.familyKids.title': 'Kids Activities',
+        'suggestions.familyKids.prompt': 'Suggest fun indoor activities for kids aged [ages] on a rainy day using things we have at home',
+
+        // Hobby Prompts
+        'suggestions.hobbyGarden.title': 'Garden Tips',
+        'suggestions.hobbyGarden.prompt': 'What should I plant in my [garden type or location] this season? I have [sun/shade conditions]',
+        'suggestions.hobbyRecipe.title': 'Recipe Finder',
+        'suggestions.hobbyRecipe.prompt': 'Give me an easy recipe using [ingredients you have] that serves [number of people]',
+        'suggestions.hobbyBook.title': 'Book Summary',
+        'suggestions.hobbyBook.prompt': 'Summarize the main ideas from [book title] and tell me what I can learn from it',
+        'suggestions.hobbyCraft.title': 'DIY Project',
+        'suggestions.hobbyCraft.prompt': 'Suggest a simple [craft type, e.g., woodworking or knitting] project for a beginner with [materials available]',
+        'suggestions.hobbyPhoto.title': 'Photo Tips',
+        'suggestions.hobbyPhoto.prompt': 'Give me tips for taking better photos of [subject, e.g., pets, food, landscapes] with my phone',
+
+        // Learning Prompts
+        'suggestions.learnExplain.title': 'Simple Explainer',
+        'suggestions.learnExplain.prompt': 'Explain [complex topic] in simple terms, like you are talking to someone with no background in it',
+        'suggestions.learnLanguage.title': 'Language Practice',
+        'suggestions.learnLanguage.prompt': 'Teach me 10 useful phrases in [language] for [situation, e.g., traveling or meeting new people]',
+        'suggestions.learnHistory.title': 'History Stories',
+        'suggestions.learnHistory.prompt': 'Tell me an interesting story about [historical event or person] that most people do not know',
+        'suggestions.learnTech.title': 'Tech Help',
+        'suggestions.learnTech.prompt': 'Explain how to [tech task, e.g., back up my phone or set up email] step by step for a beginner',
+        'suggestions.learnSkill.title': 'New Skill',
+        'suggestions.learnSkill.prompt': 'Create a 30-day beginner plan to learn [skill, e.g., drawing, cooking, or meditation]',
     },
     jp: {
         // Header
@@ -440,6 +513,79 @@ export const translations = {
         'beginner.edited': '(編集済み)',
         'beginner.resetToOriginal': '元に戻す',
         'beginner.reset': 'リセット',
+
+        // Suggestions Grid
+        'suggestions.sectionTitle': 'AIができること',
+        'suggestions.sectionSubtitle': 'カードをクリックしてアイデアを得よう',
+        'suggestions.tryThis': 'こんな感じで試してみて：',
+        'suggestions.editHint': '上のテキストを編集して、自分らしくアレンジしよう！',
+
+        // Category Labels
+        'suggestions.category.business': 'ビジネス',
+        'suggestions.category.personal': '日常生活',
+        'suggestions.category.health': '家族',
+        'suggestions.category.hobbies': '趣味',
+        'suggestions.category.learning': '学習',
+
+        // Business Prompts
+        'suggestions.bizEmail.title': 'メール作成',
+        'suggestions.bizEmail.prompt': '[トピック、例：プロジェクトの進捗や打ち合わせの依頼]について、クライアントへの丁寧なメールを書く手伝いをして',
+        'suggestions.bizMarketing.title': 'マーケティング',
+        'suggestions.bizMarketing.prompt': '[業種、例：地元のパン屋やオンラインショップ]向けの創造的なマーケティングアイデアを5つ教えて',
+        'suggestions.bizMeeting.title': '議事録まとめ',
+        'suggestions.bizMeeting.prompt': '[会議のトピックまたはメモを貼り付け]の重要なポイントとアクションアイテムをまとめて',
+        'suggestions.bizSocial.title': 'SNS投稿',
+        'suggestions.bizSocial.prompt': '[商品、イベント、お知らせ]について魅力的なSNS投稿を書いて',
+        'suggestions.bizPricing.title': '価格設定',
+        'suggestions.bizPricing.prompt': '[市場や制約]を考慮して、[商品やサービス]の価格設定を一緒に考えて',
+
+        // Personal Prompts
+        'suggestions.personalTravel.title': '旅行計画',
+        'suggestions.personalTravel.prompt': '[興味や好み]に基づいて、[目的地]への[日数]日間の旅行プランを作って',
+        'suggestions.personalShopping.title': '買い物リスト',
+        'suggestions.personalShopping.prompt': '[食の好みや好きな食べ物]が好きな[人数]人分の週間買い物リストを整理して作って',
+        'suggestions.personalBudget.title': '家計管理',
+        'suggestions.personalBudget.prompt': '[収入]で[特定の目標への貯金など]を目標にしたシンプルな月間予算を作る手伝いをして',
+        'suggestions.personalLetter.title': 'お礼状',
+        'suggestions.personalLetter.prompt': '[してくれたこと]について[相手]への心のこもったお礼状を書いて',
+        'suggestions.personalDeclutter.title': '片付け計画',
+        'suggestions.personalDeclutter.prompt': '[使える時間]で[部屋や場所]を片付けるステップバイステップの計画を教えて',
+
+        // Health & Family Prompts
+        'suggestions.healthMeal.title': '献立作成',
+        'suggestions.healthMeal.prompt': '[家族の人数]人分の、[調理時間]以内で作れるシンプルで健康的な夕食アイデアを1週間分作って',
+        'suggestions.healthExercise.title': '簡単エクササイズ',
+        'suggestions.healthExercise.prompt': '器具なしで自宅でできる、優しい[時間]分のエクササイズルーティンを提案して',
+        'suggestions.familyGift.title': 'ギフト提案',
+        'suggestions.familyGift.prompt': '[予算]以内で[人物、例：ガーデニングが好きな母]への心のこもったギフトアイデアを提案して',
+        'suggestions.familyEvent.title': 'パーティー計画',
+        'suggestions.familyEvent.prompt': '[人数]人のゲストを招いた[人物]の[お祝いの種類、例：誕生日パーティー]の計画を手伝って',
+        'suggestions.familyKids.title': '子供の遊び',
+        'suggestions.familyKids.prompt': '雨の日に家にあるもので[年齢]歳の子供たちが楽しめる室内アクティビティを提案して',
+
+        // Hobby Prompts
+        'suggestions.hobbyGarden.title': '園芸アドバイス',
+        'suggestions.hobbyGarden.prompt': '[日当たり条件]の[庭の種類や場所]に今シーズン何を植えるべき？',
+        'suggestions.hobbyRecipe.title': 'レシピ検索',
+        'suggestions.hobbyRecipe.prompt': '[手元にある材料]を使った[人数]人分の簡単なレシピを教えて',
+        'suggestions.hobbyBook.title': '本の要約',
+        'suggestions.hobbyBook.prompt': '[本のタイトル]の主なアイデアをまとめて、何が学べるか教えて',
+        'suggestions.hobbyCraft.title': 'DIYプロジェクト',
+        'suggestions.hobbyCraft.prompt': '[使える材料]で初心者向けのシンプルな[クラフトの種類、例：木工や編み物]プロジェクトを提案して',
+        'suggestions.hobbyPhoto.title': '写真のコツ',
+        'suggestions.hobbyPhoto.prompt': 'スマホで[被写体、例：ペット、料理、風景]をより上手に撮影するコツを教えて',
+
+        // Learning Prompts
+        'suggestions.learnExplain.title': 'わかりやすく解説',
+        'suggestions.learnExplain.prompt': '[難しいトピック]を、その分野の知識がない人にも分かるように簡単な言葉で説明して',
+        'suggestions.learnLanguage.title': '語学練習',
+        'suggestions.learnLanguage.prompt': '[状況、例：旅行や新しい人との出会い]で使える[言語]の便利なフレーズを10個教えて',
+        'suggestions.learnHistory.title': '歴史の話',
+        'suggestions.learnHistory.prompt': '[歴史的な出来事や人物]について、あまり知られていない興味深い話を教えて',
+        'suggestions.learnTech.title': 'テクノロジー解説',
+        'suggestions.learnTech.prompt': '初心者向けに[技術的な作業、例：スマホのバックアップやメール設定]の方法をステップバイステップで説明して',
+        'suggestions.learnSkill.title': '新しいスキル',
+        'suggestions.learnSkill.prompt': '[スキル、例：絵を描く、料理、瞑想]を学ぶための30日間の初心者プランを作って',
     }
 } as const;
 
