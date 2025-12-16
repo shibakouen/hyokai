@@ -28,6 +28,8 @@ import { addSimpleHistoryEntry, SimpleHistoryEntry } from "@/lib/simpleHistory";
 const BEGINNER_MODEL_ID = "x-ai/grok-4-fast";
 const INPUT_STORAGE_KEY = "hyokai-beginner-input-height";
 const OUTPUT_STORAGE_KEY = "hyokai-beginner-output-height";
+// Unified height constant - matches advanced mode
+const UNIFIED_HEIGHT = 200;
 
 export function BeginnerView() {
   const { t } = useLanguage();
@@ -96,8 +98,8 @@ export function BeginnerView() {
 
     // Reset height to auto to get accurate scrollHeight
     textarea.style.height = 'auto';
-    // Set height to scrollHeight (content height), minimum 140px
-    const newHeight = Math.max(textarea.scrollHeight, 140);
+    // Set height to scrollHeight (content height), minimum matches advanced mode
+    const newHeight = Math.max(textarea.scrollHeight, UNIFIED_HEIGHT);
     textarea.style.height = `${newHeight}px`;
   }, [editedOutput]);
 
@@ -394,19 +396,19 @@ export function BeginnerView() {
           <SimpleHistoryPanel onRestore={handleRestoreFromHistory} />
         </div>
 
-        {/* Step 1: Input - Card style */}
-        <div className="frost-glass rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-lg">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-cb-blue to-cb-blue-light text-white font-bold text-base sm:text-lg shadow-md shadow-cb-blue/30">
+        {/* Step 1: Input */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-cb-blue/10 text-cb-blue text-xs font-semibold">
               1
-            </div>
-            <label className="text-base sm:text-lg font-semibold flex-1">
+            </span>
+            <label className="text-sm font-medium text-muted-foreground flex-1">
               {t("beginner.step1Label")}
             </label>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="text-muted-foreground hover:text-cb-blue transition-colors p-1.5 -mr-1.5 rounded-full hover:bg-cb-blue/10"
+                  className="text-muted-foreground hover:text-cb-blue transition-colors p-1 rounded-full hover:bg-cb-blue/10"
                   aria-label={t("beginner.step1HelpAria")}
                 >
                   <HelpCircle className="w-4 h-4" />
@@ -417,57 +419,50 @@ export function BeginnerView() {
               </TooltipContent>
             </Tooltip>
           </div>
-          <Textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t("beginner.inputPlaceholder")}
-            disabled={isLoading}
-            style={{ minHeight: "160px" }}
-            className="resize-y sm:resize text-base sm:text-lg leading-relaxed bg-white/40 dark:bg-slate-900/40 rounded-xl sm:rounded-2xl border-white/50 focus:border-cb-blue/50 focus:ring-2 focus:ring-cb-blue/20 placeholder:text-muted-foreground/50 shadow-inner"
-            aria-label={t("beginner.inputAria")}
-          />
-          <p className="text-xs sm:text-sm text-muted-foreground/70 text-center hidden sm:block">
-            {t("beginner.inputHint")}
-          </p>
+          <div className="relative">
+            <Textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t("beginner.inputPlaceholder")}
+              disabled={isLoading}
+              style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
+              className="resize-y sm:resize frost-glass rounded-2xl text-foreground placeholder:text-muted-foreground/60 focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
+              aria-label={t("beginner.inputAria")}
+            />
+            <div className="absolute bottom-3 right-3 text-xs text-muted-foreground pointer-events-none">
+              {input.length} chars
+            </div>
+          </div>
         </div>
 
-        {/* Step 2: Transform Button - Prominent CTA */}
-        <div className="flex flex-col items-center gap-3 sm:gap-4 py-2 overflow-visible">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-cb-blue to-cb-blue-light text-white font-bold text-base sm:text-lg shadow-md shadow-cb-blue/30">
-              2
-            </div>
-            <span className="text-base sm:text-lg font-semibold">{t("beginner.step2Label")}</span>
-          </div>
-          <div className="p-1 overflow-visible">
-            {/* Button without Tooltip wrapper - tooltips interfere with mobile touch events */}
-            <Button
-              size="lg"
-              onClick={handleTransform}
-              disabled={isLoading || !input.trim()}
-              className="min-w-[200px] sm:min-w-[240px] h-12 sm:h-14 text-base sm:text-lg rounded-xl sm:rounded-2xl shadow-xl shadow-cb-blue/30 hover:shadow-cb-blue/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
-              aria-label={t("beginner.transformAria")}
-              title={t("beginner.transformTooltip")}
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>{t("beginner.transforming")}</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  <span>{t("beginner.transformButton")}</span>
-                </>
-              )}
-            </Button>
-          </div>
+        {/* Generate Button */}
+        <div className="flex flex-col items-center gap-2">
+          <Button
+            size="lg"
+            onClick={handleTransform}
+            disabled={isLoading || !input.trim()}
+            className="min-w-[200px] touch-manipulation"
+            aria-label={t("beginner.transformAria")}
+            title={t("beginner.transformTooltip")}
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {t("beginner.transforming")}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {t("beginner.transformButton")}
+              </>
+            )}
+          </Button>
           {elapsedTime !== null && (
             <span
-              className={`text-xs sm:text-sm tabular-nums ${
-                isLoading ? "text-cb-blue animate-pulse" : "text-muted-foreground/60"
+              className={`text-sm tabular-nums ${
+                isLoading ? "text-muted-foreground animate-pulse" : "text-muted-foreground/70"
               }`}
             >
               {formatTime(elapsedTime)}
@@ -475,28 +470,24 @@ export function BeginnerView() {
           )}
         </div>
 
-        {/* Arrow - subtle connector */}
-        <div className="flex justify-center py-1">
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-0.5 h-3 bg-gradient-to-b from-cb-blue/30 to-transparent rounded-full" />
-            <ArrowDown className="w-5 h-5 sm:w-6 sm:h-6 text-cb-blue/40" />
-            <div className="w-0.5 h-3 bg-gradient-to-t from-cb-blue/30 to-transparent rounded-full" />
-          </div>
+        {/* Arrow indicator */}
+        <div className="flex justify-center">
+          <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
         </div>
 
-        {/* Step 3: Output - Card style */}
-        <div ref={outputSectionRef} className="frost-glass rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-lg">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-cb-blue to-cb-blue-light text-white font-bold text-base sm:text-lg shadow-md shadow-cb-blue/30">
-              3
-            </div>
-            <label className="text-base sm:text-lg font-semibold flex-1">
+        {/* Step 3: Output */}
+        <div ref={outputSectionRef} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-cb-blue/10 text-cb-blue text-xs font-semibold">
+              2
+            </span>
+            <label className="text-sm font-medium text-muted-foreground flex-1">
               {t("beginner.step3Label")}
             </label>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="text-muted-foreground hover:text-cb-blue transition-colors p-1.5 -mr-1.5 rounded-full hover:bg-cb-blue/10"
+                  className="text-muted-foreground hover:text-cb-blue transition-colors p-1 rounded-full hover:bg-cb-blue/10"
                   aria-label={t("beginner.step3HelpAria")}
                 >
                   <HelpCircle className="w-4 h-4" />
@@ -510,67 +501,79 @@ export function BeginnerView() {
           <div className="relative">
             {isLoading ? (
               <div
-                className="min-h-[140px] sm:min-h-[180px] p-4 sm:p-5 bg-white/40 dark:bg-slate-900/40 rounded-xl sm:rounded-2xl shadow-inner border border-white/30 flex items-center justify-center"
+                className="frost-glass rounded-2xl p-5 transition-all duration-300 flex items-center justify-center"
+                style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
                 role="region"
                 aria-live="polite"
               >
-                <div className="flex items-center gap-3 text-cb-blue">
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span className="font-medium">{t("beginner.generating")}</span>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse [animation-delay:200ms]" />
+                  <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse [animation-delay:400ms]" />
+                  <span className="ml-2 text-sm">{t("beginner.generating")}</span>
                 </div>
               </div>
             ) : editedOutput ? (
-              <>
+              <div className="relative">
                 <Textarea
                   ref={outputRef}
                   value={editedOutput}
                   onChange={(e) => handleOutputChange(e.target.value)}
-                  style={{ minHeight: "140px" }}
-                  className="resize-y sm:resize text-base sm:text-lg leading-relaxed bg-white/40 dark:bg-slate-900/40 rounded-xl sm:rounded-2xl border-white/50 focus:border-cb-blue/50 focus:ring-2 focus:ring-cb-blue/20 shadow-inner pr-14"
+                  style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
+                  className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300 pr-24"
                   aria-label={t("beginner.outputAria")}
                 />
-                {/* Stats and edit indicator */}
-                <div className="absolute bottom-3 left-4 text-xs text-muted-foreground/70 pointer-events-none flex gap-2">
-                  <span>{editedOutput.length} {t("beginner.chars")}</span>
-                  {isOutputEdited && <span className="text-cb-blue">{t("beginner.edited")}</span>}
+                {/* Stats footer */}
+                <div className="absolute bottom-3 left-4 text-xs text-muted-foreground/70 pointer-events-none flex gap-3">
+                  <span>{editedOutput.split(/\s+/).filter(Boolean).length} {t("output.words")}</span>
+                  <span>{editedOutput.length} {t("output.chars")}</span>
+                  {isOutputEdited && <span className="text-cb-blue">{t("output.edited")}</span>}
                 </div>
                 {/* Action buttons */}
-                <div className="mt-3 flex justify-center gap-2 sm:flex-row">
+                <div className="absolute top-3 right-3 flex gap-2">
                   {isOutputEdited && (
                     <Button
-                      size="sm"
                       variant="ghost"
+                      size="sm"
                       onClick={handleResetOutput}
-                      className="h-10 px-3 text-muted-foreground hover:text-foreground"
+                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
                       title={t("beginner.resetToOriginal")}
                     >
-                      <RotateCcw className="w-4 h-4 mr-1.5" />
-                      <span className="text-sm">{t("beginner.reset")}</span>
+                      <RotateCcw className="w-4 h-4" />
                     </Button>
                   )}
                   <Button
-                    size="lg"
+                    variant="frost"
+                    size="sm"
                     onClick={handleCopy}
-                    className="gap-2 min-w-[160px] h-11 rounded-xl bg-cb-blue hover:bg-cb-blue-dark text-white shadow-lg shadow-cb-blue/25"
-                    aria-label={t("beginner.copyAria")}
                   >
                     {copied ? (
                       <>
-                        <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span>{t("output.copied")}</span>
+                        <Check className="w-4 h-4" />
+                        {t("output.copied")}
                       </>
                     ) : (
                       <>
-                        <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span>{t("beginner.copyButton")}</span>
+                        <Copy className="w-4 h-4" />
+                        {t("output.copy")}
                       </>
                     )}
                   </Button>
+                  <Button
+                    variant="frost"
+                    size="sm"
+                    onClick={handleMobileNewPrompt}
+                    className="gap-1.5"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {t("output.newPrompt")}
+                  </Button>
                 </div>
-              </>
+              </div>
             ) : (
               <div
-                className="min-h-[140px] sm:min-h-[180px] p-4 sm:p-5 bg-white/40 dark:bg-slate-900/40 rounded-xl sm:rounded-2xl text-muted-foreground/50 italic shadow-inner border border-white/30 flex items-center justify-center"
+                className="frost-glass rounded-2xl p-5 transition-all duration-300 flex items-center justify-center text-muted-foreground text-sm"
+                style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
                 role="region"
                 aria-label={t("beginner.outputAria")}
               >
@@ -578,18 +581,6 @@ export function BeginnerView() {
               </div>
             )}
           </div>
-          {editedOutput && !isLoading && (
-            <p className="text-xs sm:text-sm text-cb-blue/70 text-center font-medium">
-              {t("beginner.outputHint")}
-            </p>
-          )}
-        </div>
-
-        {/* Encouragement message - subtle footer */}
-        <div className="text-center px-4 pb-2">
-          <p className="text-xs sm:text-sm text-muted-foreground/60 italic leading-relaxed">
-            {t("beginner.encouragement")}
-          </p>
         </div>
       </div>
     </TooltipProvider>

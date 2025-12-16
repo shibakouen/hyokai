@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, RotateCcw } from "lucide-react";
+import { Copy, Check, RotateCcw, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -11,9 +11,10 @@ interface OutputPanelProps {
   content: string;
   isLoading?: boolean;
   onChange?: (value: string) => void;
+  onNewPrompt?: () => void;
 }
 
-export function OutputPanel({ content, isLoading = false, onChange }: OutputPanelProps) {
+export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt }: OutputPanelProps) {
   const [copied, setCopied] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const [isEdited, setIsEdited] = useState(false);
@@ -145,6 +146,17 @@ export function OutputPanel({ content, isLoading = false, onChange }: OutputPane
                 </>
               )}
             </Button>
+            {onNewPrompt && (
+              <Button
+                variant="frost"
+                size="sm"
+                onClick={onNewPrompt}
+                className="gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                {t('output.newPrompt')}
+              </Button>
+            )}
           </div>
         </div>
       ) : (

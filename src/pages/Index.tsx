@@ -202,8 +202,8 @@ const Index = () => {
     setShowMobileOutput(false);
   };
 
-  // Handle new prompt on mobile - clear output and return to input
-  const handleMobileNewPrompt = () => {
+  // Handle new prompt - clear output and return to input (works for both mobile and desktop)
+  const handleNewPrompt = () => {
     setShowMobileOutput(false);
     if (isCompareMode) {
       resetComparison();
@@ -254,7 +254,7 @@ const Index = () => {
             <Button
               variant="frost"
               size="sm"
-              onClick={handleMobileNewPrompt}
+              onClick={handleNewPrompt}
               className="gap-1.5"
             >
               <Sparkles className="w-4 h-4" />
@@ -295,7 +295,7 @@ const Index = () => {
         )}
       </div>
 
-      <div className={`relative z-10 container mx-auto py-6 sm:py-8 md:py-16 ${isBeginnerMode ? 'px-3 sm:px-4 max-w-xl sm:max-w-2xl' : 'px-4 ' + (isCompareMode ? 'max-w-6xl' : 'max-w-3xl')}`}>
+      <div className={`relative z-10 container mx-auto py-6 sm:py-8 md:py-16 px-4 ${isCompareMode ? 'max-w-6xl' : 'max-w-3xl'}`}>
         <Header />
 
         {isBeginnerMode ? (
@@ -398,7 +398,7 @@ const Index = () => {
                 {isCompareMode ? (
                   <ComparisonPanel results={results} isLoading={isLoading} />
                 ) : (
-                  <OutputPanel content={output} isLoading={singleIsLoading} />
+                  <OutputPanel content={output} isLoading={singleIsLoading} onNewPrompt={handleNewPrompt} />
                 )}
               </div>
             </div>
