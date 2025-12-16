@@ -467,13 +467,53 @@ export function BeginnerView() {
           )}
         </div>
 
-        {/* Suggestions Grid - "Things AI Can Do" */}
+        {/* Generate Button - positioned right after input for easy access */}
+        <div className="flex flex-col items-center gap-2">
+          <Button
+            size="lg"
+            onClick={handleTransform}
+            disabled={isLoading || !input.trim()}
+            className="min-w-[200px] touch-manipulation"
+            aria-label={t("beginner.transformAria")}
+            title={t("beginner.transformTooltip")}
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {t("beginner.transforming")}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {t("beginner.transformButton")}
+              </>
+            )}
+          </Button>
+          {elapsedTime !== null && (
+            <span
+              className={`text-sm tabular-nums ${
+                isLoading ? "text-muted-foreground animate-pulse" : "text-muted-foreground/70"
+              }`}
+            >
+              {formatTime(elapsedTime)}
+            </span>
+          )}
+        </div>
+
+        {/* Visual divider with sparkle accent */}
+        <div className="flex items-center gap-3 py-1">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-cb-blue/20 to-transparent" />
+          <Sparkles className="w-3 h-3 text-cb-blue/30" />
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-cb-blue/20 to-transparent" />
+        </div>
+
+        {/* Suggestions Grid - "Things AI Can Do" - now positioned as inspiration section */}
         <div className="space-y-3">
           <div className="text-center">
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="text-sm font-medium text-muted-foreground">
               {t("suggestions.sectionTitle")}
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground/70 mt-0.5">
               {t("suggestions.sectionSubtitle")}
             </p>
           </div>
@@ -510,39 +550,6 @@ export function BeginnerView() {
               );
             })}
           </div>
-        </div>
-
-        {/* Generate Button */}
-        <div className="flex flex-col items-center gap-2">
-          <Button
-            size="lg"
-            onClick={handleTransform}
-            disabled={isLoading || !input.trim()}
-            className="min-w-[200px] touch-manipulation"
-            aria-label={t("beginner.transformAria")}
-            title={t("beginner.transformTooltip")}
-          >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {t("beginner.transforming")}
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                {t("beginner.transformButton")}
-              </>
-            )}
-          </Button>
-          {elapsedTime !== null && (
-            <span
-              className={`text-sm tabular-nums ${
-                isLoading ? "text-muted-foreground animate-pulse" : "text-muted-foreground/70"
-              }`}
-            >
-              {formatTime(elapsedTime)}
-            </span>
-          )}
         </div>
 
         {/* Arrow indicator */}
