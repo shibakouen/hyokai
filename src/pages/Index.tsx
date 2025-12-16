@@ -19,6 +19,7 @@ import { UserContextEditor } from "@/components/UserContextEditor";
 import { GitRepoEditor } from "@/components/GitRepoEditor";
 import { BeginnerModeToggle } from "@/components/BeginnerModeToggle";
 import { BeginnerView } from "@/components/BeginnerView";
+import { AdvancedPromptLibrary } from "@/components/AdvancedPromptLibrary";
 import { useMode } from "@/contexts/ModeContext";
 import { AVAILABLE_MODELS } from "@/lib/models";
 import { addHistoryEntry, HistoryEntry } from "@/lib/history";
@@ -401,6 +402,9 @@ const Index = () => {
                   <OutputPanel content={output} isLoading={singleIsLoading} onNewPrompt={handleNewPrompt} />
                 )}
               </div>
+
+              {/* Advanced Prompt Library */}
+              <AdvancedPromptLibrary onSelectPrompt={setInput} />
             </div>
 
             {/* Footer */}

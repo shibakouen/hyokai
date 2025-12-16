@@ -293,6 +293,232 @@ export const translations = {
         'suggestions.learnTech.prompt': 'Explain how to [tech task, e.g., back up my phone or set up email] step by step for a beginner',
         'suggestions.learnSkill.title': 'New Skill',
         'suggestions.learnSkill.prompt': 'Create a 30-day beginner plan to learn [skill, e.g., drawing, cooking, or meditation]',
+
+        // Advanced Prompt Library - Section Headers
+        'advPrompts.sectionTitle': 'Prompt Templates',
+        'advPrompts.sectionSubtitle': 'Click any card to use this template',
+        'advPrompts.tryThis': 'Try this template:',
+        'advPrompts.editHint': 'Customize the placeholders to fit your needs!',
+        'advPrompts.page': 'Page',
+        'advPrompts.of': 'of',
+
+        // ==========================================
+        // CODING MODE PROMPTS (25)
+        // ==========================================
+
+        // Code Refactoring & Architecture
+        'advPrompts.coding.refactorLegacy.title': 'Refactor Legacy Code',
+        'advPrompts.coding.refactorLegacy.prompt': 'Analyze this legacy code and refactor it following modern best practices. Preserve all existing functionality while improving readability, maintainability, and performance. Explain each change you make.\n\n[Paste your legacy code here]',
+        'advPrompts.coding.refactorLegacy.explanation': 'Use this when you have old code that works but needs modernization. The AI will suggest improvements while keeping behavior identical.',
+
+        'advPrompts.coding.designPatterns.title': 'Suggest Design Patterns',
+        'advPrompts.coding.designPatterns.prompt': 'Review this code and suggest appropriate design patterns that could improve its structure. For each pattern, explain why it fits, show the refactored code, and describe the tradeoffs.\n\n[Paste your code here]\n\nContext: [Describe what the code does and any constraints]',
+        'advPrompts.coding.designPatterns.explanation': 'Great for improving code architecture. The AI will identify where patterns like Factory, Observer, or Strategy could help.',
+
+        'advPrompts.coding.microservices.title': 'Microservices Breakdown',
+        'advPrompts.coding.microservices.prompt': 'Analyze this monolithic application and propose a microservices architecture. Identify service boundaries, define APIs between services, and outline a migration strategy.\n\n[Describe your application or paste relevant code]\n\nCurrent scale: [users/requests]\nTeam size: [number]',
+        'advPrompts.coding.microservices.explanation': 'Use when planning to split a monolith. The AI will identify natural service boundaries and data ownership.',
+
+        'advPrompts.coding.solidPrinciples.title': 'Apply SOLID Principles',
+        'advPrompts.coding.solidPrinciples.prompt': 'Review this code for SOLID principle violations. For each violation found: identify the principle, explain the problem, show the corrected code, and explain the benefit.\n\n[Paste your code here]',
+        'advPrompts.coding.solidPrinciples.explanation': 'Helps ensure your classes have single responsibilities, are open for extension, and depend on abstractions.',
+
+        'advPrompts.coding.cleanArchitecture.title': 'Clean Architecture Review',
+        'advPrompts.coding.cleanArchitecture.prompt': 'Evaluate this codebase against Clean Architecture principles. Check layer separation, dependency direction, and domain isolation. Provide specific recommendations with code examples.\n\n[Describe your architecture or paste key files]\n\nFramework: [e.g., React, Django, Spring]',
+        'advPrompts.coding.cleanArchitecture.explanation': 'Perfect for ensuring your business logic is independent of frameworks, databases, and UI concerns.',
+
+        // Debugging & Troubleshooting
+        'advPrompts.coding.debugMemory.title': 'Debug Memory Leaks',
+        'advPrompts.coding.debugMemory.prompt': 'Help me identify and fix memory leaks in this code. Analyze object lifecycles, event listeners, closures, and resource cleanup. Provide fixed code with explanations.\n\n[Paste your code here]\n\nSymptoms: [Describe the memory behavior you are seeing]\nEnvironment: [Browser/Node/etc.]',
+        'advPrompts.coding.debugMemory.explanation': 'Use when your app\'s memory usage grows over time. The AI will find unreleased references and missing cleanup.',
+
+        'advPrompts.coding.debugAsync.title': 'Fix Race Conditions',
+        'advPrompts.coding.debugAsync.prompt': 'Analyze this async code for race conditions, deadlocks, and timing issues. Identify all potential problems and provide thread-safe or properly synchronized solutions.\n\n[Paste your async code here]\n\nBug behavior: [Describe intermittent issues]',
+        'advPrompts.coding.debugAsync.explanation': 'Essential for fixing bugs that only happen sometimes. The AI will identify timing-dependent issues.',
+
+        'advPrompts.coding.debugPerformance.title': 'Optimize Performance',
+        'advPrompts.coding.debugPerformance.prompt': 'Profile this code for performance bottlenecks. Identify O(n²) or worse algorithms, unnecessary computations, and optimization opportunities. Provide optimized versions with Big-O analysis.\n\n[Paste your code here]\n\nPerformance issue: [e.g., slow with large datasets]',
+        'advPrompts.coding.debugPerformance.explanation': 'Use when code is too slow. The AI will find algorithmic inefficiencies and suggest faster alternatives.',
+
+        'advPrompts.coding.rootCause.title': 'Root Cause Analysis',
+        'advPrompts.coding.rootCause.prompt': 'Help me find the root cause of this bug using the 5 Whys technique. Based on the symptoms and code, systematically trace back to the underlying issue.\n\nBug: [Describe what is happening]\nExpected: [What should happen]\nCode: [Paste relevant code]\nSteps to reproduce: [List steps]',
+        'advPrompts.coding.rootCause.explanation': 'Structured approach to debugging. The AI will guide you from symptoms to the actual source of the problem.',
+
+        'advPrompts.coding.loggingStrategy.title': 'Design Logging Strategy',
+        'advPrompts.coding.loggingStrategy.prompt': 'Design a comprehensive logging strategy for this application. Define log levels, structured log formats, what to log at each layer, and how to make logs searchable in production.\n\n[Describe your application architecture]\n\nCurrent logging: [What you have now]\nMonitoring tools: [e.g., ELK, Datadog]',
+        'advPrompts.coding.loggingStrategy.explanation': 'Helps create logs that are actually useful for debugging production issues.',
+
+        // API & Integration
+        'advPrompts.coding.apiDesign.title': 'Design REST API',
+        'advPrompts.coding.apiDesign.prompt': 'Design a RESTful API for this feature. Include endpoint definitions, HTTP methods, request/response schemas, error codes, pagination, and authentication. Follow REST best practices.\n\nFeature: [Describe what the API should do]\nResources: [List main entities]\nAuth method: [e.g., JWT, OAuth]',
+        'advPrompts.coding.apiDesign.explanation': 'Use when creating new API endpoints. The AI will ensure consistent, well-structured REST design.',
+
+        'advPrompts.coding.graphqlSchema.title': 'GraphQL Schema Design',
+        'advPrompts.coding.graphqlSchema.prompt': 'Design a GraphQL schema for this domain. Include types, queries, mutations, subscriptions, and resolvers. Consider N+1 problems and design for efficient data loading.\n\nDomain: [Describe your data model]\nMain operations: [List key features]\nPerformance requirements: [e.g., real-time updates]',
+        'advPrompts.coding.graphqlSchema.explanation': 'Perfect for planning your GraphQL API with proper types and efficient data fetching patterns.',
+
+        'advPrompts.coding.webhookSystem.title': 'Implement Webhooks',
+        'advPrompts.coding.webhookSystem.prompt': 'Design a webhook system for this application. Include webhook registration, payload signing, retry logic with exponential backoff, and delivery guarantees.\n\nEvents to support: [List events]\nExpected volume: [webhooks per hour]\nReliability requirement: [e.g., at-least-once delivery]',
+        'advPrompts.coding.webhookSystem.explanation': 'Use when building event notifications for external systems. Covers security and reliability.',
+
+        'advPrompts.coding.rateLimiting.title': 'Add Rate Limiting',
+        'advPrompts.coding.rateLimiting.prompt': 'Implement rate limiting for this API. Design the algorithm (token bucket, sliding window, etc.), storage strategy, response headers, and graceful degradation.\n\nEndpoints: [Which endpoints to limit]\nLimits: [e.g., 100 requests per minute]\nStorage: [Redis, in-memory, etc.]',
+        'advPrompts.coding.rateLimiting.explanation': 'Essential for protecting APIs from abuse. The AI will help choose the right algorithm and implementation.',
+
+        'advPrompts.coding.apiVersioning.title': 'API Versioning Strategy',
+        'advPrompts.coding.apiVersioning.prompt': 'Design an API versioning strategy for this service. Compare approaches (URL, header, query param), plan backward compatibility, and create a deprecation policy.\n\nCurrent API: [Describe existing endpoints]\nBreaking changes needed: [What needs to change]\nClient types: [Mobile apps, third-party, internal]',
+        'advPrompts.coding.apiVersioning.explanation': 'Use when planning how to evolve your API without breaking existing clients.',
+
+        // Testing & Security
+        'advPrompts.coding.testStrategy.title': 'Testing Strategy',
+        'advPrompts.coding.testStrategy.prompt': 'Create a comprehensive testing strategy for this project. Define the testing pyramid, identify what to unit/integration/e2e test, suggest testing tools, and set coverage targets.\n\nProject type: [e.g., React app, API service]\nCritical paths: [Most important features]\nCurrent testing: [What exists now]',
+        'advPrompts.coding.testStrategy.explanation': 'Helps you decide what to test and how. The AI will prioritize based on risk and value.',
+
+        'advPrompts.coding.integrationTests.title': 'Write Integration Tests',
+        'advPrompts.coding.integrationTests.prompt': 'Write integration tests for this code. Cover happy paths, error cases, edge cases, and external service interactions. Use proper test isolation and realistic test data.\n\n[Paste the code to test]\n\nTest framework: [e.g., Jest, pytest]\nExternal dependencies: [databases, APIs, etc.]',
+        'advPrompts.coding.integrationTests.explanation': 'Use when you need tests that verify components work together correctly.',
+
+        'advPrompts.coding.securityAudit.title': 'Security Audit',
+        'advPrompts.coding.securityAudit.prompt': 'Perform a security audit on this code. Check for OWASP Top 10 vulnerabilities, authentication/authorization issues, data exposure, and injection attacks. Provide fixes for each issue.\n\n[Paste your code here]\n\nApplication type: [web app, API, etc.]\nSensitive data handled: [e.g., PII, payments]',
+        'advPrompts.coding.securityAudit.explanation': 'Critical for finding security vulnerabilities before attackers do.',
+
+        'advPrompts.coding.authSystem.title': 'Authentication System',
+        'advPrompts.coding.authSystem.prompt': 'Design an authentication system for this application. Include login flow, token management, session handling, password policies, and account recovery.\n\nAuth requirements: [e.g., social login, MFA]\nUser types: [e.g., admin, regular user]\nPlatforms: [web, mobile, API]',
+        'advPrompts.coding.authSystem.explanation': 'Use when building login systems. The AI will help with secure, user-friendly authentication.',
+
+        'advPrompts.coding.inputValidation.title': 'Input Validation',
+        'advPrompts.coding.inputValidation.prompt': 'Implement comprehensive input validation for this feature. Cover all attack vectors (XSS, SQL injection, etc.), provide clear error messages, and ensure validation happens at the right layers.\n\nInputs to validate: [List all user inputs]\nBackend framework: [e.g., Express, Django]\nFrontend framework: [e.g., React, Vue]',
+        'advPrompts.coding.inputValidation.explanation': 'Essential for security. The AI will ensure all inputs are properly sanitized and validated.',
+
+        // Database & DevOps
+        'advPrompts.coding.dbOptimization.title': 'Database Optimization',
+        'advPrompts.coding.dbOptimization.prompt': 'Optimize these database queries and schema. Analyze execution plans, suggest indexes, identify N+1 queries, and recommend denormalization where appropriate.\n\n[Paste slow queries or schema]\n\nDatabase: [PostgreSQL, MySQL, etc.]\nTable sizes: [approximate row counts]\nPerformance issue: [describe slowness]',
+        'advPrompts.coding.dbOptimization.explanation': 'Use when database queries are slow. The AI will find missing indexes and inefficient patterns.',
+
+        'advPrompts.coding.migrationStrategy.title': 'Database Migration',
+        'advPrompts.coding.migrationStrategy.prompt': 'Plan a zero-downtime database migration. Include schema changes, data migration scripts, rollback procedures, and testing strategy.\n\nCurrent schema: [describe or paste]\nTarget schema: [what needs to change]\nData volume: [approximate size]\nDowntime tolerance: [zero/minimal/scheduled]',
+        'advPrompts.coding.migrationStrategy.explanation': 'Critical for changing database schemas without breaking production.',
+
+        'advPrompts.coding.cicdPipeline.title': 'CI/CD Pipeline',
+        'advPrompts.coding.cicdPipeline.prompt': 'Design a CI/CD pipeline for this project. Include build, test, security scanning, staging deployment, and production release with rollback capabilities.\n\nProject type: [e.g., Node.js app, Python service]\nCI/CD platform: [GitHub Actions, GitLab CI, etc.]\nDeployment target: [AWS, GCP, Kubernetes, etc.]\nCurrent process: [how you deploy now]',
+        'advPrompts.coding.cicdPipeline.explanation': 'Use when setting up automated deployments. The AI will create a robust, secure pipeline.',
+
+        'advPrompts.coding.dockerOptimization.title': 'Docker Optimization',
+        'advPrompts.coding.dockerOptimization.prompt': 'Optimize this Dockerfile for smaller image size, faster builds, and better security. Use multi-stage builds, proper layer caching, and security best practices.\n\n[Paste your Dockerfile]\n\nBase image: [current base]\nBuild time: [current duration]\nImage size: [current size]',
+        'advPrompts.coding.dockerOptimization.explanation': 'Helps reduce container size and build time while improving security.',
+
+        'advPrompts.coding.codeReview.title': 'Code Review Checklist',
+        'advPrompts.coding.codeReview.prompt': 'Review this code as a senior developer would. Check for bugs, security issues, performance problems, maintainability concerns, and adherence to best practices. Be thorough but constructive.\n\n[Paste the code for review]\n\nContext: [What this code does]\nLanguage/Framework: [e.g., TypeScript/React]',
+        'advPrompts.coding.codeReview.explanation': 'Get a comprehensive code review covering all aspects of code quality.',
+
+        // ==========================================
+        // PROMPTING MODE PROMPTS (25)
+        // ==========================================
+
+        // Chain-of-Thought & Reasoning
+        'advPrompts.prompting.chainThought.title': 'Chain of Thought',
+        'advPrompts.prompting.chainThought.prompt': 'Solve this problem step by step. Show your complete reasoning process, explain each step clearly, and verify your answer before concluding.\n\nProblem: [Describe your problem or question]',
+        'advPrompts.prompting.chainThought.explanation': 'Forces the AI to reason through problems systematically, reducing errors on complex tasks.',
+
+        'advPrompts.prompting.treeThought.title': 'Tree of Thought',
+        'advPrompts.prompting.treeThought.prompt': 'Explore multiple solution paths for this problem. For each approach: explain the reasoning, evaluate pros and cons, and identify potential issues. Then recommend the best path.\n\nProblem: [Describe what you are trying to solve]',
+        'advPrompts.prompting.treeThought.explanation': 'Generates multiple approaches and compares them, great for decisions with tradeoffs.',
+
+        'advPrompts.prompting.selfConsistency.title': 'Self-Consistency Check',
+        'advPrompts.prompting.selfConsistency.prompt': 'Answer this question three different ways using different reasoning approaches. Then compare your answers and provide the most reliable conclusion based on consensus.\n\nQuestion: [Your question here]',
+        'advPrompts.prompting.selfConsistency.explanation': 'Multiple reasoning paths help catch errors and increase confidence in the answer.',
+
+        'advPrompts.prompting.metacognition.title': 'Metacognitive Analysis',
+        'advPrompts.prompting.metacognition.prompt': 'Before answering, analyze: What do I know about this topic? What am I uncertain about? What assumptions am I making? Then provide your answer with explicit confidence levels for each part.\n\nTopic: [Your question or topic]',
+        'advPrompts.prompting.metacognition.explanation': 'Makes the AI reflect on its own knowledge, leading to more honest, calibrated responses.',
+
+        'advPrompts.prompting.socratic.title': 'Socratic Method',
+        'advPrompts.prompting.socratic.prompt': 'Help me understand this topic through Socratic questioning. Ask me probing questions that lead me to discover the answers myself. Start with what I know and build from there.\n\nTopic: [What you want to learn]\nMy current understanding: [What you already know]',
+        'advPrompts.prompting.socratic.explanation': 'Learn through guided discovery rather than direct answers. Builds deeper understanding.',
+
+        // Few-Shot & Role-Based
+        'advPrompts.prompting.fewShot.title': 'Few-Shot Learning',
+        'advPrompts.prompting.fewShot.prompt': 'Learn from these examples and apply the same pattern to new inputs:\n\nExample 1:\nInput: [example input]\nOutput: [example output]\n\nExample 2:\nInput: [example input]\nOutput: [example output]\n\nNow apply this pattern to:\nInput: [your actual input]',
+        'advPrompts.prompting.fewShot.explanation': 'Teaching by example. Show the AI the pattern you want, then let it apply it.',
+
+        'advPrompts.prompting.persona.title': 'Expert Persona',
+        'advPrompts.prompting.persona.prompt': 'You are a [specific expert, e.g., "senior software architect with 20 years of experience"]. Drawing on your deep expertise, help me with:\n\n[Your question or task]\n\nProvide insights that only someone with your level of experience would know.',
+        'advPrompts.prompting.persona.explanation': 'Adopting an expert persona can unlock more specialized, nuanced responses.',
+
+        'advPrompts.prompting.expertPanel.title': 'Expert Panel',
+        'advPrompts.prompting.expertPanel.prompt': 'Convene a panel of 3 experts to discuss this topic:\n1. [Expert type 1, e.g., "Technical Expert"]\n2. [Expert type 2, e.g., "Business Strategist"]\n3. [Expert type 3, e.g., "Devil\'s Advocate"]\n\nHave each expert share their perspective, then synthesize their views.\n\nTopic: [Your question]',
+        'advPrompts.prompting.expertPanel.explanation': 'Get multiple perspectives on complex issues by simulating different expert viewpoints.',
+
+        'advPrompts.prompting.devilAdvocate.title': 'Devil\'s Advocate',
+        'advPrompts.prompting.devilAdvocate.prompt': 'I believe: [Your position or idea]\n\nChallenge this belief rigorously. Find the strongest counter-arguments, identify weaknesses in my reasoning, and point out what I might be missing. Be thorough but fair.',
+        'advPrompts.prompting.devilAdvocate.explanation': 'Stress-test your ideas by having them thoroughly challenged.',
+
+        'advPrompts.prompting.teacherStudent.title': 'Teach Me Like a Student',
+        'advPrompts.prompting.teacherStudent.prompt': 'Teach me [topic] as if I am a complete beginner. Start with fundamentals, use simple analogies, build concepts progressively, and check my understanding along the way.\n\nMy background: [Any relevant knowledge]\nLearning goal: [What you want to be able to do]',
+        'advPrompts.prompting.teacherStudent.explanation': 'Get explanations tailored to your level with proper scaffolding.',
+
+        // Structured Output & Decomposition
+        'advPrompts.prompting.jsonOutput.title': 'Structured JSON Output',
+        'advPrompts.prompting.jsonOutput.prompt': 'Provide your response in this exact JSON format:\n\n```json\n{\n  "field1": "description",\n  "field2": ["item1", "item2"],\n  "field3": {\n    "nested": "value"\n  }\n}\n```\n\nTask: [What you need]\n\nRespond ONLY with valid JSON, no additional text.',
+        'advPrompts.prompting.jsonOutput.explanation': 'Get structured data output that can be parsed programmatically.',
+
+        'advPrompts.prompting.taskDecomp.title': 'Task Decomposition',
+        'advPrompts.prompting.taskDecomp.prompt': 'Break down this complex task into manageable sub-tasks. For each sub-task, define: clear objective, required inputs, expected outputs, dependencies, and success criteria.\n\nTask: [Describe your complex task]\nConstraints: [Time, resources, etc.]',
+        'advPrompts.prompting.taskDecomp.explanation': 'Turn overwhelming tasks into actionable steps with clear dependencies.',
+
+        'advPrompts.prompting.constraint.title': 'Constraint-Based',
+        'advPrompts.prompting.constraint.prompt': 'Complete this task while strictly adhering to these constraints:\n\nMUST: [Required elements]\nMUST NOT: [Things to avoid]\nSHOULD: [Preferences]\nFormat: [Output format]\n\nTask: [Your task]',
+        'advPrompts.prompting.constraint.explanation': 'Set clear boundaries to get exactly the output format and style you need.',
+
+        'advPrompts.prompting.template.title': 'Fill-in Template',
+        'advPrompts.prompting.template.prompt': 'Fill in this template based on the information provided:\n\n---\n[Your template with {placeholders}]\n---\n\nInformation:\n[Provide the raw information to extract from]\n\nFill in each placeholder accurately based on the information above.',
+        'advPrompts.prompting.template.explanation': 'Extract information into a consistent format. Great for reports and documentation.',
+
+        'advPrompts.prompting.iterative.title': 'Iterative Refinement',
+        'advPrompts.prompting.iterative.prompt': 'Create a first draft, then improve it through 3 iterations. For each iteration:\n1. Identify weaknesses in the current version\n2. Explain what you will improve\n3. Show the improved version\n\nTask: [What to create]\nQuality criteria: [What makes it good]',
+        'advPrompts.prompting.iterative.explanation': 'Get progressively better output through structured self-improvement.',
+
+        // Creative & Analytical
+        'advPrompts.prompting.creativeWriting.title': 'Creative Writing',
+        'advPrompts.prompting.creativeWriting.prompt': 'Write a [type of content, e.g., "short story", "poem", "script"] with these elements:\n\nTheme: [Main theme]\nTone: [e.g., humorous, dramatic]\nLength: [word count or pages]\nStyle inspiration: [e.g., "like Hemingway"]\n\nAdditional requirements: [Any specific elements to include]',
+        'advPrompts.prompting.creativeWriting.explanation': 'Guide creative output with specific parameters while leaving room for creativity.',
+
+        'advPrompts.prompting.swotAnalysis.title': 'SWOT Analysis',
+        'advPrompts.prompting.swotAnalysis.prompt': 'Conduct a thorough SWOT analysis for:\n\nSubject: [Company, product, or idea]\nContext: [Market, situation]\n\nFor each quadrant, provide at least 5 points with brief explanations. Then synthesize into strategic recommendations.',
+        'advPrompts.prompting.swotAnalysis.explanation': 'Structured strategic analysis covering Strengths, Weaknesses, Opportunities, and Threats.',
+
+        'advPrompts.prompting.firstPrinciples.title': 'First Principles',
+        'advPrompts.prompting.firstPrinciples.prompt': 'Analyze this problem from first principles:\n\n1. What are the fundamental truths we know for certain?\n2. What assumptions are we making that could be challenged?\n3. If we started from scratch, what would we build?\n\nProblem: [Your problem or question]',
+        'advPrompts.prompting.firstPrinciples.explanation': 'Break down problems to their core elements and reason up from there.',
+
+        'advPrompts.prompting.prosCons.title': 'Weighted Pros & Cons',
+        'advPrompts.prompting.prosCons.prompt': 'Analyze this decision with weighted pros and cons:\n\nDecision: [What you are deciding]\nOptions: [List your options]\nCriteria that matter most: [What is important to you]\n\nFor each option, list pros and cons with importance weights (1-10), then calculate a final recommendation.',
+        'advPrompts.prompting.prosCons.explanation': 'Make better decisions by quantifying tradeoffs with weighted criteria.',
+
+        'advPrompts.prompting.scenario.title': 'Scenario Planning',
+        'advPrompts.prompting.scenario.prompt': 'Develop 3 scenarios for how this situation might unfold:\n\n1. Best case scenario\n2. Most likely scenario\n3. Worst case scenario\n\nFor each: describe what happens, probability assessment, and how to prepare or respond.\n\nSituation: [Your situation or decision]',
+        'advPrompts.prompting.scenario.explanation': 'Plan for multiple futures to make more robust decisions.',
+
+        // Professional & Communication
+        'advPrompts.prompting.emailPro.title': 'Professional Email',
+        'advPrompts.prompting.emailPro.prompt': 'Write a professional email with:\n\nPurpose: [What you want to achieve]\nRecipient: [Their role and relationship to you]\nTone: [e.g., formal, friendly-professional]\nKey points: [What must be communicated]\nDesired action: [What you want them to do]\n\nKeep it concise and actionable.',
+        'advPrompts.prompting.emailPro.explanation': 'Craft effective professional emails that get results.',
+
+        'advPrompts.prompting.meetingPrep.title': 'Meeting Preparation',
+        'advPrompts.prompting.meetingPrep.prompt': 'Help me prepare for this meeting:\n\nMeeting type: [e.g., 1:1, presentation, negotiation]\nAttendees: [Who will be there]\nObjective: [What I want to achieve]\nContext: [Background information]\n\nProvide: agenda, key talking points, potential questions to expect, and preparation checklist.',
+        'advPrompts.prompting.meetingPrep.explanation': 'Never walk into a meeting unprepared. Get a complete preparation guide.',
+
+        'advPrompts.prompting.presentation.title': 'Presentation Outline',
+        'advPrompts.prompting.presentation.prompt': 'Create a presentation outline for:\n\nTopic: [Your topic]\nAudience: [Who will watch]\nDuration: [Time limit]\nGoal: [What should audience think/do after]\n\nInclude: hook, key sections with talking points, transitions, memorable conclusion, and slide suggestions.',
+        'advPrompts.prompting.presentation.explanation': 'Structure compelling presentations that achieve your goals.',
+
+        'advPrompts.prompting.negotiation.title': 'Negotiation Script',
+        'advPrompts.prompting.negotiation.prompt': 'Help me prepare for this negotiation:\n\nSituation: [What are you negotiating]\nMy position: [What I want]\nTheir likely position: [What they want]\nMy BATNA: [Best alternative if negotiation fails]\n\nProvide: opening strategy, key arguments, responses to objections, and walk-away point.',
+        'advPrompts.prompting.negotiation.explanation': 'Enter negotiations prepared with strategy and fallback positions.',
+
+        'advPrompts.prompting.feedback.title': 'Constructive Feedback',
+        'advPrompts.prompting.feedback.prompt': 'Help me give constructive feedback:\n\nSituation: [What happened]\nPerson: [Their role, our relationship]\nIssue: [What needs to change]\nGoal: [Desired outcome]\n\nUse the SBI model (Situation-Behavior-Impact) and include specific, actionable suggestions while maintaining the relationship.',
+        'advPrompts.prompting.feedback.explanation': 'Deliver difficult feedback effectively while preserving relationships.',
     },
     jp: {
         // Header
@@ -586,6 +812,168 @@ export const translations = {
         'suggestions.learnTech.prompt': '初心者向けに[技術的な作業、例：スマホのバックアップやメール設定]の方法をステップバイステップで説明して',
         'suggestions.learnSkill.title': '新しいスキル',
         'suggestions.learnSkill.prompt': '[スキル、例：絵を描く、料理、瞑想]を学ぶための30日間の初心者プランを作って',
+
+        // Advanced Prompt Library
+        'advPrompts.sectionTitle': 'プロンプトテンプレート',
+        'advPrompts.sectionSubtitle': 'カードをクリックしてテンプレートを使用',
+        'advPrompts.tryThis': 'このテンプレートを試す：',
+        'advPrompts.editHint': 'プレースホルダーをカスタマイズしてください！',
+        'advPrompts.page': 'ページ',
+        'advPrompts.of': '/',
+
+        // Coding Prompts (25)
+        'advPrompts.coding.refactorLegacy.title': 'レガシーコードのリファクタリング',
+        'advPrompts.coding.refactorLegacy.prompt': 'このレガシーコードを分析し、最新のベストプラクティスに従ってリファクタリングしてください。既存の機能を維持しながら、可読性、保守性、パフォーマンスを改善してください。\n\n[コードをここに貼り付け]',
+        'advPrompts.coding.refactorLegacy.explanation': '動作するが近代化が必要な古いコードに使用。AIが動作を維持しながら改善を提案します。',
+        'advPrompts.coding.designPatterns.title': 'デザインパターン提案',
+        'advPrompts.coding.designPatterns.prompt': 'このコードをレビューし、構造を改善できるデザインパターンを提案してください。各パターンについて、適合理由、リファクタリング後のコード、トレードオフを説明してください。\n\n[コードをここに貼り付け]',
+        'advPrompts.coding.designPatterns.explanation': 'コードアーキテクチャの改善に最適。Factory、Observer、Strategyなどのパターンを特定します。',
+        'advPrompts.coding.microservices.title': 'マイクロサービス分割',
+        'advPrompts.coding.microservices.prompt': 'このモノリシックアプリケーションを分析し、マイクロサービスアーキテクチャを提案してください。サービス境界の特定、API定義、移行戦略を含めてください。\n\n[アプリケーションの説明]',
+        'advPrompts.coding.microservices.explanation': 'モノリスの分割計画に使用。自然なサービス境界とデータ所有権を特定します。',
+        'advPrompts.coding.solidPrinciples.title': 'SOLID原則の適用',
+        'advPrompts.coding.solidPrinciples.prompt': 'このコードのSOLID原則違反をレビューしてください。各違反について：原則の特定、問題の説明、修正コード、メリットを説明してください。\n\n[コードをここに貼り付け]',
+        'advPrompts.coding.solidPrinciples.explanation': 'クラスが単一責任を持ち、拡張に開かれ、抽象に依存することを確認します。',
+        'advPrompts.coding.cleanArchitecture.title': 'クリーンアーキテクチャレビュー',
+        'advPrompts.coding.cleanArchitecture.prompt': 'このコードベースをクリーンアーキテクチャ原則に基づいて評価してください。レイヤー分離、依存関係の方向、ドメイン分離をチェックしてください。\n\n[アーキテクチャの説明]',
+        'advPrompts.coding.cleanArchitecture.explanation': 'ビジネスロジックがフレームワーク、DB、UIから独立していることを確認します。',
+        'advPrompts.coding.debugMemory.title': 'メモリリークのデバッグ',
+        'advPrompts.coding.debugMemory.prompt': 'このコードのメモリリークを特定し修正してください。オブジェクトのライフサイクル、イベントリスナー、クロージャ、リソースのクリーンアップを分析してください。\n\n[コードをここに貼り付け]',
+        'advPrompts.coding.debugMemory.explanation': 'メモリ使用量が時間とともに増加する場合に使用。未解放の参照を見つけます。',
+        'advPrompts.coding.debugAsync.title': '競合状態の修正',
+        'advPrompts.coding.debugAsync.prompt': 'この非同期コードの競合状態、デッドロック、タイミング問題を分析してください。すべての潜在的な問題を特定し、スレッドセーフな解決策を提供してください。\n\n[非同期コードをここに貼り付け]',
+        'advPrompts.coding.debugAsync.explanation': '時々しか発生しないバグの修正に必須。タイミング依存の問題を特定します。',
+        'advPrompts.coding.debugPerformance.title': 'パフォーマンス最適化',
+        'advPrompts.coding.debugPerformance.prompt': 'このコードのパフォーマンスボトルネックをプロファイルしてください。O(n²)以上のアルゴリズム、不要な計算、最適化の機会を特定してください。\n\n[コードをここに貼り付け]',
+        'advPrompts.coding.debugPerformance.explanation': 'コードが遅い場合に使用。アルゴリズムの非効率性を見つけます。',
+        'advPrompts.coding.rootCause.title': '根本原因分析',
+        'advPrompts.coding.rootCause.prompt': '5つのなぜ技法を使用してこのバグの根本原因を見つけてください。症状とコードに基づいて、根本的な問題まで体系的に追跡してください。\n\nバグ：[何が起きているか]\n期待：[何が起きるべきか]',
+        'advPrompts.coding.rootCause.explanation': 'デバッグへの構造化アプローチ。症状から実際の問題源へ導きます。',
+        'advPrompts.coding.loggingStrategy.title': 'ロギング戦略設計',
+        'advPrompts.coding.loggingStrategy.prompt': 'このアプリケーションの包括的なロギング戦略を設計してください。ログレベル、構造化ログ形式、各レイヤーでログすべき内容を定義してください。\n\n[アプリケーションアーキテクチャの説明]',
+        'advPrompts.coding.loggingStrategy.explanation': '本番環境の問題デバッグに実際に役立つログを作成します。',
+        'advPrompts.coding.apiDesign.title': 'REST API設計',
+        'advPrompts.coding.apiDesign.prompt': 'この機能のRESTful APIを設計してください。エンドポイント定義、HTTPメソッド、リクエスト/レスポンススキーマ、エラーコード、ページネーション、認証を含めてください。\n\n機能：[APIが何をすべきか]',
+        'advPrompts.coding.apiDesign.explanation': '新しいAPIエンドポイント作成時に使用。一貫した構造化されたREST設計を確保します。',
+        'advPrompts.coding.graphqlSchema.title': 'GraphQLスキーマ設計',
+        'advPrompts.coding.graphqlSchema.prompt': 'このドメインのGraphQLスキーマを設計してください。型、クエリ、ミューテーション、サブスクリプション、リゾルバを含めてください。N+1問題を考慮してください。\n\nドメイン：[データモデルの説明]',
+        'advPrompts.coding.graphqlSchema.explanation': '適切な型と効率的なデータフェッチパターンでGraphQL APIを計画するのに最適。',
+        'advPrompts.coding.webhookSystem.title': 'Webhook実装',
+        'advPrompts.coding.webhookSystem.prompt': 'このアプリケーションのWebhookシステムを設計してください。Webhook登録、ペイロード署名、指数バックオフによるリトライロジック、配信保証を含めてください。\n\nサポートするイベント：[イベント一覧]',
+        'advPrompts.coding.webhookSystem.explanation': '外部システムへのイベント通知構築時に使用。セキュリティと信頼性をカバー。',
+        'advPrompts.coding.rateLimiting.title': 'レート制限追加',
+        'advPrompts.coding.rateLimiting.prompt': 'このAPIのレート制限を実装してください。アルゴリズム（トークンバケット、スライディングウィンドウなど）、ストレージ戦略、レスポンスヘッダー、グレースフルデグラデーションを設計してください。\n\nエンドポイント：[制限するエンドポイント]',
+        'advPrompts.coding.rateLimiting.explanation': 'APIを悪用から保護するために必須。適切なアルゴリズムと実装を選択します。',
+        'advPrompts.coding.apiVersioning.title': 'APIバージョニング戦略',
+        'advPrompts.coding.apiVersioning.prompt': 'このサービスのAPIバージョニング戦略を設計してください。アプローチの比較（URL、ヘッダー、クエリパラメータ）、後方互換性計画、廃止ポリシーを作成してください。\n\n現在のAPI：[既存エンドポイントの説明]',
+        'advPrompts.coding.apiVersioning.explanation': '既存クライアントを壊さずにAPIを進化させる計画に使用。',
+        'advPrompts.coding.testStrategy.title': 'テスト戦略',
+        'advPrompts.coding.testStrategy.prompt': 'このプロジェクトの包括的なテスト戦略を作成してください。テストピラミッドの定義、ユニット/結合/E2Eテストの対象特定、テストツール提案、カバレッジ目標設定を含めてください。\n\nプロジェクトタイプ：[例：Reactアプリ、APIサービス]',
+        'advPrompts.coding.testStrategy.explanation': '何をどのようにテストするか決めるのに役立ちます。リスクと価値に基づいて優先順位付け。',
+        'advPrompts.coding.integrationTests.title': '結合テスト作成',
+        'advPrompts.coding.integrationTests.prompt': 'このコードの結合テストを書いてください。正常系、エラーケース、エッジケース、外部サービス連携をカバーしてください。\n\n[テスト対象コードを貼り付け]\n\nテストフレームワーク：[例：Jest、pytest]',
+        'advPrompts.coding.integrationTests.explanation': 'コンポーネントが正しく連携することを検証するテストが必要な場合に使用。',
+        'advPrompts.coding.securityAudit.title': 'セキュリティ監査',
+        'advPrompts.coding.securityAudit.prompt': 'このコードのセキュリティ監査を実行してください。OWASP Top 10脆弱性、認証/認可問題、データ漏洩、インジェクション攻撃をチェックしてください。\n\n[コードをここに貼り付け]',
+        'advPrompts.coding.securityAudit.explanation': '攻撃者より先にセキュリティ脆弱性を見つけるために重要。',
+        'advPrompts.coding.authSystem.title': '認証システム',
+        'advPrompts.coding.authSystem.prompt': 'このアプリケーションの認証システムを設計してください。ログインフロー、トークン管理、セッション処理、パスワードポリシー、アカウント回復を含めてください。\n\n認証要件：[例：ソーシャルログイン、MFA]',
+        'advPrompts.coding.authSystem.explanation': 'ログインシステム構築時に使用。安全でユーザーフレンドリーな認証を支援。',
+        'advPrompts.coding.inputValidation.title': '入力バリデーション',
+        'advPrompts.coding.inputValidation.prompt': 'この機能の包括的な入力バリデーションを実装してください。すべての攻撃ベクトル（XSS、SQLインジェクションなど）をカバーし、明確なエラーメッセージを提供してください。\n\n検証する入力：[すべてのユーザー入力を一覧]',
+        'advPrompts.coding.inputValidation.explanation': 'セキュリティに必須。すべての入力が適切にサニタイズ・検証されることを確認。',
+        'advPrompts.coding.dbOptimization.title': 'データベース最適化',
+        'advPrompts.coding.dbOptimization.prompt': 'これらのデータベースクエリとスキーマを最適化してください。実行計画の分析、インデックス提案、N+1クエリの特定、適切な非正規化の推奨を含めてください。\n\n[遅いクエリまたはスキーマを貼り付け]',
+        'advPrompts.coding.dbOptimization.explanation': 'データベースクエリが遅い場合に使用。不足インデックスと非効率パターンを見つけます。',
+        'advPrompts.coding.migrationStrategy.title': 'データベース移行',
+        'advPrompts.coding.migrationStrategy.prompt': 'ゼロダウンタイムのデータベース移行を計画してください。スキーマ変更、データ移行スクリプト、ロールバック手順、テスト戦略を含めてください。\n\n現在のスキーマ：[説明または貼り付け]\n対象スキーマ：[何を変更するか]',
+        'advPrompts.coding.migrationStrategy.explanation': '本番環境を壊さずにデータベーススキーマを変更するために重要。',
+        'advPrompts.coding.cicdPipeline.title': 'CI/CDパイプライン',
+        'advPrompts.coding.cicdPipeline.prompt': 'このプロジェクトのCI/CDパイプラインを設計してください。ビルド、テスト、セキュリティスキャン、ステージング展開、ロールバック機能付き本番リリースを含めてください。\n\nプロジェクトタイプ：[例：Node.jsアプリ]',
+        'advPrompts.coding.cicdPipeline.explanation': '自動デプロイ設定時に使用。堅牢で安全なパイプラインを作成。',
+        'advPrompts.coding.dockerOptimization.title': 'Docker最適化',
+        'advPrompts.coding.dockerOptimization.prompt': 'このDockerfileを最適化してください。イメージサイズの縮小、ビルド高速化、セキュリティ向上のため、マルチステージビルド、適切なレイヤーキャッシュ、ベストプラクティスを使用してください。\n\n[Dockerfileを貼り付け]',
+        'advPrompts.coding.dockerOptimization.explanation': 'コンテナサイズとビルド時間を削減しながらセキュリティを向上。',
+        'advPrompts.coding.codeReview.title': 'コードレビュー',
+        'advPrompts.coding.codeReview.prompt': 'シニア開発者としてこのコードをレビューしてください。バグ、セキュリティ問題、パフォーマンス問題、保守性の懸念、ベストプラクティスへの準拠をチェックしてください。\n\n[レビュー対象コードを貼り付け]',
+        'advPrompts.coding.codeReview.explanation': 'コード品質のすべての側面をカバーする包括的なコードレビューを取得。',
+
+        // Prompting Prompts (25)
+        'advPrompts.prompting.chainThought.title': '段階的思考',
+        'advPrompts.prompting.chainThought.prompt': 'この問題を段階的に解決してください。完全な推論プロセスを示し、各ステップを明確に説明し、結論前に答えを検証してください。\n\n問題：[問題または質問を説明]',
+        'advPrompts.prompting.chainThought.explanation': 'AIに体系的に問題を推論させ、複雑なタスクでのエラーを減らします。',
+        'advPrompts.prompting.treeThought.title': '思考の木',
+        'advPrompts.prompting.treeThought.prompt': 'この問題の複数の解決パスを探索してください。各アプローチについて：推論を説明し、長所と短所を評価し、潜在的な問題を特定してください。最適なパスを推奨してください。\n\n問題：[解決しようとしていること]',
+        'advPrompts.prompting.treeThought.explanation': '複数のアプローチを生成して比較。トレードオフのある決定に最適。',
+        'advPrompts.prompting.selfConsistency.title': '自己一貫性チェック',
+        'advPrompts.prompting.selfConsistency.prompt': 'この質問に3つの異なる推論アプローチで回答してください。その後、回答を比較し、合意に基づいて最も信頼性の高い結論を提供してください。\n\n質問：[あなたの質問]',
+        'advPrompts.prompting.selfConsistency.explanation': '複数の推論パスがエラーを捕捉し、回答の信頼性を高めます。',
+        'advPrompts.prompting.metacognition.title': 'メタ認知分析',
+        'advPrompts.prompting.metacognition.prompt': '回答する前に分析してください：このトピックについて何を知っていますか？何が不確かですか？どんな仮定をしていますか？各部分の明示的な信頼度レベルとともに回答を提供してください。\n\nトピック：[質問またはトピック]',
+        'advPrompts.prompting.metacognition.explanation': 'AIに自身の知識を振り返らせ、より正直で調整された応答につながります。',
+        'advPrompts.prompting.socratic.title': 'ソクラテス式問答',
+        'advPrompts.prompting.socratic.prompt': 'ソクラテス式問答でこのトピックの理解を助けてください。私が自分で答えを発見できるような探求的な質問をしてください。私が知っていることから始めてください。\n\nトピック：[学びたいこと]\n現在の理解：[すでに知っていること]',
+        'advPrompts.prompting.socratic.explanation': '直接的な回答ではなくガイド付き発見で学習。より深い理解を構築。',
+        'advPrompts.prompting.fewShot.title': 'Few-Shot学習',
+        'advPrompts.prompting.fewShot.prompt': 'これらの例から学び、新しい入力に同じパターンを適用してください：\n\n例1：\n入力：[例の入力]\n出力：[例の出力]\n\n例2：\n入力：[例の入力]\n出力：[例の出力]\n\nこのパターンを適用：\n入力：[実際の入力]',
+        'advPrompts.prompting.fewShot.explanation': '例による教示。望むパターンをAIに示し、適用させます。',
+        'advPrompts.prompting.persona.title': '専門家ペルソナ',
+        'advPrompts.prompting.persona.prompt': 'あなたは[特定の専門家、例：「20年の経験を持つシニアソフトウェアアーキテクト」]です。深い専門知識を活かして、以下を手伝ってください：\n\n[質問またはタスク]\n\nあなたのレベルの経験者だけが知る洞察を提供してください。',
+        'advPrompts.prompting.persona.explanation': '専門家のペルソナを採用することで、より専門的でニュアンスのある応答を引き出せます。',
+        'advPrompts.prompting.expertPanel.title': '専門家パネル',
+        'advPrompts.prompting.expertPanel.prompt': '3人の専門家パネルを招集してこのトピックを議論してください：\n1. [専門家タイプ1、例：「技術専門家」]\n2. [専門家タイプ2、例：「ビジネス戦略家」]\n3. [専門家タイプ3、例：「反対意見者」]\n\n各専門家の視点を共有し、見解を統合してください。\n\nトピック：[質問]',
+        'advPrompts.prompting.expertPanel.explanation': '異なる専門家の視点をシミュレートして複雑な問題に複数の視点を得る。',
+        'advPrompts.prompting.devilAdvocate.title': '反対意見',
+        'advPrompts.prompting.devilAdvocate.prompt': '私の信念：[あなたの立場やアイデア]\n\nこの信念を厳格に挑戦してください。最も強力な反論を見つけ、推論の弱点を特定し、見落としている可能性のあることを指摘してください。',
+        'advPrompts.prompting.devilAdvocate.explanation': 'アイデアを徹底的に挑戦させてストレステストします。',
+        'advPrompts.prompting.teacherStudent.title': '初心者向け説明',
+        'advPrompts.prompting.teacherStudent.prompt': '[トピック]を完全な初心者として教えてください。基礎から始め、簡単な例えを使い、概念を段階的に構築し、理解度を確認してください。\n\n私のバックグラウンド：[関連する知識]\n学習目標：[できるようになりたいこと]',
+        'advPrompts.prompting.teacherStudent.explanation': 'レベルに合わせた適切な足場かけで説明を得る。',
+        'advPrompts.prompting.jsonOutput.title': '構造化JSON出力',
+        'advPrompts.prompting.jsonOutput.prompt': 'この正確なJSON形式で応答を提供してください：\n\n```json\n{\n  "field1": "説明",\n  "field2": ["項目1", "項目2"]\n}\n```\n\nタスク：[必要なもの]\n\n有効なJSONのみで応答し、追加テキストは不要です。',
+        'advPrompts.prompting.jsonOutput.explanation': 'プログラムで解析可能な構造化データ出力を取得。',
+        'advPrompts.prompting.taskDecomp.title': 'タスク分解',
+        'advPrompts.prompting.taskDecomp.prompt': 'この複雑なタスクを管理可能なサブタスクに分解してください。各サブタスクについて：明確な目標、必要な入力、期待される出力、依存関係、成功基準を定義してください。\n\nタスク：[複雑なタスクの説明]',
+        'advPrompts.prompting.taskDecomp.explanation': '圧倒的なタスクを明確な依存関係を持つ実行可能なステップに変換。',
+        'advPrompts.prompting.constraint.title': '制約ベース',
+        'advPrompts.prompting.constraint.prompt': 'これらの制約に厳密に従ってこのタスクを完了してください：\n\n必須：[必要な要素]\n禁止：[避けるべきこと]\n推奨：[好み]\n形式：[出力形式]\n\nタスク：[タスク]',
+        'advPrompts.prompting.constraint.explanation': '必要な出力形式とスタイルを正確に得るために明確な境界を設定。',
+        'advPrompts.prompting.template.title': 'テンプレート入力',
+        'advPrompts.prompting.template.prompt': '提供された情報に基づいてこのテンプレートに記入してください：\n\n---\n[{プレースホルダー}付きテンプレート]\n---\n\n情報：\n[抽出する生情報を提供]\n\n上記の情報に基づいて各プレースホルダーを正確に記入してください。',
+        'advPrompts.prompting.template.explanation': '一貫した形式で情報を抽出。レポートや文書化に最適。',
+        'advPrompts.prompting.iterative.title': '反復改善',
+        'advPrompts.prompting.iterative.prompt': '最初の草案を作成し、3回の反復で改善してください。各反復で：\n1. 現在のバージョンの弱点を特定\n2. 改善点を説明\n3. 改善版を表示\n\nタスク：[作成するもの]\n品質基準：[良いものの定義]',
+        'advPrompts.prompting.iterative.explanation': '構造化された自己改善を通じて段階的に良い出力を得る。',
+        'advPrompts.prompting.creativeWriting.title': 'クリエイティブライティング',
+        'advPrompts.prompting.creativeWriting.prompt': 'これらの要素を持つ[コンテンツタイプ、例：「短編小説」「詩」「脚本」]を書いてください：\n\nテーマ：[メインテーマ]\nトーン：[例：ユーモラス、ドラマチック]\n長さ：[文字数またはページ数]\nスタイルのインスピレーション：[例：「ヘミングウェイのような」]',
+        'advPrompts.prompting.creativeWriting.explanation': '創造性の余地を残しながら特定のパラメータでクリエイティブ出力をガイド。',
+        'advPrompts.prompting.swotAnalysis.title': 'SWOT分析',
+        'advPrompts.prompting.swotAnalysis.prompt': '以下について徹底的なSWOT分析を実施してください：\n\n対象：[会社、製品、またはアイデア]\nコンテキスト：[市場、状況]\n\n各象限について少なくとも5つのポイントと簡単な説明を提供してください。戦略的推奨に統合してください。',
+        'advPrompts.prompting.swotAnalysis.explanation': '強み、弱み、機会、脅威をカバーする構造化された戦略分析。',
+        'advPrompts.prompting.firstPrinciples.title': '第一原理思考',
+        'advPrompts.prompting.firstPrinciples.prompt': 'この問題を第一原理から分析してください：\n\n1. 確実に知っている基本的な真実は何ですか？\n2. 挑戦できる仮定は何ですか？\n3. ゼロから始めたら何を構築しますか？\n\n問題：[問題または質問]',
+        'advPrompts.prompting.firstPrinciples.explanation': '問題を核心要素に分解し、そこから推論を構築。',
+        'advPrompts.prompting.prosCons.title': '重み付け長所短所',
+        'advPrompts.prompting.prosCons.prompt': 'この決定を重み付けされた長所と短所で分析してください：\n\n決定：[何を決定するか]\nオプション：[オプション一覧]\n最も重要な基準：[重要なこと]\n\n各オプションについて重要度（1-10）付きで長所と短所をリストし、最終推奨を計算してください。',
+        'advPrompts.prompting.prosCons.explanation': '重み付け基準でトレードオフを定量化してより良い決定を下す。',
+        'advPrompts.prompting.scenario.title': 'シナリオプランニング',
+        'advPrompts.prompting.scenario.prompt': 'この状況がどのように展開するかの3つのシナリオを作成してください：\n\n1. 最良のシナリオ\n2. 最も可能性の高いシナリオ\n3. 最悪のシナリオ\n\n各シナリオについて：何が起きるか、確率評価、準備または対応方法を説明。\n\n状況：[状況または決定]',
+        'advPrompts.prompting.scenario.explanation': '複数の未来に備えてより堅牢な決定を下す。',
+        'advPrompts.prompting.emailPro.title': 'プロフェッショナルメール',
+        'advPrompts.prompting.emailPro.prompt': '以下を含むプロフェッショナルなメールを書いてください：\n\n目的：[達成したいこと]\n受信者：[役割とあなたとの関係]\nトーン：[例：フォーマル、フレンドリープロフェッショナル]\n重要ポイント：[伝えるべきこと]\n求めるアクション：[してほしいこと]',
+        'advPrompts.prompting.emailPro.explanation': '結果を出す効果的なプロフェッショナルメールを作成。',
+        'advPrompts.prompting.meetingPrep.title': '会議準備',
+        'advPrompts.prompting.meetingPrep.prompt': 'この会議の準備を手伝ってください：\n\n会議タイプ：[例：1対1、プレゼン、交渉]\n参加者：[誰が参加するか]\n目標：[達成したいこと]\nコンテキスト：[背景情報]\n\n提供：アジェンダ、重要な話題、予想される質問、準備チェックリスト。',
+        'advPrompts.prompting.meetingPrep.explanation': '準備不足で会議に臨まない。完全な準備ガイドを取得。',
+        'advPrompts.prompting.presentation.title': 'プレゼンアウトライン',
+        'advPrompts.prompting.presentation.prompt': '以下のプレゼンテーションアウトラインを作成してください：\n\nトピック：[トピック]\n聴衆：[誰が見るか]\n時間：[制限時間]\n目標：[聴衆に考えてほしいこと/してほしいこと]\n\n含める：フック、トーキングポイント付きの主要セクション、トランジション、印象的な結論、スライド提案。',
+        'advPrompts.prompting.presentation.explanation': '目標を達成する説得力のあるプレゼンテーションを構造化。',
+        'advPrompts.prompting.negotiation.title': '交渉スクリプト',
+        'advPrompts.prompting.negotiation.prompt': 'この交渉の準備を手伝ってください：\n\n状況：[何を交渉するか]\n私の立場：[望むこと]\n相手の立場：[相手が望むこと]\n私のBATNA：[交渉失敗時の最良の代替案]\n\n提供：オープニング戦略、主要な論点、反論への対応、撤退ポイント。',
+        'advPrompts.prompting.negotiation.explanation': '戦略とフォールバックポジションを準備して交渉に臨む。',
+        'advPrompts.prompting.feedback.title': '建設的フィードバック',
+        'advPrompts.prompting.feedback.prompt': '建設的なフィードバックを与える手伝いをしてください：\n\n状況：[何が起きたか]\n相手：[役割、関係]\n問題：[変える必要があること]\n目標：[望む結果]\n\nSBIモデル（状況-行動-影響）を使用し、関係を維持しながら具体的で実行可能な提案を含めてください。',
+        'advPrompts.prompting.feedback.explanation': '関係を維持しながら難しいフィードバックを効果的に伝える。',
     }
 } as const;
 
