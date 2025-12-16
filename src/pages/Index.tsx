@@ -391,7 +391,10 @@ const Index = () => {
                 <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
               </div>
 
-              {/* Output Section - conditional based on mode */}
+              {/* Advanced Prompt Library - Prompt Templates */}
+              <AdvancedPromptLibrary onSelectPrompt={setInput} />
+
+              {/* Output Section - Technical Output */}
               <div ref={outputSectionRef} className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">
                   {t('output.label')}
@@ -402,9 +405,6 @@ const Index = () => {
                   <OutputPanel content={output} isLoading={singleIsLoading} onNewPrompt={handleNewPrompt} />
                 )}
               </div>
-
-              {/* Advanced Prompt Library */}
-              <AdvancedPromptLibrary onSelectPrompt={setInput} />
             </div>
 
             {/* Footer */}
