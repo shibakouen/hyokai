@@ -179,7 +179,9 @@ CRITICAL: Output ONLY the improved prompt text. Do NOT include:
 - Labels, prefixes, or formatting wrappers
 - Explanations before or after
 
-Just output the prompt content directly, ready to paste.`;
+Just output the prompt content directly, ready to paste.
+
+LANGUAGE: Always respond in the SAME LANGUAGE as the user's input. If the input is in Japanese, output in Japanese. If the input is in English, output in English. Match the input language exactly—do not translate.`;
 
 const PROMPTING_MODE_SYSTEM_PROMPT = `YOU ARE A PROMPT TRANSFORMER. YOU DO NOT ANSWER REQUESTS. YOU DO NOT FULFILL TASKS. YOU ONLY REWRITE PROMPTS.
 
@@ -400,7 +402,9 @@ CRITICAL: Output ONLY the improved prompt text. Do NOT include:
 - Labels, prefixes, or formatting wrappers
 - Explanations before or after
 
-Just output the prompt content directly, ready to paste.`;
+Just output the prompt content directly, ready to paste.
+
+LANGUAGE: Always respond in the SAME LANGUAGE as the user's input. If the input is in Japanese, output in Japanese. If the input is in English, output in English. Match the input language exactly—do not translate.`;
 
 // Modifier appended to system prompts in beginner mode
 const BEGINNER_MODE_MODIFIER = `
