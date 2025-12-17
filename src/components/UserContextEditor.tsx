@@ -227,7 +227,7 @@ export function UserContextEditor() {
             {hasContext ? t('context.active') : t('context.title')}
           </TooltipContent>
         </Tooltip>
-        <SheetContent className="frost-glass w-[400px] sm:w-[600px] overflow-y-auto">
+        <SheetContent className="frost-glass w-full max-w-[400px] sm:max-w-[600px] overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -421,7 +421,6 @@ export function UserContextEditor() {
               <Button
                 size="sm"
                 onClick={handleSave}
-                className="bg-cb-blue hover:bg-cb-blue-dark text-white"
                 disabled={warning === 'error'}
               >
                 {t('context.apply')}

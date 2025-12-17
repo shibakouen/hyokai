@@ -1,12 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Copy, Check, RotateCcw, Sparkles } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ChatGPTButton } from "@/components/ChatGPTButton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const STORAGE_KEY = "hyokai-output-height";
 const DEFAULT_HEIGHT = 200;
 
 interface OutputPanelProps {
@@ -29,7 +28,12 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
     setIsEdited(false);
   }, [content]);
 
-  // Auto-resize textarea to fit content
+  // Clean up stale localStorage height (was causing textarea to not auto-expand)
+  useEffect(() => {
+    localStorage.removeItem("hyokai-output-height");
+  }, []);
+
+  // Auto-resize textarea to fit content (always expand to show full text)
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea || !editedContent) return;
@@ -40,33 +44,6 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
     const newHeight = Math.max(textarea.scrollHeight, DEFAULT_HEIGHT);
     textarea.style.height = `${newHeight}px`;
   }, [editedContent]);
-
-  // Load saved height from localStorage
-  useEffect(() => {
-    const savedHeight = localStorage.getItem(STORAGE_KEY);
-    if (savedHeight && textareaRef.current) {
-      textareaRef.current.style.height = `${savedHeight}px`;
-    }
-  }, []);
-
-  // Save height to localStorage on resize
-  const handleResize = useCallback(() => {
-    if (textareaRef.current) {
-      const height = textareaRef.current.offsetHeight;
-      localStorage.setItem(STORAGE_KEY, height.toString());
-    }
-  }, []);
-
-  // Use ResizeObserver to detect resize
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(textarea);
-
-    return () => resizeObserver.disconnect();
-  }, [handleResize]);
 
   const handleCopy = async () => {
     if (!editedContent) return;
@@ -104,64 +81,75 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
           </div>
         </div>
       ) : editedContent ? (
-        <div className="relative">
+        <div className="space-y-3">
+          {/* Action toolbar - outside textarea for cleaner layout */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
+            {/* Left side: Reset button (only when edited) */}
+            <div className="flex items-center gap-2">
+              {isEdited && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReset}
+                  className="h-9 px-3 text-muted-foreground hover:text-foreground gap-1.5"
+                  title={t('output.resetToOriginal')}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('output.resetToOriginal')}</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Right side: Action buttons */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopy}
+                className="h-9 gap-1.5"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 text-green-500" />
+                    {t('output.copied')}
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    {t('output.copy')}
+                  </>
+                )}
+              </Button>
+              <TooltipProvider>
+                <ChatGPTButton prompt={editedContent} />
+              </TooltipProvider>
+              {onNewPrompt && (
+                <Button
+                  variant="frost"
+                  size="sm"
+                  onClick={onNewPrompt}
+                  className="h-9 gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {t('output.newPrompt')}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Textarea - clean, no overlapping buttons */}
           <Textarea
             ref={textareaRef}
             value={editedContent}
             onChange={(e) => handleChange(e.target.value)}
             style={{ minHeight: `${DEFAULT_HEIGHT}px` }}
-            className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300 pr-24"
+            className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
           />
-          {/* Stats footer */}
-          <div className="absolute bottom-3 left-4 text-xs text-muted-foreground/70 pointer-events-none flex gap-3">
+          {/* Stats footer - outside textarea */}
+          <div className="flex justify-end text-xs text-muted-foreground/70 gap-3 mt-2">
             <span>{wordCount} {t('output.words')}</span>
             <span>{charCount} {t('output.chars')}</span>
             {isEdited && <span className="text-cb-blue">{t('output.edited')}</span>}
-          </div>
-          {/* Action buttons */}
-          <div className="absolute top-3 right-3 flex gap-2">
-            {isEdited && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleReset}
-                className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                title={t('output.resetToOriginal')}
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
-            )}
-            <Button
-              variant="frost"
-              size="sm"
-              onClick={handleCopy}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  {t('output.copied')}
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  {t('output.copy')}
-                </>
-              )}
-            </Button>
-            <TooltipProvider>
-              <ChatGPTButton prompt={editedContent} />
-            </TooltipProvider>
-            {onNewPrompt && (
-              <Button
-                variant="frost"
-                size="sm"
-                onClick={onNewPrompt}
-                className="gap-1.5"
-              >
-                <Sparkles className="w-4 h-4" />
-                {t('output.newPrompt')}
-              </Button>
-            )}
           </div>
         </div>
       ) : (

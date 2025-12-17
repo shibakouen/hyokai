@@ -121,7 +121,7 @@ function HistoryEntryCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 px-2 text-xs"
+                    className="h-9 px-2 text-xs"
                     onClick={() => onRestore(entry)}
                   >
                     {t('history.restore')}
@@ -130,7 +130,7 @@ function HistoryEntryCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-9 w-9 p-0"
                   onClick={handleCopyInput}
                 >
                   {copiedInput ? (
@@ -201,7 +201,7 @@ function HistoryEntryCard({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0"
+                      className="h-9 w-9 p-0"
                       onClick={() => handleCopyOutput(entry.result.type === 'single' ? entry.result.output : '')}
                     >
                       {copiedOutput ? (

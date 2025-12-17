@@ -129,7 +129,7 @@ function ResultCard({ result }: { result: ComparisonResult }) {
           {editedContent && !result.isLoading && (
             <>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleCopy}
                 className="h-8 px-2"

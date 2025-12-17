@@ -102,7 +102,7 @@ function SimpleHistoryEntryCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0"
+                className="h-9 w-9 p-0"
                 onClick={handleCopyInput}
               >
                 {copiedInput ? (
@@ -134,7 +134,7 @@ function SimpleHistoryEntryCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0"
+                className="h-9 w-9 p-0"
                 onClick={handleCopyOutput}
               >
                 {copiedOutput ? (

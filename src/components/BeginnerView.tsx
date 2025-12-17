@@ -29,7 +29,6 @@ import { BEGINNER_PROMPTS, BeginnerPrompt } from "@/lib/beginnerPrompts";
 // Grok 4 Fast model ID - fast and reliable for beginners
 const BEGINNER_MODEL_ID = "x-ai/grok-4-fast";
 const INPUT_STORAGE_KEY = "hyokai-beginner-input-height";
-const OUTPUT_STORAGE_KEY = "hyokai-beginner-output-height";
 // Unified height constant - matches advanced mode
 const UNIFIED_HEIGHT = 200;
 
@@ -45,7 +44,8 @@ export function BeginnerView() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const outputRef = useRef<HTMLTextAreaElement>(null);
+  const unifiedOutputRef = useRef<HTMLTextAreaElement>(null);
+  const inputViewOutputRef = useRef<HTMLTextAreaElement>(null);
   const outputSectionRef = useRef<HTMLDivElement>(null);
   // Ref to always have latest input value (fixes mobile stale closure issues)
   const inputValueRef = useRef(input);
@@ -54,6 +54,9 @@ export function BeginnerView() {
 
   // Mobile full-screen output view state
   const [showMobileOutput, setShowMobileOutput] = useState(false);
+
+  // Desktop unified panel view state - shows output in place of input after generation
+  const [isViewingOutput, setIsViewingOutput] = useState(false);
 
   // Selected prompt suggestion (for inspiration grid)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
@@ -69,19 +72,15 @@ export function BeginnerView() {
     setIsOutputEdited(false);
   }, [output]);
 
-  // Handle post-transformation UX: auto-scroll, auto-copy, and mobile output view
+  // Handle post-transformation UX: switch to output view and auto-copy
   useEffect(() => {
     const wasLoading = prevLoadingRef.current;
     prevLoadingRef.current = isLoading;
 
     // Check if loading just finished and we have output
     if (wasLoading && !isLoading && output) {
-      // Auto-scroll to output section (desktop)
-      if (outputSectionRef.current) {
-        outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      // Trigger mobile full-screen output view
+      // Switch to output view (desktop unified panel) and mobile full-screen
+      setIsViewingOutput(true);
       setShowMobileOutput(true);
 
       // Auto-copy to clipboard
@@ -96,57 +95,50 @@ export function BeginnerView() {
     }
   }, [isLoading, output, t]);
 
-  // Auto-resize output textarea to fit content
+  // Clean up stale localStorage output height (was causing textarea to not auto-expand)
   useEffect(() => {
-    const textarea = outputRef.current;
-    if (!textarea || !editedOutput) return;
+    localStorage.removeItem("hyokai-beginner-output-height");
+  }, []);
 
-    // Reset height to auto to get accurate scrollHeight
-    textarea.style.height = 'auto';
-    // Set height to scrollHeight (content height), minimum matches advanced mode
-    const newHeight = Math.max(textarea.scrollHeight, UNIFIED_HEIGHT);
-    textarea.style.height = `${newHeight}px`;
+  // Auto-resize output textareas to fit content (always expand to show full text)
+  useEffect(() => {
+    if (!editedOutput) return;
+
+    // Resize both output textareas (only one is visible at a time)
+    [unifiedOutputRef.current, inputViewOutputRef.current].forEach(textarea => {
+      if (!textarea) return;
+      // Reset height to auto to get accurate scrollHeight
+      textarea.style.height = 'auto';
+      // Set height to scrollHeight (content height), minimum matches advanced mode
+      const newHeight = Math.max(textarea.scrollHeight, UNIFIED_HEIGHT);
+      textarea.style.height = `${newHeight}px`;
+    });
   }, [editedOutput]);
 
-  // Load saved heights from localStorage
+  // Load saved input height from localStorage (output auto-sizes to content)
   useEffect(() => {
     const savedInputHeight = localStorage.getItem(INPUT_STORAGE_KEY);
-    const savedOutputHeight = localStorage.getItem(OUTPUT_STORAGE_KEY);
     if (savedInputHeight && inputRef.current) {
       inputRef.current.style.height = `${savedInputHeight}px`;
     }
-    if (savedOutputHeight && outputRef.current) {
-      outputRef.current.style.height = `${savedOutputHeight}px`;
-    }
   }, []);
 
-  // Save heights to localStorage on resize
+  // Save input height to localStorage on resize
   const handleInputResize = useCallback(() => {
     if (inputRef.current) {
       localStorage.setItem(INPUT_STORAGE_KEY, inputRef.current.offsetHeight.toString());
     }
   }, []);
 
-  const handleOutputResize = useCallback(() => {
-    if (outputRef.current) {
-      localStorage.setItem(OUTPUT_STORAGE_KEY, outputRef.current.offsetHeight.toString());
-    }
-  }, []);
-
-  // Use ResizeObserver to detect resize
+  // Use ResizeObserver to detect input resize only
   useEffect(() => {
     const inputEl = inputRef.current;
-    const outputEl = outputRef.current;
-    const resizeObserver = new ResizeObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.target === inputEl) handleInputResize();
-        if (entry.target === outputEl) handleOutputResize();
-      });
-    });
-    if (inputEl) resizeObserver.observe(inputEl);
-    if (outputEl) resizeObserver.observe(outputEl);
+    if (!inputEl) return;
+
+    const resizeObserver = new ResizeObserver(handleInputResize);
+    resizeObserver.observe(inputEl);
     return () => resizeObserver.disconnect();
-  }, [handleInputResize, handleOutputResize]);
+  }, [handleInputResize]);
 
   const handleOutputChange = (value: string) => {
     setEditedOutput(value);
@@ -284,12 +276,19 @@ export function BeginnerView() {
     setShowMobileOutput(false);
   };
 
-  // Handle new prompt on mobile - clear output and return to input
-  const handleMobileNewPrompt = () => {
+  // Handle new prompt - clear output and return to input (works for both mobile and desktop)
+  const handleNewPrompt = () => {
     setShowMobileOutput(false);
+    setIsViewingOutput(false);
     setOutput('');
     setEditedOutput('');
     setInput('');
+  };
+
+  // Handle switching back to input view without clearing content
+  const handleBackToInput = () => {
+    setShowMobileOutput(false);
+    setIsViewingOutput(false);
   };
 
   // Handle restoring from history
@@ -299,6 +298,8 @@ export function BeginnerView() {
     setEditedOutput(entry.output);
     setIsOutputEdited(false);
     setElapsedTime(entry.elapsedTime);
+    // Show output view since we have output
+    setIsViewingOutput(true);
   };
 
   // Handle selecting a prompt suggestion
@@ -332,7 +333,7 @@ export function BeginnerView() {
             <Button
               variant="frost"
               size="sm"
-              onClick={handleMobileNewPrompt}
+              onClick={handleNewPrompt}
               className="gap-1.5"
             >
               <Sparkles className="w-4 h-4" />
@@ -346,51 +347,64 @@ export function BeginnerView() {
               <h2 className="text-lg font-semibold text-center flex-shrink-0">
                 {t('output.mobileResultTitle')}
               </h2>
+
+              {/* Action toolbar - above textarea, ChatGPT primary */}
+              <div className="flex items-center justify-between gap-2 flex-shrink-0">
+                {/* Left: Reset (if edited) */}
+                <div>
+                  {isOutputEdited && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleResetOutput}
+                      className="h-9 px-3 text-muted-foreground hover:text-foreground gap-1.5"
+                      title={t("beginner.resetToOriginal")}
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span className="text-sm">{t("beginner.reset")}</span>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Right: Copy (secondary) + ChatGPT (primary) */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopy}
+                    className="h-9 gap-1.5"
+                    aria-label={t("beginner.copyAria")}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4 text-green-500" />
+                        <span>{t("output.copied")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>{t("output.copy")}</span>
+                      </>
+                    )}
+                  </Button>
+                  <ChatGPTButton prompt={editedOutput} primary />
+                </div>
+              </div>
+
+              {/* Textarea - clean, no overlapping buttons */}
               <Textarea
                 value={editedOutput}
                 onChange={(e) => handleOutputChange(e.target.value)}
                 className="flex-1 min-h-[200px] text-base leading-relaxed bg-white/40 dark:bg-slate-900/40 rounded-xl border-white/50 focus:border-cb-blue/50 focus:ring-2 focus:ring-cb-blue/20 shadow-inner resize-none"
                 aria-label={t("beginner.outputAria")}
               />
+
               {/* Stats */}
               <div className="text-xs text-muted-foreground/70 flex gap-2 justify-center flex-shrink-0">
                 <span>{editedOutput.length} {t("beginner.chars")}</span>
                 {isOutputEdited && <span className="text-cb-blue">{t("beginner.edited")}</span>}
               </div>
-              {/* Action buttons */}
-              <div className="flex justify-center gap-2 flex-shrink-0">
-                {isOutputEdited && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleResetOutput}
-                    className="h-10 px-3 text-muted-foreground hover:text-foreground"
-                    title={t("beginner.resetToOriginal")}
-                  >
-                    <RotateCcw className="w-4 h-4 mr-1.5" />
-                    <span className="text-sm">{t("beginner.reset")}</span>
-                  </Button>
-                )}
-                <Button
-                  size="lg"
-                  onClick={handleCopy}
-                  className="gap-2 min-w-[160px] h-11 rounded-xl bg-cb-blue hover:bg-cb-blue-dark text-white shadow-lg shadow-cb-blue/25"
-                  aria-label={t("beginner.copyAria")}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-5 h-5" />
-                      <span>{t("output.copied")}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-5 h-5" />
-                      <span>{t("beginner.copyButton")}</span>
-                    </>
-                  )}
-                </Button>
-                <ChatGPTButton prompt={editedOutput} variant="compact" />
-              </div>
+
               {/* Hint */}
               <p className="text-xs text-cb-blue/70 text-center font-medium flex-shrink-0">
                 {t("beginner.outputHint")}
@@ -413,6 +427,115 @@ export function BeginnerView() {
           <SimpleHistoryPanel onRestore={handleRestoreFromHistory} />
         </div>
 
+        {/* Desktop Unified Panel - hidden on mobile (uses full-screen overlay instead) */}
+        {isViewingOutput && editedOutput ? (
+          /* OUTPUT VIEW - Show output with prominent back/new prompt buttons (desktop only) */
+          <div className="hidden md:block space-y-4">
+            {/* Action buttons - prominent placement */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToInput}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {t('output.backToInput')}
+              </Button>
+              <Button
+                size="lg"
+                onClick={handleNewPrompt}
+                className="gap-2 min-w-[180px] bg-cb-blue hover:bg-cb-blue-dark text-white shadow-lg shadow-cb-blue/25 rounded-2xl"
+              >
+                <Sparkles className="w-5 h-5" />
+                {t('output.newPrompt')}
+              </Button>
+            </div>
+
+            {/* Original input preview (collapsed) */}
+            <div className="frost-glass rounded-xl p-3 border border-white/30">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                <span className="font-medium">{t("beginner.step1Label")}:</span>
+              </div>
+              <p className="text-sm text-foreground/80 line-clamp-2">
+                {input || t("beginner.inputPlaceholder")}
+              </p>
+            </div>
+
+            {/* Output Section - Full view */}
+            <div ref={outputSectionRef} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-cb-blue/10 text-cb-blue text-xs font-semibold">
+                  2
+                </span>
+                <label className="text-sm font-medium text-muted-foreground flex-1">
+                  {t("beginner.step3Label")}
+                </label>
+              </div>
+
+              {/* Action toolbar - outside textarea, ChatGPT as primary */}
+              <div className="flex items-center justify-between gap-3">
+                {/* Left side: Reset button */}
+                <div className="flex items-center gap-2">
+                  {isOutputEdited && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResetOutput}
+                      className="h-9 px-3 text-muted-foreground hover:text-foreground gap-1.5"
+                      title={t("beginner.resetToOriginal")}
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>{t("beginner.reset")}</span>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Right side: Copy (secondary) + ChatGPT (primary) */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopy}
+                    className="h-9 gap-1.5"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4 text-green-500" />
+                        {t("output.copied")}
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        {t("output.copy")}
+                      </>
+                    )}
+                  </Button>
+                  <ChatGPTButton prompt={editedOutput} primary />
+                </div>
+              </div>
+
+              {/* Textarea - clean, no overlapping buttons */}
+              <Textarea
+                ref={unifiedOutputRef}
+                value={editedOutput}
+                onChange={(e) => handleOutputChange(e.target.value)}
+                style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
+                className="resize-y frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
+                aria-label={t("beginner.outputAria")}
+              />
+              {/* Stats footer - outside textarea */}
+              <div className="flex justify-end text-xs text-muted-foreground/70 gap-3 mt-2">
+                <span>{editedOutput.split(/\s+/).filter(Boolean).length} {t("output.words")}</span>
+                <span>{editedOutput.length} {t("output.chars")}</span>
+                {isOutputEdited && <span className="text-cb-blue">{t("output.edited")}</span>}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* INPUT VIEW - Show input, generate button, suggestions, and output (mobile always, desktop when not viewing output) */}
+        <div className={isViewingOutput && editedOutput ? 'md:hidden' : ''}>
         {/* Step 1: Input */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -469,8 +592,8 @@ export function BeginnerView() {
           )}
         </div>
 
-        {/* Generate Button - positioned right after input for easy access */}
-        <div className="flex flex-col items-center gap-2">
+        {/* Generate Button - positioned with breathing room below input */}
+        <div className="flex flex-col items-center gap-2 mt-5">
           <Button
             size="lg"
             onClick={handleTransform}
@@ -503,7 +626,7 @@ export function BeginnerView() {
         </div>
 
         {/* Visual divider with sparkle accent */}
-        <div className="flex items-center gap-3 py-1">
+        <div className="flex items-center gap-3 py-5">
           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-cb-blue/20 to-transparent" />
           <Sparkles className="w-3 h-3 text-cb-blue/30" />
           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-cb-blue/20 to-transparent" />
@@ -598,61 +721,72 @@ export function BeginnerView() {
                 </div>
               </div>
             ) : editedOutput ? (
-              <div className="relative">
+              <div className="space-y-3">
+                {/* Action toolbar - outside textarea, ChatGPT primary */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
+                  {/* Left side: Reset button */}
+                  <div className="flex items-center gap-2">
+                    {isOutputEdited && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResetOutput}
+                        className="h-9 px-3 text-muted-foreground hover:text-foreground gap-1.5"
+                        title={t("beginner.resetToOriginal")}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span className="hidden sm:inline">{t("beginner.reset")}</span>
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Right side: Copy (secondary) + ChatGPT (primary) + New Prompt */}
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopy}
+                      className="h-9 gap-1.5"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-4 h-4 text-green-500" />
+                          {t("output.copied")}
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          {t("output.copy")}
+                        </>
+                      )}
+                    </Button>
+                    <ChatGPTButton prompt={editedOutput} primary />
+                    <Button
+                      variant="frost"
+                      size="sm"
+                      onClick={handleNewPrompt}
+                      className="h-9 gap-1.5"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {t("output.newPrompt")}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Textarea - clean, no overlapping buttons */}
                 <Textarea
-                  ref={outputRef}
+                  ref={inputViewOutputRef}
                   value={editedOutput}
                   onChange={(e) => handleOutputChange(e.target.value)}
                   style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
-                  className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300 pr-24"
+                  className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
                   aria-label={t("beginner.outputAria")}
                 />
-                {/* Stats footer */}
-                <div className="absolute bottom-3 left-4 text-xs text-muted-foreground/70 pointer-events-none flex gap-3">
+                {/* Stats footer - outside textarea */}
+                <div className="flex justify-end text-xs text-muted-foreground/70 gap-3 mt-2">
                   <span>{editedOutput.split(/\s+/).filter(Boolean).length} {t("output.words")}</span>
                   <span>{editedOutput.length} {t("output.chars")}</span>
                   {isOutputEdited && <span className="text-cb-blue">{t("output.edited")}</span>}
-                </div>
-                {/* Action buttons */}
-                <div className="absolute top-3 right-3 flex gap-2">
-                  {isOutputEdited && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleResetOutput}
-                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                      title={t("beginner.resetToOriginal")}
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="frost"
-                    size="sm"
-                    onClick={handleCopy}
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        {t("output.copied")}
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        {t("output.copy")}
-                      </>
-                    )}
-                  </Button>
-                  <ChatGPTButton prompt={editedOutput} />
-                  <Button
-                    variant="frost"
-                    size="sm"
-                    onClick={handleMobileNewPrompt}
-                    className="gap-1.5"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {t("output.newPrompt")}
-                  </Button>
                 </div>
               </div>
             ) : (
@@ -667,6 +801,8 @@ export function BeginnerView() {
             )}
           </div>
         </div>
+        </div>
+        {/* End of INPUT VIEW wrapper */}
       </div>
     </TooltipProvider>
   );

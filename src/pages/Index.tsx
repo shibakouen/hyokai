@@ -70,6 +70,9 @@ const Index = () => {
   // Mobile full-screen output view state (triggered on successful generation)
   const [showMobileOutput, setShowMobileOutput] = useState(false);
 
+  // Desktop unified panel view state - shows output in place of input after generation
+  const [isViewingOutput, setIsViewingOutput] = useState(false);
+
   // Save to history and handle post-transformation UX when single model transformation completes
   useEffect(() => {
     const wasLoading = prevSingleLoadingRef.current;
@@ -90,12 +93,8 @@ const Index = () => {
         },
       });
 
-      // Auto-scroll to output section (desktop) or show mobile output view
-      if (outputSectionRef.current) {
-        outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      // Trigger mobile full-screen output view
+      // Switch to output view (desktop unified panel) and mobile full-screen
+      setIsViewingOutput(true);
       setShowMobileOutput(true);
 
       // Auto-copy to clipboard (single model mode only)
@@ -135,12 +134,8 @@ const Index = () => {
           },
         });
 
-        // Auto-scroll to output section (no auto-copy for compare mode)
-        if (outputSectionRef.current) {
-          outputSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        // Trigger mobile full-screen output view
+        // Switch to output view (desktop unified panel) and mobile full-screen
+        setIsViewingOutput(true);
         setShowMobileOutput(true);
       }
     }
@@ -162,6 +157,8 @@ const Index = () => {
         setIsCompareMode(false);
         resetComparison();
       }
+      // Show output view since we have output
+      setIsViewingOutput(true);
     } else {
       // Restore compare mode results
       setCompareInput(entry.input);
@@ -189,6 +186,8 @@ const Index = () => {
       if (!isCompareMode) {
         setIsCompareMode(true);
       }
+      // Show output view since we have results
+      setIsViewingOutput(true);
     }
   };
 
@@ -206,6 +205,7 @@ const Index = () => {
   // Handle new prompt - clear output and return to input (works for both mobile and desktop)
   const handleNewPrompt = () => {
     setShowMobileOutput(false);
+    setIsViewingOutput(false);
     if (isCompareMode) {
       resetComparison();
     } else {
@@ -213,6 +213,12 @@ const Index = () => {
     }
     setSingleInput('');
     setCompareInput('');
+  };
+
+  // Handle switching back to input view without clearing content
+  const handleBackToInput = () => {
+    setShowMobileOutput(false);
+    setIsViewingOutput(false);
   };
 
   // Handle mode toggle - reset comparison results when switching
@@ -296,7 +302,7 @@ const Index = () => {
         )}
       </div>
 
-      <div className={`relative z-10 container mx-auto py-6 sm:py-8 md:py-16 px-4 ${isCompareMode ? 'max-w-6xl' : 'max-w-3xl'}`}>
+      <div className={`relative z-10 container mx-auto py-6 sm:py-8 md:py-16 px-4 ${isCompareMode ? 'max-w-6xl' : 'max-w-4xl'}`}>
         <Header />
 
         {isBeginnerMode ? (
@@ -323,7 +329,7 @@ const Index = () => {
             />
 
             <div className="space-y-8 mt-8">
-              {/* Model Selection - conditional based on mode */}
+              {/* Model Selection - always visible */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">
                   {t('model.label')}
@@ -341,70 +347,137 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Input Section */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t('input.label')}
-                </label>
-                <PromptInput
-                  value={input}
-                  onChange={setInput}
-                  disabled={isLoading}
-                  placeholder={t('input.placeholder')}
-                />
-              </div>
+              {/* Unified Panel - Shows INPUT or OUTPUT in same location (no scrolling) */}
+              {!isViewingOutput ? (
+                /* INPUT VIEW - Show input, generate button, and templates */
+                <>
+                  {/* Input Section */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      {t('input.label')}
+                    </label>
+                    <PromptInput
+                      value={input}
+                      onChange={setInput}
+                      disabled={isLoading}
+                      placeholder={t('input.placeholder')}
+                    />
+                  </div>
 
-              {/* Generate Button */}
-              <div className="flex flex-col items-center gap-2">
-                <Button
-                  size="lg"
-                  onClick={isCompareMode ? compare : transform}
-                  disabled={isLoading || !input.trim() || (isCompareMode && selectedIndices.length < 2)}
-                  className="min-w-[200px] touch-manipulation"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      {t('button.generating')}
-                    </>
-                  ) : isCompareMode ? (
-                    <>
-                      <GitCompare className="w-4 h-4" />
-                      {t('compare.generate')}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      {t('button.generate')}
-                    </>
-                  )}
-                </Button>
-                {!isCompareMode && elapsedTime !== null && (
-                  <span className={`text-sm tabular-nums ${isLoading ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground/70'}`}>
-                    {formatTime(elapsedTime)}
-                  </span>
-                )}
-              </div>
+                  {/* Generate Button */}
+                  <div className="flex flex-col items-center gap-2">
+                    <Button
+                      size="lg"
+                      onClick={isCompareMode ? compare : transform}
+                      disabled={isLoading || !input.trim() || (isCompareMode && selectedIndices.length < 2)}
+                      className="min-w-[200px] touch-manipulation"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          {t('button.generating')}
+                        </>
+                      ) : isCompareMode ? (
+                        <>
+                          <GitCompare className="w-4 h-4" />
+                          {t('compare.generate')}
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          {t('button.generate')}
+                        </>
+                      )}
+                    </Button>
+                    {!isCompareMode && elapsedTime !== null && (
+                      <span className={`text-sm tabular-nums ${isLoading ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground/70'}`}>
+                        {formatTime(elapsedTime)}
+                      </span>
+                    )}
+                  </div>
 
-              {/* Arrow indicator */}
-              <div className="flex justify-center">
-                <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
-              </div>
+                  {/* Arrow indicator */}
+                  <div className="flex justify-center">
+                    <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
+                  </div>
 
-              {/* Advanced Prompt Library - Prompt Templates */}
-              <AdvancedPromptLibrary onSelectPrompt={setInput} />
+                  {/* Advanced Prompt Library - Prompt Templates */}
+                  <AdvancedPromptLibrary onSelectPrompt={setInput} />
 
-              {/* Output Section - Technical Output */}
-              <div ref={outputSectionRef} className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t('output.label')}
-                </label>
-                {isCompareMode ? (
-                  <ComparisonPanel results={results} isLoading={isLoading} />
-                ) : (
-                  <OutputPanel content={output} isLoading={singleIsLoading} onNewPrompt={handleNewPrompt} />
-                )}
-              </div>
+                  {/* Output Section - Show placeholder or previous output */}
+                  <div ref={outputSectionRef} className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      {t('output.label')}
+                    </label>
+                    {isCompareMode ? (
+                      <ComparisonPanel results={results} isLoading={isLoading} />
+                    ) : (
+                      <OutputPanel content={output} isLoading={singleIsLoading} onNewPrompt={handleNewPrompt} />
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* OUTPUT VIEW - Show output with prominent back/new prompt buttons */
+                <>
+                  {/* Output Header with actions */}
+                  <div className="space-y-4">
+                    {/* Action buttons - prominent placement */}
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleBackToInput}
+                        className="gap-1.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        {t('output.backToInput')}
+                      </Button>
+                      <Button
+                        size="lg"
+                        onClick={handleNewPrompt}
+                        className="gap-2 min-w-[180px] bg-cb-blue hover:bg-cb-blue-dark text-white shadow-lg shadow-cb-blue/25 rounded-2xl"
+                      >
+                        <Sparkles className="w-5 h-5" />
+                        {t('output.newPrompt')}
+                      </Button>
+                    </div>
+
+                    {/* Original input preview (collapsed) */}
+                    <div className="frost-glass rounded-xl p-3 border border-white/30">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                        <span className="font-medium">{t('input.label')}:</span>
+                      </div>
+                      <p className="text-sm text-foreground/80 line-clamp-2">
+                        {input || t('input.placeholder')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Output Section - Full view (no onNewPrompt since blue button above) */}
+                  <div ref={outputSectionRef} className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      {t('output.label')}
+                    </label>
+                    {isCompareMode ? (
+                      <ComparisonPanel results={results} isLoading={isLoading} />
+                    ) : (
+                      <OutputPanel content={output} isLoading={singleIsLoading} />
+                    )}
+                  </div>
+
+                  {/* Floating New Prompt button (fixed on mobile for easy access) */}
+                  <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                    <Button
+                      size="lg"
+                      onClick={handleNewPrompt}
+                      className="gap-2 px-8 bg-cb-blue hover:bg-cb-blue-dark text-white shadow-xl shadow-cb-blue/30 rounded-2xl"
+                    >
+                      <Sparkles className="w-5 h-5" />
+                      {t('output.newPrompt')}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}

@@ -161,7 +161,7 @@ export function GitRepoEditor() {
           </TooltipContent>
         </Tooltip>
 
-        <SheetContent className="frost-glass w-[400px] sm:w-[540px] overflow-y-auto">
+        <SheetContent className="frost-glass w-full max-w-[400px] sm:max-w-[540px] overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <GitBranch className="h-5 w-5" />
