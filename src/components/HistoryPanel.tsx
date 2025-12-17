@@ -244,18 +244,36 @@ function HistoryEntryCard({
 export function HistoryPanel({ onRestore }: HistoryPanelProps) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const { t } = useLanguage();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
 
-  // Load history when panel opens
+  // Load history when panel opens or auth state changes
   const loadHistoryData = useCallback(async () => {
-    setIsLoading(true);
+    // Don't load while auth is still initializing
+    if (isAuthLoading) return;
+
+    setIsLoadingHistory(true);
     try {
       if (isAuthenticated && user) {
         // Load from database for authenticated users
         const dbHistory = await loadHistoryFromDb(user.id);
-        setHistory(dbHistory);
+
+        // Also check localStorage for any entries that might have been saved
+        // during auth issues (race conditions, token refresh, etc.)
+        const localHistory = loadHistory();
+
+        if (dbHistory.length === 0 && localHistory.length > 0) {
+          // Database is empty but localStorage has data - use localStorage
+          // This handles cases where auth was briefly unavailable
+          setHistory(localHistory);
+        } else if (dbHistory.length > 0) {
+          // Use database history (authoritative source)
+          setHistory(dbHistory);
+        } else {
+          // Both empty
+          setHistory([]);
+        }
       } else {
         // Load from localStorage for guests
         setHistory(loadHistory());
@@ -265,15 +283,22 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
       // Fallback to localStorage
       setHistory(loadHistory());
     } finally {
-      setIsLoading(false);
+      setIsLoadingHistory(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, isAuthLoading]);
 
   useEffect(() => {
     if (isOpen) {
       loadHistoryData();
     }
   }, [isOpen, loadHistoryData]);
+
+  // Reload when auth state finishes loading (handles race conditions)
+  useEffect(() => {
+    if (isOpen && !isAuthLoading) {
+      loadHistoryData();
+    }
+  }, [isOpen, isAuthLoading, loadHistoryData]);
 
   const handleDelete = async (id: string) => {
     if (isAuthenticated && user) {
