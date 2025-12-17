@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 touch-manipulation",
   {
     variants: {
       variant: {
-        default: "bg-cb-blue text-white hover:bg-cb-blue-dark shadow-lg shadow-cb-blue/25 hover:shadow-cb-blue/40 transition-all duration-200",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        ice: "bg-gradient-to-r from-cb-blue to-cb-blue-light text-white shadow-lg hover:shadow-cb-blue/50 hover:scale-105 transition-all duration-300",
-        frost: "bg-white/30 backdrop-blur-sm border border-white/40 text-slate-800 hover:bg-white/50 hover:border-white/60 transition-all duration-200",
+        default: "bg-cb-blue text-white hover:bg-cb-blue-dark active:bg-cb-blue-dark active:scale-[0.98] shadow-lg shadow-cb-blue/25 hover:shadow-cb-blue/40 transition-all duration-200",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80 active:scale-[0.98]",
+        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 active:scale-[0.98]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70 active:scale-[0.98]",
+        ghost: "hover:bg-accent hover:text-accent-foreground active:bg-accent/80 active:scale-[0.98]",
+        link: "text-primary underline-offset-4 hover:underline active:opacity-70",
+        ice: "bg-gradient-to-r from-cb-blue to-cb-blue-light text-white shadow-lg hover:shadow-cb-blue/50 active:shadow-cb-blue/30 sm:hover:scale-105 active:scale-[0.98] transition-all duration-300",
+        frost: "bg-white/30 backdrop-blur-sm border border-white/40 text-slate-800 hover:bg-white/50 hover:border-white/60 active:bg-white/60 active:scale-[0.98] transition-all duration-200",
       },
       size: {
         default: "h-10 px-4 py-2",

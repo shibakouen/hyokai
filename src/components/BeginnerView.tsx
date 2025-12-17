@@ -712,8 +712,8 @@ export function BeginnerView() {
           </div>
         </div>
 
-        {/* Step 2: Output - Only show when loading or has output (no empty placeholder) */}
-        {(isLoading || editedOutput) && (
+        {/* Step 2: Output - Only show when there's actual output (loading state hidden on mobile since button shows "Working...") */}
+        {editedOutput && (
         <div ref={outputSectionRef} className="space-y-2 mt-6">
           <div className="flex items-center gap-2">
             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-cb-blue/10 text-cb-blue text-xs font-semibold">
@@ -736,91 +736,73 @@ export function BeginnerView() {
               </TooltipContent>
             </Tooltip>
           </div>
-          <div className="relative">
-            {isLoading ? (
-              <div
-                className="frost-glass rounded-2xl p-5 transition-all duration-300 flex items-center justify-center"
-                style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
-                role="region"
-                aria-live="polite"
-              >
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse" />
-                  <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse [animation-delay:200ms]" />
-                  <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse [animation-delay:400ms]" />
-                  <span className="ml-2 text-sm">{t("beginner.generating")}</span>
-                </div>
+          <div className="space-y-3">
+            {/* Action toolbar - outside textarea, ChatGPT primary */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
+              {/* Left side: Reset button */}
+              <div className="flex items-center gap-2">
+                {isOutputEdited && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetOutput}
+                    className="h-9 px-3 text-muted-foreground hover:text-foreground gap-1.5"
+                    title={t("beginner.resetToOriginal")}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t("beginner.reset")}</span>
+                  </Button>
+                )}
               </div>
-            ) : editedOutput ? (
-              <div className="space-y-3">
-                {/* Action toolbar - outside textarea, ChatGPT primary */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
-                  {/* Left side: Reset button */}
-                  <div className="flex items-center gap-2">
-                    {isOutputEdited && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleResetOutput}
-                        className="h-9 px-3 text-muted-foreground hover:text-foreground gap-1.5"
-                        title={t("beginner.resetToOriginal")}
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        <span className="hidden sm:inline">{t("beginner.reset")}</span>
-                      </Button>
-                    )}
-                  </div>
 
-                  {/* Right side: Copy (secondary) + ChatGPT (primary) + New Prompt */}
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopy}
-                      className="h-9 gap-1.5"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-4 h-4 text-green-500" />
-                          {t("output.copied")}
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" />
-                          {t("output.copy")}
-                        </>
-                      )}
-                    </Button>
-                    <ChatGPTButton prompt={editedOutput} primary />
-                    <Button
-                      variant="frost"
-                      size="sm"
-                      onClick={handleNewPrompt}
-                      className="h-9 gap-1.5"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      {t("output.newPrompt")}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Textarea - clean, no overlapping buttons */}
-                <Textarea
-                  ref={inputViewOutputRef}
-                  value={editedOutput}
-                  onChange={(e) => handleOutputChange(e.target.value)}
-                  style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
-                  className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
-                  aria-label={t("beginner.outputAria")}
-                />
-                {/* Stats footer - outside textarea */}
-                <div className="flex justify-end text-xs text-muted-foreground/70 gap-3 mt-2">
-                  <span>{editedOutput.split(/\s+/).filter(Boolean).length} {t("output.words")}</span>
-                  <span>{editedOutput.length} {t("output.chars")}</span>
-                  {isOutputEdited && <span className="text-cb-blue">{t("output.edited")}</span>}
-                </div>
+              {/* Right side: Copy (secondary) + ChatGPT (primary) + New Prompt */}
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="h-9 gap-1.5"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4 text-green-500" />
+                      {t("output.copied")}
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      {t("output.copy")}
+                    </>
+                  )}
+                </Button>
+                <ChatGPTButton prompt={editedOutput} primary />
+                <Button
+                  variant="frost"
+                  size="sm"
+                  onClick={handleNewPrompt}
+                  className="h-9 gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {t("output.newPrompt")}
+                </Button>
               </div>
-            ) : null}
+            </div>
+
+            {/* Textarea - clean, no overlapping buttons */}
+            <Textarea
+              ref={inputViewOutputRef}
+              value={editedOutput}
+              onChange={(e) => handleOutputChange(e.target.value)}
+              style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
+              className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
+              aria-label={t("beginner.outputAria")}
+            />
+            {/* Stats footer - outside textarea */}
+            <div className="flex justify-end text-xs text-muted-foreground/70 gap-3 mt-2">
+              <span>{editedOutput.split(/\s+/).filter(Boolean).length} {t("output.words")}</span>
+              <span>{editedOutput.length} {t("output.chars")}</span>
+              {isOutputEdited && <span className="text-cb-blue">{t("output.edited")}</span>}
+            </div>
           </div>
         </div>
         )}

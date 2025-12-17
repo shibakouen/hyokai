@@ -425,8 +425,8 @@ const Index = () => {
                   {/* Advanced Prompt Library - Prompt Templates */}
                   <AdvancedPromptLibrary onSelectPrompt={setInput} />
 
-                  {/* Output Section - Only show when loading or has output (no empty placeholder) */}
-                  {(isLoading || output || results.some(r => r.output)) && (
+                  {/* Output Section - Only show when there's actual output (loading state shown in button) */}
+                  {(output || results.some(r => r.output)) && (
                     <div ref={outputSectionRef} className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">
                         {t('output.label')}
