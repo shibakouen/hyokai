@@ -150,34 +150,33 @@ export function AuthButton() {
             <span className="hidden sm:inline">{t('auth.signIn')}</span>
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md frost-glass">
+        <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl">
           {authMode === 'confirmation' ? (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                <DialogTitle className="flex items-center gap-2 text-gray-900">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
                   {t('auth.checkEmail')}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-gray-600">
                   {t('auth.confirmationSent', { email: confirmationEmail })}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
-                <div className="flex items-center justify-center p-6 bg-muted/50 rounded-lg">
-                  <Mail className="w-12 h-12 text-muted-foreground" />
+                <div className="flex items-center justify-center p-6 bg-blue-50 rounded-lg">
+                  <Mail className="w-12 h-12 text-blue-600" />
                 </div>
-                <p className="text-sm text-muted-foreground text-center">
+                <p className="text-sm text-gray-600 text-center">
                   {t('auth.confirmationInstructions')}
                 </p>
                 {error && (
-                  <p className="text-sm text-destructive text-center">{error}</p>
+                  <p className="text-sm text-red-600 text-center">{error}</p>
                 )}
                 <div className="flex flex-col gap-2">
                   <Button
-                    variant="outline"
                     onClick={handleResendConfirmation}
                     disabled={isSubmitting}
-                    className="w-full"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     {isSubmitting ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -193,7 +192,7 @@ export function AuthButton() {
                       setConfirmationEmail(null);
                       setError(null);
                     }}
-                    className="w-full text-muted-foreground"
+                    className="w-full text-gray-600 hover:text-gray-900"
                   >
                     {t('auth.backToSignIn')}
                   </Button>
@@ -203,16 +202,16 @@ export function AuthButton() {
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="text-gray-900">
                   {authMode === 'signIn' ? t('auth.signIn') : t('auth.signUp')}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-gray-600">
                   {authMode === 'signIn' ? t('auth.signInDescription') : t('auth.signUpDescription')}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={authMode === 'signIn' ? handleSignIn : handleSignUp} className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">{t('auth.email')}</Label>
+                  <Label htmlFor="email" className="text-gray-900 font-medium">{t('auth.email')}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -221,10 +220,11 @@ export function AuthButton() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
+                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">{t('auth.password')}</Label>
+                  <Label htmlFor="password" className="text-gray-900 font-medium">{t('auth.password')}</Label>
                   <Input
                     id="password"
                     type="password"
@@ -234,15 +234,16 @@ export function AuthButton() {
                     required
                     minLength={6}
                     autoComplete={authMode === 'signIn' ? 'current-password' : 'new-password'}
+                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                   />
                   {authMode === 'signUp' && (
-                    <p className="text-xs text-muted-foreground">{t('auth.passwordHint')}</p>
+                    <p className="text-xs text-gray-500">{t('auth.passwordHint')}</p>
                   )}
                 </div>
                 {error && (
-                  <p className="text-sm text-destructive">{error}</p>
+                  <p className="text-sm text-red-600">{error}</p>
                 )}
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : null}
@@ -250,7 +251,7 @@ export function AuthButton() {
                 </Button>
                 <div className="text-center text-sm">
                   {authMode === 'signIn' ? (
-                    <p className="text-muted-foreground">
+                    <p className="text-gray-600">
                       {t('auth.noAccount')}{' '}
                       <button
                         type="button"
@@ -258,13 +259,13 @@ export function AuthButton() {
                           setAuthMode('signUp');
                           setError(null);
                         }}
-                        className="text-cb-blue hover:underline"
+                        className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
                       >
                         {t('auth.signUp')}
                       </button>
                     </p>
                   ) : (
-                    <p className="text-muted-foreground">
+                    <p className="text-gray-600">
                       {t('auth.hasAccount')}{' '}
                       <button
                         type="button"
@@ -272,7 +273,7 @@ export function AuthButton() {
                           setAuthMode('signIn');
                           setError(null);
                         }}
-                        className="text-cb-blue hover:underline"
+                        className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
                       >
                         {t('auth.signIn')}
                       </button>
@@ -353,7 +354,7 @@ export function AuthButtonCompact() {
             <CloudOff className="w-4 h-4 text-muted-foreground" />
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md frost-glass">
+        <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl">
           <AuthDialogContent onClose={() => setIsDialogOpen(false)} />
         </DialogContent>
       </Dialog>
@@ -471,29 +472,28 @@ function AuthDialogContent({ onClose }: { onClose: () => void }) {
     return (
       <>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-500" />
+          <DialogTitle className="flex items-center gap-2 text-gray-900">
+            <CheckCircle className="w-5 h-5 text-green-600" />
             {t('auth.checkEmail')}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-gray-600">
             {t('auth.confirmationSent', { email: confirmationEmail })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-4">
-          <div className="flex items-center justify-center p-6 bg-muted/50 rounded-lg">
-            <Mail className="w-12 h-12 text-muted-foreground" />
+          <div className="flex items-center justify-center p-6 bg-blue-50 rounded-lg">
+            <Mail className="w-12 h-12 text-blue-600" />
           </div>
-          <p className="text-sm text-muted-foreground text-center">
+          <p className="text-sm text-gray-600 text-center">
             {t('auth.confirmationInstructions')}
           </p>
           {error && (
-            <p className="text-sm text-destructive text-center">{error}</p>
+            <p className="text-sm text-red-600 text-center">{error}</p>
           )}
           <Button
-            variant="outline"
             onClick={handleResendConfirmation}
             disabled={isSubmitting}
-            className="w-full"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -510,16 +510,16 @@ function AuthDialogContent({ onClose }: { onClose: () => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>
+        <DialogTitle className="text-gray-900">
           {authMode === 'signIn' ? t('auth.signIn') : t('auth.signUp')}
         </DialogTitle>
-        <DialogDescription>
+        <DialogDescription className="text-gray-600">
           {authMode === 'signIn' ? t('auth.signInDescription') : t('auth.signUpDescription')}
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={authMode === 'signIn' ? handleSignIn : handleSignUp} className="space-y-4 pt-4">
         <div className="space-y-2">
-          <Label htmlFor="compact-email">{t('auth.email')}</Label>
+          <Label htmlFor="compact-email" className="text-gray-900 font-medium">{t('auth.email')}</Label>
           <Input
             id="compact-email"
             type="email"
@@ -527,10 +527,11 @@ function AuthDialogContent({ onClose }: { onClose: () => void }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="compact-password">{t('auth.password')}</Label>
+          <Label htmlFor="compact-password" className="text-gray-900 font-medium">{t('auth.password')}</Label>
           <Input
             id="compact-password"
             type="password"
@@ -539,15 +540,16 @@ function AuthDialogContent({ onClose }: { onClose: () => void }) {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
+            className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
           />
           {authMode === 'signUp' && (
-            <p className="text-xs text-muted-foreground">{t('auth.passwordHint')}</p>
+            <p className="text-xs text-gray-500">{t('auth.passwordHint')}</p>
           )}
         </div>
         {error && (
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-red-600">{error}</p>
         )}
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium" disabled={isSubmitting}>
           {isSubmitting ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : null}
@@ -555,7 +557,7 @@ function AuthDialogContent({ onClose }: { onClose: () => void }) {
         </Button>
         <div className="text-center text-sm">
           {authMode === 'signIn' ? (
-            <p className="text-muted-foreground">
+            <p className="text-gray-600">
               {t('auth.noAccount')}{' '}
               <button
                 type="button"
@@ -563,13 +565,13 @@ function AuthDialogContent({ onClose }: { onClose: () => void }) {
                   setAuthMode('signUp');
                   setError(null);
                 }}
-                className="text-cb-blue hover:underline"
+                className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
               >
                 {t('auth.signUp')}
               </button>
             </p>
           ) : (
-            <p className="text-muted-foreground">
+            <p className="text-gray-600">
               {t('auth.hasAccount')}{' '}
               <button
                 type="button"
@@ -577,7 +579,7 @@ function AuthDialogContent({ onClose }: { onClose: () => void }) {
                   setAuthMode('signIn');
                   setError(null);
                 }}
-                className="text-cb-blue hover:underline"
+                className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
               >
                 {t('auth.signIn')}
               </button>
