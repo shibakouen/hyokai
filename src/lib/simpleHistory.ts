@@ -1,5 +1,6 @@
 // Simple mode history types and localStorage utilities
 // Completely separate from advanced mode history
+import { supabase } from '@/integrations/supabase/client';
 
 export interface SimpleHistoryEntry {
   id: string;
@@ -119,4 +120,104 @@ export function formatSimpleTimestamp(timestamp: number): string {
 export function truncateSimpleText(text: string, maxLength: number = 80): string {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength).trim() + '...';
+}
+
+// ============================================
+// Database sync functions (for authenticated users)
+// ============================================
+
+// Load simple history from database
+export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHistoryEntry[]> {
+  try {
+    const { data, error } = await supabase
+      .from('simple_history_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('timestamp', { ascending: false })
+      .limit(MAX_HISTORY_ENTRIES);
+
+    if (error) {
+      console.error('Failed to load simple history from database:', error);
+      return [];
+    }
+
+    return (data || []).map(entry => ({
+      id: entry.id,
+      timestamp: new Date(entry.timestamp).getTime(),
+      input: entry.input,
+      output: entry.output,
+      elapsedTime: entry.elapsed_time,
+    }));
+  } catch (e) {
+    console.error('Failed to load simple history from database:', e);
+    return [];
+  }
+}
+
+// Add entry to database
+export async function addSimpleHistoryEntryToDb(
+  userId: string,
+  entry: Omit<SimpleHistoryEntry, 'id' | 'timestamp'>
+): Promise<SimpleHistoryEntry | null> {
+  const newEntry: SimpleHistoryEntry = {
+    ...entry,
+    id: generateSimpleId(),
+    timestamp: Date.now(),
+  };
+
+  try {
+    const { error } = await supabase
+      .from('simple_history_entries')
+      .insert({
+        id: newEntry.id,
+        user_id: userId,
+        timestamp: new Date(newEntry.timestamp).toISOString(),
+        input: newEntry.input,
+        output: newEntry.output,
+        elapsed_time: newEntry.elapsedTime,
+      });
+
+    if (error) {
+      console.error('Failed to add simple history entry to database:', error);
+      return null;
+    }
+
+    return newEntry;
+  } catch (e) {
+    console.error('Failed to add simple history entry to database:', e);
+    return null;
+  }
+}
+
+// Delete entry from database
+export async function deleteSimpleHistoryEntryFromDb(userId: string, id: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('simple_history_entries')
+      .delete()
+      .eq('user_id', userId)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Failed to delete simple history entry from database:', error);
+    }
+  } catch (e) {
+    console.error('Failed to delete simple history entry from database:', e);
+  }
+}
+
+// Clear all simple history from database
+export async function clearSimpleHistoryFromDb(userId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('simple_history_entries')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Failed to clear simple history from database:', error);
+    }
+  } catch (e) {
+    console.error('Failed to clear simple history from database:', e);
+  }
 }

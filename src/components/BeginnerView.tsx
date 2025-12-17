@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SimpleHistoryPanel } from "@/components/SimpleHistoryPanel";
+import { AuthButtonCompact } from "@/components/AuthButton";
 import { addSimpleHistoryEntry, SimpleHistoryEntry } from "@/lib/simpleHistory";
 import { BEGINNER_PROMPTS, BeginnerPrompt } from "@/lib/beginnerPrompts";
 
@@ -415,7 +416,7 @@ export function BeginnerView() {
       <div className="space-y-5 sm:space-y-8">
         {/* Step indicator and history */}
         <div className="flex items-center justify-between">
-          <div className="w-8" /> {/* Spacer for centering */}
+          <AuthButtonCompact />
           <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full frost-glass border border-cb-blue/20 shadow-lg shadow-cb-blue/10">
             <Lightbulb className="w-4 h-4 text-cb-blue" />
             <span className="text-sm font-semibold text-cb-blue">

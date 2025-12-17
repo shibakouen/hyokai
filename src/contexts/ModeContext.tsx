@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export type Mode = 'coding' | 'prompting';
 
@@ -11,26 +13,104 @@ interface ModeContextType {
 
 const ModeContext = createContext<ModeContextType | undefined>(undefined);
 
+const MODE_KEY = 'hyokai-mode';
 const BEGINNER_MODE_KEY = 'hyokai-beginner-mode';
 
 export function ModeProvider({ children }: { children: React.ReactNode }) {
-    const [mode, setMode] = useState<Mode>(() => {
-        const saved = localStorage.getItem('hyokai-mode');
-        return (saved === 'prompting' ? 'prompting' : 'coding');
+    const { isAuthenticated, user } = useAuth();
+
+    // Initialize from localStorage (will be overwritten by database if authenticated)
+    const [mode, setModeState] = useState<Mode>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(MODE_KEY);
+            return (saved === 'prompting' ? 'prompting' : 'coding');
+        }
+        return 'coding';
     });
 
-    const [isBeginnerMode, setIsBeginnerMode] = useState<boolean>(() => {
-        const saved = localStorage.getItem(BEGINNER_MODE_KEY);
-        return saved === 'true';
+    const [isBeginnerMode, setIsBeginnerModeState] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(BEGINNER_MODE_KEY);
+            return saved === 'true';
+        }
+        return true;
     });
 
-    useEffect(() => {
-        localStorage.setItem('hyokai-mode', mode);
-    }, [mode]);
+    // Track if we've loaded from database
+    const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
 
+    // Load preferences from database when authenticated
     useEffect(() => {
-        localStorage.setItem(BEGINNER_MODE_KEY, isBeginnerMode.toString());
-    }, [isBeginnerMode]);
+        if (!isAuthenticated || !user || hasLoadedFromDb) return;
+
+        const loadFromDatabase = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('user_preferences')
+                    .select('mode, beginner_mode')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (!error && data) {
+                    if (data.mode) {
+                        setModeState(data.mode as Mode);
+                    }
+                    if (data.beginner_mode !== null) {
+                        setIsBeginnerModeState(data.beginner_mode);
+                    }
+                }
+                setHasLoadedFromDb(true);
+            } catch (e) {
+                console.error('Failed to load preferences:', e);
+                setHasLoadedFromDb(true);
+            }
+        };
+
+        loadFromDatabase();
+    }, [isAuthenticated, user, hasLoadedFromDb]);
+
+    // Reset loaded flag when user changes
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setHasLoadedFromDb(false);
+        }
+    }, [isAuthenticated]);
+
+    // Save mode
+    const setMode = useCallback((newMode: Mode) => {
+        setModeState(newMode);
+
+        // Save to localStorage (always, for guests and as fallback)
+        localStorage.setItem(MODE_KEY, newMode);
+
+        // Save to database if authenticated
+        if (isAuthenticated && user) {
+            supabase
+                .from('user_preferences')
+                .upsert({ user_id: user.id, mode: newMode })
+                .then(({ error }) => {
+                    if (error) console.error('Failed to save mode:', error);
+                });
+        }
+    }, [isAuthenticated, user]);
+
+    // Save beginner mode
+    const setIsBeginnerMode = useCallback((value: boolean) => {
+        setIsBeginnerModeState(value);
+
+        // Save to localStorage
+        localStorage.setItem(BEGINNER_MODE_KEY, value.toString());
+
+        // Save to database if authenticated
+        if (isAuthenticated && user) {
+            supabase
+                .from('user_preferences')
+                .upsert({ user_id: user.id, beginner_mode: value })
+                .then(({ error }) => {
+                    if (error) console.error('Failed to save beginner mode:', error);
+                });
+        }
+    }, [isAuthenticated, user]);
 
     return (
         <ModeContext.Provider value={{ mode, setMode, isBeginnerMode, setIsBeginnerMode }}>

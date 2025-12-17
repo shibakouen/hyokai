@@ -1,4 +1,5 @@
 // History types and localStorage utilities
+import { supabase } from '@/integrations/supabase/client';
 
 export interface SingleModelResult {
   type: 'single';
@@ -135,4 +136,104 @@ export function formatTimestamp(timestamp: number): string {
 export function truncateText(text: string, maxLength: number = 100): string {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength).trim() + '...';
+}
+
+// ============================================
+// Database sync functions (for authenticated users)
+// ============================================
+
+// Load history from database
+export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[]> {
+  try {
+    const { data, error } = await supabase
+      .from('history_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('timestamp', { ascending: false })
+      .limit(MAX_HISTORY_ENTRIES);
+
+    if (error) {
+      console.error('Failed to load history from database:', error);
+      return [];
+    }
+
+    return (data || []).map(entry => ({
+      id: entry.id,
+      timestamp: new Date(entry.timestamp).getTime(),
+      input: entry.input,
+      taskMode: entry.task_mode as 'coding' | 'prompting',
+      result: entry.result_data as SingleModelResult | CompareModelResult,
+    }));
+  } catch (e) {
+    console.error('Failed to load history from database:', e);
+    return [];
+  }
+}
+
+// Add entry to database
+export async function addHistoryEntryToDb(
+  userId: string,
+  entry: Omit<HistoryEntry, 'id' | 'timestamp'>
+): Promise<HistoryEntry | null> {
+  const newEntry: HistoryEntry = {
+    ...entry,
+    id: generateId(),
+    timestamp: Date.now(),
+  };
+
+  try {
+    const { error } = await supabase
+      .from('history_entries')
+      .insert({
+        id: newEntry.id,
+        user_id: userId,
+        timestamp: new Date(newEntry.timestamp).toISOString(),
+        input: newEntry.input,
+        task_mode: newEntry.taskMode,
+        result_data: newEntry.result,
+      });
+
+    if (error) {
+      console.error('Failed to add history entry to database:', error);
+      return null;
+    }
+
+    return newEntry;
+  } catch (e) {
+    console.error('Failed to add history entry to database:', e);
+    return null;
+  }
+}
+
+// Delete entry from database
+export async function deleteHistoryEntryFromDb(userId: string, id: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('history_entries')
+      .delete()
+      .eq('user_id', userId)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Failed to delete history entry from database:', error);
+    }
+  } catch (e) {
+    console.error('Failed to delete history entry from database:', e);
+  }
+}
+
+// Clear all history from database
+export async function clearHistoryFromDb(userId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('history_entries')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Failed to clear history from database:', error);
+    }
+  } catch (e) {
+    console.error('Failed to clear history from database:', e);
+  }
 }

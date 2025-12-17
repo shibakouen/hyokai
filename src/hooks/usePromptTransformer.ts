@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
 import { useUserContext } from "@/contexts/UserContextContext";
 import { useGitContext } from "@/hooks/useGitContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "hyokai-selected-model-index";
 
@@ -20,6 +21,11 @@ export function usePromptTransformer() {
   const { mode } = useMode();
   const { userContext } = useUserContext();
   const { gitContext } = useGitContext();
+  const { isAuthenticated, user } = useAuth();
+
+  // Track if we've loaded from database
+  const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
+
   // Store index instead of ID since multiple models can have same ID (thinking variant)
   const [selectedModelIndex, setSelectedModelIndex] = useState(() => {
     if (typeof window !== "undefined") {
@@ -30,9 +36,63 @@ export function usePromptTransformer() {
     return 0;
   });
 
+  // Load from database when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user || hasLoadedFromDb) return;
+
+    const loadFromDatabase = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_preferences')
+          .select('selected_model_index')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!error && data?.selected_model_index !== null && data?.selected_model_index !== undefined) {
+          const index = data.selected_model_index;
+          if (index >= 0 && index < AVAILABLE_MODELS.length) {
+            setSelectedModelIndex(index);
+          }
+        }
+        setHasLoadedFromDb(true);
+      } catch (e) {
+        console.error('Failed to load model preference:', e);
+        setHasLoadedFromDb(true);
+      }
+    };
+
+    loadFromDatabase();
+  }, [isAuthenticated, user, hasLoadedFromDb]);
+
+  // Reset loaded flag when user changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setHasLoadedFromDb(false);
+    }
+  }, [isAuthenticated]);
+
+  // Persist to localStorage (always)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, selectedModelIndex.toString());
   }, [selectedModelIndex]);
+
+  // Sync to database when model changes (for authenticated users)
+  useEffect(() => {
+    if (!isAuthenticated || !user || !hasLoadedFromDb) return;
+
+    const syncToDatabase = async () => {
+      try {
+        await supabase
+          .from('user_preferences')
+          .upsert({ user_id: user.id, selected_model_index: selectedModelIndex });
+      } catch (e) {
+        console.error('Failed to sync model preference:', e);
+      }
+    };
+
+    const timeout = setTimeout(syncToDatabase, 500);
+    return () => clearTimeout(timeout);
+  }, [isAuthenticated, user, hasLoadedFromDb, selectedModelIndex]);
 
   // Keep ref in sync with state (ensures callbacks always have latest value)
   useEffect(() => {

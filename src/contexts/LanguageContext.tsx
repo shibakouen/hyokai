@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { translations, Language, TranslationKey } from '@/lib/translations';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LanguageContextType {
     language: Language;
@@ -9,19 +11,73 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'hyokai-language';
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-    const [language, setLanguage] = useState<Language>(() => {
-        const saved = localStorage.getItem('hyokai-language');
-        return (saved === 'jp' ? 'jp' : 'en');
+    const { isAuthenticated, user } = useAuth();
+
+    const [language, setLanguageState] = useState<Language>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            return (saved === 'jp' ? 'jp' : 'en');
+        }
+        return 'en';
     });
 
-    useEffect(() => {
-        localStorage.setItem('hyokai-language', language);
-    }, [language]);
+    const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
 
-    const t = (key: TranslationKey): string => {
+    // Load from database when authenticated
+    useEffect(() => {
+        if (!isAuthenticated || !user || hasLoadedFromDb) return;
+
+        const loadFromDatabase = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('user_preferences')
+                    .select('language')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (!error && data?.language) {
+                    setLanguageState(data.language as Language);
+                }
+                setHasLoadedFromDb(true);
+            } catch (e) {
+                console.error('Failed to load language:', e);
+                setHasLoadedFromDb(true);
+            }
+        };
+
+        loadFromDatabase();
+    }, [isAuthenticated, user, hasLoadedFromDb]);
+
+    // Reset loaded flag when user changes
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setHasLoadedFromDb(false);
+        }
+    }, [isAuthenticated]);
+
+    const setLanguage = useCallback((lang: Language) => {
+        setLanguageState(lang);
+
+        // Save to localStorage
+        localStorage.setItem(STORAGE_KEY, lang);
+
+        // Save to database if authenticated
+        if (isAuthenticated && user) {
+            supabase
+                .from('user_preferences')
+                .upsert({ user_id: user.id, language: lang })
+                .then(({ error }) => {
+                    if (error) console.error('Failed to save language:', error);
+                });
+        }
+    }, [isAuthenticated, user]);
+
+    const t = useCallback((key: TranslationKey): string => {
         return translations[language][key] || key;
-    };
+    }, [language]);
 
     return (
         <LanguageContext.Provider value={{ language, setLanguage, t }}>

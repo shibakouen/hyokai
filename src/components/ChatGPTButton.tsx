@@ -23,6 +23,8 @@ function ChatGPTIcon({ className }: { className?: string }) {
 interface ChatGPTButtonProps {
   prompt: string;
   variant?: "default" | "compact";
+  /** Use primary styling (cb-blue background) vs secondary (frost) */
+  primary?: boolean;
   className?: string;
 }
 
@@ -76,7 +78,7 @@ function openChatGPT(prompt: string) {
   }
 }
 
-export function ChatGPTButton({ prompt, variant = "default", className = "" }: ChatGPTButtonProps) {
+export function ChatGPTButton({ prompt, variant = "default", primary = false, className = "" }: ChatGPTButtonProps) {
   const { t } = useLanguage();
 
   const handleClick = () => {
@@ -98,10 +100,10 @@ export function ChatGPTButton({ prompt, variant = "default", className = "" }: C
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="frost"
+          variant={primary ? "default" : "frost"}
           size="sm"
           onClick={handleClick}
-          className={`gap-1.5 ${className}`}
+          className={`gap-1.5 ${primary ? "bg-cb-blue hover:bg-cb-blue/90 text-white" : ""} ${className}`}
           aria-label={t("output.sendToChatGPTAria")}
         >
           {buttonContent}

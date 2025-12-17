@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   GitHubRepository,
   GitHubTreeEntry,
@@ -61,7 +62,9 @@ interface GitRepoContextType {
 const GitRepoContext = createContext<GitRepoContextType | undefined>(undefined);
 
 export function GitRepoProvider({ children }: { children: React.ReactNode }) {
-  // Load PAT from localStorage
+  const { isAuthenticated, user } = useAuth();
+
+  // Load PAT from localStorage (for guests)
   const [pat, setPatState] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -77,7 +80,7 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
   const [patStatus, setPatStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
   const [patUsername, setPatUsername] = useState<string | null>(null);
 
-  // Load connections from localStorage
+  // Load connections from localStorage (for guests)
   const [connections, setConnections] = useState<GitRepoConnection[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -90,7 +93,7 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
-  // Load settings from localStorage
+  // Load settings from localStorage (for guests)
   const [settings, setSettings] = useState<GitContextSettings>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -107,7 +110,94 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
   const [availableRepos, setAvailableRepos] = useState<GitHubApiResponse['repos']>([]);
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
 
-  // Persist PAT
+  // Track if we've loaded from database
+  const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
+
+  // Load from database when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user || hasLoadedFromDb) return;
+
+    const loadFromDatabase = async () => {
+      try {
+        // Load PAT from encrypted storage via edge function
+        const { data: patData, error: patError } = await supabase.functions.invoke('user-data', {
+          body: { action: 'getPAT' },
+        });
+
+        if (!patError && patData?.pat) {
+          setPatState(patData.pat);
+          if (patData.username) {
+            setPatUsername(patData.username);
+            setPatStatus('valid');
+          }
+        }
+
+        // Load settings from database
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('github_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!settingsError && settingsData) {
+          setSettings({
+            enabled: settingsData.enabled,
+            autoIncludeInCoding: settingsData.auto_include_in_coding,
+            maxContextTokens: settingsData.max_context_tokens,
+          });
+        }
+
+        // Load repos from database
+        const { data: reposData, error: reposError } = await supabase
+          .from('github_repos')
+          .select('*, github_repo_cache(*)')
+          .eq('user_id', user.id);
+
+        if (!reposError && reposData) {
+          const loadedConnections: GitRepoConnection[] = reposData.map(repo => {
+            const cache = repo.github_repo_cache?.[0];
+            return {
+              repository: {
+                id: repo.id,
+                owner: repo.owner,
+                name: repo.name,
+                fullName: repo.full_name,
+                defaultBranch: repo.default_branch,
+                lastRefreshed: repo.last_refreshed ? new Date(repo.last_refreshed).getTime() : undefined,
+              },
+              cache: cache ? {
+                repoId: repo.id,
+                branch: cache.branch,
+                tree: cache.tree as GitHubTreeEntry[],
+                selectedPaths: cache.selected_paths || [],
+                fileContents: cache.file_contents || {},
+                fetchedAt: new Date(cache.fetched_at).getTime(),
+                summary: cache.summary || undefined,
+                keyFiles: cache.key_files || undefined,
+              } : null,
+            };
+          });
+          setConnections(loadedConnections);
+        }
+
+        setHasLoadedFromDb(true);
+      } catch (e) {
+        console.error('Failed to load git data from database:', e);
+        setHasLoadedFromDb(true);
+      }
+    };
+
+    loadFromDatabase();
+  }, [isAuthenticated, user, hasLoadedFromDb]);
+
+  // Reset loaded flag when user changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setHasLoadedFromDb(false);
+    }
+  }, [isAuthenticated]);
+
+  // Persist PAT to localStorage (always, for guests and as fallback)
   useEffect(() => {
     if (pat) {
       localStorage.setItem(STORAGE_KEYS.PAT, encodePAT(pat));
@@ -116,23 +206,46 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     }
   }, [pat]);
 
-  // Persist connections
+  // Persist connections to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CONNECTIONS, JSON.stringify(connections));
   }, [connections]);
 
-  // Persist settings
+  // Persist settings to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   }, [settings]);
 
-  // Validate PAT on load if exists
+  // Sync settings to database when they change (for authenticated users)
   useEffect(() => {
-    if (pat && patStatus === 'idle') {
+    if (!isAuthenticated || !user || !hasLoadedFromDb) return;
+
+    const syncSettings = async () => {
+      try {
+        await supabase
+          .from('github_settings')
+          .upsert({
+            user_id: user.id,
+            enabled: settings.enabled,
+            auto_include_in_coding: settings.autoIncludeInCoding,
+            max_context_tokens: settings.maxContextTokens,
+          });
+      } catch (e) {
+        console.error('Failed to sync git settings:', e);
+      }
+    };
+
+    const timeout = setTimeout(syncSettings, 500);
+    return () => clearTimeout(timeout);
+  }, [isAuthenticated, user, hasLoadedFromDb, settings]);
+
+  // Validate PAT on load if exists (only for guests or after DB load)
+  useEffect(() => {
+    if (pat && patStatus === 'idle' && (!isAuthenticated || hasLoadedFromDb)) {
       validatePat(pat);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount - intentionally empty deps
+  }, [hasLoadedFromDb]); // Run when DB load completes or on mount for guests
 
   // Set PAT
   const setPat = useCallback((token: string | null) => {
@@ -141,8 +254,15 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
       setPatStatus('idle');
       setPatUsername(null);
       setAvailableRepos([]);
+
+      // Delete from database if authenticated
+      if (isAuthenticated && user) {
+        supabase.functions.invoke('user-data', {
+          body: { action: 'deletePAT' },
+        }).catch(e => console.error('Failed to delete PAT from database:', e));
+      }
     }
-  }, []);
+  }, [isAuthenticated, user]);
 
   // Validate PAT
   const validatePat = useCallback(async (token: string): Promise<boolean> => {
@@ -160,14 +280,23 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
       }
 
       setPatStatus('valid');
-      setPatUsername(data?.user?.login || null);
+      const username = data?.user?.login || null;
+      setPatUsername(username);
+
+      // Save to encrypted database storage if authenticated
+      if (isAuthenticated && user && hasLoadedFromDb) {
+        supabase.functions.invoke('user-data', {
+          body: { action: 'savePAT', pat: token, username },
+        }).catch(e => console.error('Failed to save PAT to database:', e));
+      }
+
       return true;
     } catch {
       setPatStatus('invalid');
       setPatUsername(null);
       return false;
     }
-  }, []);
+  }, [isAuthenticated, user, hasLoadedFromDb]);
 
   // Fetch available repos
   const fetchAvailableRepos = useCallback(async () => {
@@ -206,21 +335,70 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
         return prev;
       }
 
+      // Save to database if authenticated
+      if (isAuthenticated && user) {
+        supabase
+          .from('github_repos')
+          .insert({
+            id: repo.id,
+            user_id: user.id,
+            owner: repo.owner,
+            name: repo.name,
+            full_name: repo.fullName,
+            default_branch: repo.defaultBranch,
+          })
+          .then(({ error }) => {
+            if (error) console.error('Failed to add repo to database:', error);
+          });
+      }
+
       return [...prev, { repository: repo, cache: null }];
     });
-  }, []);
+  }, [isAuthenticated, user]);
 
   // Remove connection
   const removeConnection = useCallback((repoId: string) => {
     setConnections(prev => prev.filter(c => c.repository.id !== repoId));
-  }, []);
+
+    // Delete from database if authenticated
+    if (isAuthenticated && user) {
+      // Cache is deleted automatically via ON DELETE CASCADE
+      supabase
+        .from('github_repos')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('id', repoId)
+        .then(({ error }) => {
+          if (error) console.error('Failed to remove repo from database:', error);
+        });
+    }
+  }, [isAuthenticated, user]);
 
   // Update cache
   const updateCache = useCallback((repoId: string, cache: CachedRepoData) => {
     setConnections(prev => prev.map(c =>
       c.repository.id === repoId ? { ...c, cache } : c
     ));
-  }, []);
+
+    // Sync cache to database if authenticated
+    if (isAuthenticated && user) {
+      supabase
+        .from('github_repo_cache')
+        .upsert({
+          repo_id: repoId,
+          branch: cache.branch,
+          tree: cache.tree,
+          selected_paths: cache.selectedPaths,
+          file_contents: cache.fileContents,
+          fetched_at: new Date(cache.fetchedAt).toISOString(),
+          summary: cache.summary || null,
+          key_files: cache.keyFiles || null,
+        })
+        .then(({ error }) => {
+          if (error) console.error('Failed to update cache in database:', error);
+        });
+    }
+  }, [isAuthenticated, user]);
 
   // Refresh cache for a repo - fetches tree, key files, and generates AI summary
   const refreshCache = useCallback(async (repoId: string) => {
@@ -322,23 +500,66 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
             }
           : c
       ));
+
+      // Sync to database if authenticated
+      if (isAuthenticated && user) {
+        // Update repo's lastRefreshed
+        supabase
+          .from('github_repos')
+          .update({ last_refreshed: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .eq('id', repoId)
+          .then(({ error }) => {
+            if (error) console.error('Failed to update repo lastRefreshed:', error);
+          });
+
+        // Upsert cache
+        supabase
+          .from('github_repo_cache')
+          .upsert({
+            repo_id: repoId,
+            branch: newCache.branch,
+            tree: newCache.tree,
+            selected_paths: newCache.selectedPaths,
+            file_contents: newCache.fileContents,
+            fetched_at: new Date(newCache.fetchedAt).toISOString(),
+            summary: newCache.summary || null,
+            key_files: newCache.keyFiles || null,
+          })
+          .then(({ error }) => {
+            if (error) console.error('Failed to sync cache to database:', error);
+          });
+      }
     } catch (e) {
       console.error('Failed to refresh cache:', e);
     } finally {
       setIsRefreshing(null);
     }
-  }, [pat, patStatus, isRefreshing, connections]);
+  }, [pat, patStatus, isRefreshing, connections, isAuthenticated, user]);
 
   // Set selected paths
   const setSelectedPaths = useCallback((repoId: string, paths: string[]) => {
+    const limitedPaths = paths.slice(0, LIMITS.MAX_SELECTED_PATHS);
+
     setConnections(prev => prev.map(c => {
       if (c.repository.id !== repoId || !c.cache) return c;
       return {
         ...c,
-        cache: { ...c.cache, selectedPaths: paths.slice(0, LIMITS.MAX_SELECTED_PATHS) },
+        cache: { ...c.cache, selectedPaths: limitedPaths },
       };
     }));
-  }, []);
+
+    // Sync to database if authenticated
+    if (isAuthenticated && user) {
+      supabase
+        .from('github_repo_cache')
+        .update({ selected_paths: limitedPaths })
+        .eq('repo_id', repoId)
+        .then(({ error }) => {
+          if (error) console.error('Failed to sync selected paths:', error);
+        });
+    }
+  }, [isAuthenticated, user]);
 
   // Fetch file contents for selected paths
   const fetchFileContents = useCallback(async (repoId: string, paths: string[]) => {
@@ -387,10 +608,21 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
           ? { ...c, cache: { ...c.cache, fileContents: newContents } }
           : c
       ));
+
+      // Sync to database if authenticated
+      if (isAuthenticated && user) {
+        supabase
+          .from('github_repo_cache')
+          .update({ file_contents: newContents })
+          .eq('repo_id', repoId)
+          .then(({ error: dbError }) => {
+            if (dbError) console.error('Failed to sync file contents:', dbError);
+          });
+      }
     } catch (e) {
       console.error('Failed to fetch file contents:', e);
     }
-  }, [pat, patStatus, connections]);
+  }, [pat, patStatus, connections, isAuthenticated, user]);
 
   // Update settings
   const updateSettings = useCallback((updates: Partial<GitContextSettings>) => {

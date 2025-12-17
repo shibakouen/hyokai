@@ -127,3 +127,62 @@ const callback = useCallback(() => {
   const currentValue = valueRef.current; // Always fresh
 }, [/* other deps */]);
 ```
+
+---
+
+## Planned Feature: Prompt Library Page
+
+### Overview
+Standalone `/library` page displaying 3000 prompts (1500 coding + 1500 general) from `docs/prompt-library.md` with fuzzy search and filtering.
+
+### Key Decisions
+- **Data Source**: Pre-process markdown → TypeScript at build time (`src/lib/promptLibraryData.ts`)
+- **Navigation**: New route `/library` with back nav to home
+- **Search**: Fuzzy search via fuse.js (~4KB)
+- **Pagination**: 100 prompts per page
+- **Beginner Mode**: Shows only beginner-level prompts (~500)
+- **Click Behavior**: Copy prompt + navigate to home with input pre-filled
+
+### Data Structure
+```typescript
+interface LibraryPrompt {
+  id: string;                    // "coding-1", "general-1"
+  number: number;                // 1-1500
+  type: 'coding' | 'general';
+  prompt: string;
+  description: string;
+  targetAudience: string;        // "vibe-coders", "seasoned-engineers"
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  category: string;              // "Web Development - Frontend"
+  tags: string[];                // For search indexing
+}
+```
+
+### Files to Create
+```
+scripts/parse-prompt-library.ts      # Build-time markdown parser
+src/lib/promptLibraryData.ts         # Generated 3000-prompt dataset
+src/pages/PromptLibrary.tsx          # Main page
+src/components/library/
+  ├── LibraryHeader.tsx              # Back nav, title
+  ├── LibrarySearchBar.tsx           # Fuzzy search input
+  ├── LibraryFilters.tsx             # Type/difficulty/category
+  ├── PromptCard.tsx                 # Individual prompt card
+  ├── PromptGrid.tsx                 # Grid + pagination
+  └── PromptDetailSheet.tsx          # Mobile detail view
+src/hooks/usePromptLibrary.ts        # Main state hook
+src/hooks/usePromptLibrarySearch.ts  # Fuse.js search
+```
+
+### Files to Modify
+- `src/App.tsx` - Add `/library` route
+- `src/pages/Index.tsx` - Add "View Library" link
+- `src/lib/translations.ts` - Add ~40 EN/JP keys
+
+### Performance
+- `useMemo` for Fuse instance and filtered results
+- Debounce search input (150ms)
+- Lazy load page with `React.lazy`
+- localStorage persistence: `hyokai-library-preferences`
+
+### Full plan: `/Users/matteo/.claude/plans/smooth-petting-pie.md`

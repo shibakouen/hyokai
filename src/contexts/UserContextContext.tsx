@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // Types for multi-context support
 export interface SavedContext {
@@ -43,6 +45,8 @@ const HARD_TOKEN_LIMIT = 16000; // Error threshold
 const generateId = () => `ctx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 export function UserContextProvider({ children }: { children: React.ReactNode }) {
+    const { isAuthenticated, user } = useAuth();
+
     // Load saved contexts from localStorage
     const [savedContexts, setSavedContexts] = useState<SavedContext[]>(() => {
         if (typeof window !== 'undefined') {
@@ -84,12 +88,68 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         return '';
     });
 
-    // Persist saved contexts
+    // Track if we've loaded from database
+    const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
+
+    // Load from database when authenticated
+    useEffect(() => {
+        if (!isAuthenticated || !user || hasLoadedFromDb) return;
+
+        const loadFromDatabase = async () => {
+            try {
+                // Load saved contexts
+                const { data: contextsData, error: contextsError } = await supabase
+                    .from('saved_contexts')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('updated_at', { ascending: false });
+
+                if (!contextsError && contextsData) {
+                    const loadedContexts: SavedContext[] = contextsData.map(ctx => ({
+                        id: ctx.id,
+                        name: ctx.name,
+                        content: ctx.content,
+                        createdAt: new Date(ctx.created_at).getTime(),
+                        updatedAt: new Date(ctx.updated_at).getTime(),
+                    }));
+                    setSavedContexts(loadedContexts);
+                }
+
+                // Load active context state
+                const { data: activeData, error: activeError } = await supabase
+                    .from('user_active_context')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (!activeError && activeData) {
+                    setActiveContextId(activeData.context_id);
+                    setUserContextState(activeData.current_content || '');
+                }
+
+                setHasLoadedFromDb(true);
+            } catch (e) {
+                console.error('Failed to load contexts from database:', e);
+                setHasLoadedFromDb(true);
+            }
+        };
+
+        loadFromDatabase();
+    }, [isAuthenticated, user, hasLoadedFromDb]);
+
+    // Reset loaded flag when user changes
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setHasLoadedFromDb(false);
+        }
+    }, [isAuthenticated]);
+
+    // Persist saved contexts to localStorage
     useEffect(() => {
         localStorage.setItem(SAVED_CONTEXTS_KEY, JSON.stringify(savedContexts));
     }, [savedContexts]);
 
-    // Persist active context ID
+    // Persist active context ID to localStorage
     useEffect(() => {
         if (activeContextId) {
             localStorage.setItem(ACTIVE_CONTEXT_KEY, activeContextId);
@@ -98,10 +158,33 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         }
     }, [activeContextId]);
 
-    // Persist current context (legacy support + unsaved edits)
+    // Persist current context to localStorage (legacy support + unsaved edits)
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, userContext);
     }, [userContext]);
+
+    // Sync active context to database when it changes (for authenticated users)
+    useEffect(() => {
+        if (!isAuthenticated || !user || !hasLoadedFromDb) return;
+
+        const syncActiveContext = async () => {
+            try {
+                await supabase
+                    .from('user_active_context')
+                    .upsert({
+                        user_id: user.id,
+                        context_id: activeContextId,
+                        current_content: userContext,
+                    });
+            } catch (e) {
+                console.error('Failed to sync active context:', e);
+            }
+        };
+
+        // Debounce to avoid too many writes
+        const timeout = setTimeout(syncActiveContext, 500);
+        return () => clearTimeout(timeout);
+    }, [isAuthenticated, user, hasLoadedFromDb, activeContextId, userContext]);
 
     // Set context without any character limit
     const setUserContext = useCallback((context: string) => {
@@ -122,14 +205,41 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
             // Enforce max saved contexts (remove oldest if needed)
             const updated = [...prev, newContext];
             if (updated.length > MAX_SAVED_CONTEXTS) {
+                // If authenticated, delete oldest from database too
+                if (isAuthenticated && user && updated[0]) {
+                    supabase
+                        .from('saved_contexts')
+                        .delete()
+                        .eq('user_id', user.id)
+                        .eq('id', updated[0].id)
+                        .then(({ error }) => {
+                            if (error) console.error('Failed to delete oldest context:', error);
+                        });
+                }
                 updated.shift();
             }
             return updated;
         });
 
         setActiveContextId(newContext.id);
+
+        // Save to database if authenticated
+        if (isAuthenticated && user) {
+            supabase
+                .from('saved_contexts')
+                .insert({
+                    id: newContext.id,
+                    user_id: user.id,
+                    name: newContext.name,
+                    content: newContext.content,
+                })
+                .then(({ error }) => {
+                    if (error) console.error('Failed to save context to database:', error);
+                });
+        }
+
         return newContext;
-    }, [savedContexts.length]);
+    }, [savedContexts.length, isAuthenticated, user]);
 
     // Update an existing context
     const updateContext = useCallback((id: string, updates: Partial<Pick<SavedContext, 'name' | 'content'>>) => {
@@ -143,7 +253,23 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         if (updates.content !== undefined && id === activeContextId) {
             setUserContextState(updates.content);
         }
-    }, [activeContextId]);
+
+        // Update in database if authenticated
+        if (isAuthenticated && user) {
+            const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+            if (updates.name !== undefined) dbUpdates.name = updates.name;
+            if (updates.content !== undefined) dbUpdates.content = updates.content;
+
+            supabase
+                .from('saved_contexts')
+                .update(dbUpdates)
+                .eq('user_id', user.id)
+                .eq('id', id)
+                .then(({ error }) => {
+                    if (error) console.error('Failed to update context in database:', error);
+                });
+        }
+    }, [activeContextId, isAuthenticated, user]);
 
     // Delete a context
     const deleteContext = useCallback((id: string) => {
@@ -154,7 +280,19 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
             setActiveContextId(null);
             setUserContextState('');
         }
-    }, [activeContextId]);
+
+        // Delete from database if authenticated
+        if (isAuthenticated && user) {
+            supabase
+                .from('saved_contexts')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('id', id)
+                .then(({ error }) => {
+                    if (error) console.error('Failed to delete context from database:', error);
+                });
+        }
+    }, [activeContextId, isAuthenticated, user]);
 
     // Switch to a saved context
     const switchContext = useCallback((id: string | null) => {

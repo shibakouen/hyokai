@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
 import { useUserContext } from "@/contexts/UserContextContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "hyokai-compare-model-indices";
 
@@ -21,6 +22,9 @@ export function useModelComparison() {
   // Ref to always have latest input value (fixes mobile stale closure issues)
   const inputValueRef = useRef(input);
   const [isCompareMode, setIsCompareMode] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+  const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
+
   const [selectedIndices, setSelectedIndices] = useState<number[]>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -45,12 +49,68 @@ export function useModelComparison() {
   const startTimesRef = useRef<Map<number, number>>(new Map());
   const timersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
+  // Load from database when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user || hasLoadedFromDb) return;
+
+    const loadFromDatabase = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_preferences')
+          .select('compare_model_indices')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!error && data?.compare_model_indices) {
+          const indices = data.compare_model_indices as number[];
+          if (Array.isArray(indices) && indices.length >= 2) {
+            const validIndices = indices.filter(i => i >= 0 && i < AVAILABLE_MODELS.length);
+            if (validIndices.length >= 2) {
+              setSelectedIndices(validIndices);
+            }
+          }
+        }
+        setHasLoadedFromDb(true);
+      } catch (e) {
+        console.error('Failed to load compare indices:', e);
+        setHasLoadedFromDb(true);
+      }
+    };
+
+    loadFromDatabase();
+  }, [isAuthenticated, user, hasLoadedFromDb]);
+
+  // Reset loaded flag when user changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setHasLoadedFromDb(false);
+    }
+  }, [isAuthenticated]);
+
+  // Sync to database when indices change (for authenticated users)
+  useEffect(() => {
+    if (!isAuthenticated || !user || !hasLoadedFromDb) return;
+
+    const syncToDatabase = async () => {
+      try {
+        await supabase
+          .from('user_preferences')
+          .upsert({ user_id: user.id, compare_model_indices: selectedIndices });
+      } catch (e) {
+        console.error('Failed to sync compare indices:', e);
+      }
+    };
+
+    const timeout = setTimeout(syncToDatabase, 500);
+    return () => clearTimeout(timeout);
+  }, [isAuthenticated, user, hasLoadedFromDb, selectedIndices]);
+
   // Keep ref in sync with state (ensures callbacks always have latest value)
   useEffect(() => {
     inputValueRef.current = input;
   }, [input]);
 
-  // Persist selected indices
+  // Persist selected indices to localStorage (always)
   const updateSelectedIndices = useCallback((indices: number[]) => {
     setSelectedIndices(indices);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(indices));

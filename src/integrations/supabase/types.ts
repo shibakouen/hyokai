@@ -7,14 +7,306 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
-      [_ in never]: never
+      github_credentials: {
+        Row: {
+          created_at: string | null
+          encrypted_pat: string
+          pat_username: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          encrypted_pat: string
+          pat_username?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          encrypted_pat?: string
+          pat_username?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      github_repo_cache: {
+        Row: {
+          cached_at: string | null
+          file_contents: Json | null
+          repo_id: string
+          selected_paths: string[] | null
+          tree: Json | null
+        }
+        Insert: {
+          cached_at?: string | null
+          file_contents?: Json | null
+          repo_id: string
+          selected_paths?: string[] | null
+          tree?: Json | null
+        }
+        Update: {
+          cached_at?: string | null
+          file_contents?: Json | null
+          repo_id?: string
+          selected_paths?: string[] | null
+          tree?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "github_repo_cache_repo_id_fkey"
+            columns: ["repo_id"]
+            isOneToOne: true
+            referencedRelation: "github_repos"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      github_repos: {
+        Row: {
+          created_at: string | null
+          default_branch: string | null
+          full_name: string
+          id: string
+          name: string
+          owner: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_branch?: string | null
+          full_name: string
+          id?: string
+          name: string
+          owner: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_branch?: string | null
+          full_name?: string
+          id?: string
+          name?: string
+          owner?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      github_settings: {
+        Row: {
+          auto_include_in_coding: boolean | null
+          created_at: string | null
+          enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_include_in_coding?: boolean | null
+          created_at?: string | null
+          enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_include_in_coding?: boolean | null
+          created_at?: string | null
+          enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      history_entries: {
+        Row: {
+          created_at: string | null
+          id: string
+          input: string
+          result_data: Json
+          task_mode: string
+          timestamp: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          input: string
+          result_data: Json
+          task_mode: string
+          timestamp?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          input?: string
+          result_data?: Json
+          task_mode?: string
+          timestamp?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_contexts: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      simple_history_entries: {
+        Row: {
+          created_at: string | null
+          elapsed_time: number | null
+          id: string
+          input: string
+          output: string
+          timestamp: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          elapsed_time?: number | null
+          id?: string
+          input: string
+          output: string
+          timestamp?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          elapsed_time?: number | null
+          id?: string
+          input?: string
+          output?: string
+          timestamp?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_active_context: {
+        Row: {
+          context_id: string | null
+          created_at: string | null
+          current_content: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          context_id?: string | null
+          created_at?: string | null
+          current_content?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          context_id?: string | null
+          created_at?: string | null
+          current_content?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_active_context_context_id_fkey"
+            columns: ["context_id"]
+            isOneToOne: false
+            referencedRelation: "saved_contexts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_preferences: {
+        Row: {
+          beginner_mode: boolean | null
+          compare_model_indices: number[] | null
+          created_at: string | null
+          language: string | null
+          mode: string | null
+          selected_model_index: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          beginner_mode?: boolean | null
+          compare_model_indices?: number[] | null
+          created_at?: string | null
+          language?: string | null
+          mode?: string | null
+          selected_model_index?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          beginner_mode?: boolean | null
+          compare_model_indices?: number[] | null
+          created_at?: string | null
+          language?: string | null
+          mode?: string | null
+          selected_model_index?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          email: string | null
+          id: string
+          migrated_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id: string
+          migrated_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          migrated_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
