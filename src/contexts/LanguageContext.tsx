@@ -31,19 +31,29 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         if (!isAuthenticated || !user || hasLoadedFromDb) return;
 
         const loadFromDatabase = async () => {
+            // Add timeout to prevent infinite loading
+            const DB_TIMEOUT_MS = 5000;
+            const timeoutId = setTimeout(() => {
+                console.warn('LanguageContext database load timed out');
+                setHasLoadedFromDb(true);
+            }, DB_TIMEOUT_MS);
+
             try {
+                // Use maybeSingle() to avoid errors when no row exists
                 const { data, error } = await supabase
                     .from('user_preferences')
                     .select('language')
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (!error && data?.language) {
                     setLanguageState(data.language as Language);
                 }
+                clearTimeout(timeoutId);
                 setHasLoadedFromDb(true);
             } catch (e) {
                 console.error('Failed to load language:', e);
+                clearTimeout(timeoutId);
                 setHasLoadedFromDb(true);
             }
         };

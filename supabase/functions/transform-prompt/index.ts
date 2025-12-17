@@ -547,16 +547,33 @@ serve(async (req) => {
     console.log(`First message role: ${(requestBody.messages as Array<{role: string}>)[0].role}`);
     console.log(`=== END DEBUG ===`);
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY.trim()}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://hyokai.vercel.app",
-        "X-Title": "Hyokai Technical Prompt Transformer",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Add timeout to prevent hanging on slow API responses
+    const FETCH_TIMEOUT_MS = 120000; // 2 minutes - generous for large prompts
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY.trim()}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://hyokai.vercel.app",
+          "X-Title": "Hyokai Technical Prompt Transformer",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        throw new Error("Request timed out. The AI model is taking too long to respond. Please try again or select a faster model.");
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

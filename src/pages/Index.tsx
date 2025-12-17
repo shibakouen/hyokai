@@ -22,8 +22,9 @@ import { BeginnerView } from "@/components/BeginnerView";
 import { AdvancedPromptLibrary } from "@/components/AdvancedPromptLibrary";
 import { AuthButton } from "@/components/AuthButton";
 import { useMode } from "@/contexts/ModeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { AVAILABLE_MODELS } from "@/lib/models";
-import { addHistoryEntry, HistoryEntry } from "@/lib/history";
+import { addHistoryEntry, addHistoryEntryToDb, HistoryEntry } from "@/lib/history";
 import { ComparisonResult } from "@/hooks/useModelComparison";
 
 const Index = () => {
@@ -58,6 +59,9 @@ const Index = () => {
   // Task mode context
   const { mode: taskMode, isBeginnerMode } = useMode();
 
+  // Auth context for database sync
+  const { isAuthenticated, user } = useAuth();
+
   // Language hook - must be before useEffects that use t()
   const { t } = useLanguage();
 
@@ -82,17 +86,27 @@ const Index = () => {
     // Check if loading just finished and we have output
     if (wasLoading && !singleIsLoading && output && singleInput.trim()) {
       const model = AVAILABLE_MODELS[selectedModelIndex];
-      addHistoryEntry({
+      const entryData = {
         input: singleInput,
         taskMode,
         result: {
-          type: 'single',
+          type: 'single' as const,
           modelName: model.name,
           modelProvider: model.provider,
           output,
           elapsedTime,
         },
-      });
+      };
+
+      // Save to localStorage (for all users)
+      addHistoryEntry(entryData);
+
+      // Also save to database for authenticated users
+      if (isAuthenticated && user) {
+        addHistoryEntryToDb(user.id, entryData).catch(e => {
+          console.error('Failed to save history to database:', e);
+        });
+      }
 
       // Switch to output view (desktop unified panel) and mobile full-screen
       setIsViewingOutput(true);
@@ -108,7 +122,7 @@ const Index = () => {
         // Silently fail - user can manually copy
       });
     }
-  }, [singleIsLoading, output, singleInput, selectedModelIndex, taskMode, elapsedTime, t]);
+  }, [singleIsLoading, output, singleInput, selectedModelIndex, taskMode, elapsedTime, t, isAuthenticated, user]);
 
   // Save to history and handle post-transformation UX when compare mode transformation completes
   useEffect(() => {
@@ -120,11 +134,11 @@ const Index = () => {
       // Only save if all results are complete (not loading)
       const allComplete = results.every(r => !r.isLoading);
       if (allComplete) {
-        addHistoryEntry({
+        const entryData = {
           input: compareInput,
           taskMode,
           result: {
-            type: 'compare',
+            type: 'compare' as const,
             results: results.map(r => ({
               modelName: r.model.name,
               modelProvider: r.model.provider,
@@ -133,14 +147,24 @@ const Index = () => {
               elapsedTime: r.elapsedTime,
             })),
           },
-        });
+        };
+
+        // Save to localStorage (for all users)
+        addHistoryEntry(entryData);
+
+        // Also save to database for authenticated users
+        if (isAuthenticated && user) {
+          addHistoryEntryToDb(user.id, entryData).catch(e => {
+            console.error('Failed to save compare history to database:', e);
+          });
+        }
 
         // Switch to output view (desktop unified panel) and mobile full-screen
         setIsViewingOutput(true);
         setShowMobileOutput(true);
       }
     }
-  }, [compareIsLoading, results, compareInput, taskMode]);
+  }, [compareIsLoading, results, compareInput, taskMode, isAuthenticated, user]);
 
   // Shared state based on mode
   const input = isCompareMode ? compareInput : singleInput;

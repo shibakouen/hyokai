@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AVAILABLE_MODELS } from "@/lib/models";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonSupabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
 import { useUserContext } from "@/contexts/UserContextContext";
@@ -8,6 +8,16 @@ import { useGitContext } from "@/hooks/useGitContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "hyokai-selected-model-index";
+
+// Helper to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), ms)
+    )
+  ]);
+}
 
 export function usePromptTransformer() {
   const [input, setInput] = useState("");
@@ -41,12 +51,20 @@ export function usePromptTransformer() {
     if (!isAuthenticated || !user || hasLoadedFromDb) return;
 
     const loadFromDatabase = async () => {
+      // Add timeout to prevent infinite loading
+      const DB_TIMEOUT_MS = 5000;
+      const timeoutId = setTimeout(() => {
+        console.warn('PromptTransformer database load timed out');
+        setHasLoadedFromDb(true);
+      }, DB_TIMEOUT_MS);
+
       try {
+        // Use maybeSingle() to avoid errors when no row exists
         const { data, error } = await supabase
           .from('user_preferences')
           .select('selected_model_index')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (!error && data?.selected_model_index !== null && data?.selected_model_index !== undefined) {
           const index = data.selected_model_index;
@@ -54,9 +72,11 @@ export function usePromptTransformer() {
             setSelectedModelIndex(index);
           }
         }
+        clearTimeout(timeoutId);
         setHasLoadedFromDb(true);
       } catch (e) {
         console.error('Failed to load model preference:', e);
+        clearTimeout(timeoutId);
         setHasLoadedFromDb(true);
       }
     };
@@ -156,16 +176,22 @@ export function usePromptTransformer() {
     startTimer();
 
     try {
-      const { data, error } = await supabase.functions.invoke("transform-prompt", {
-        body: {
-          userPrompt: currentInput,
-          userContext: userContext || undefined,
-          gitContext: gitContext || undefined,
-          model: selectedModel.id,
-          mode: mode,
-          thinking: selectedModel.thinking || false,
-        },
-      });
+      // Add 90 second timeout to prevent hanging forever (thinking models can be slow)
+      // Use anonSupabase to bypass auth session handling that can hang
+      const { data, error } = await withTimeout(
+        anonSupabase.functions.invoke("transform-prompt", {
+          body: {
+            userPrompt: currentInput,
+            userContext: userContext || undefined,
+            gitContext: gitContext || undefined,
+            model: selectedModel.id,
+            mode: mode,
+            thinking: selectedModel.thinking || false,
+          },
+        }),
+        90000,
+        "Request timed out. Please try again or select a faster model."
+      );
 
       if (error) {
         throw new Error(error.message || "Failed to transform prompt");

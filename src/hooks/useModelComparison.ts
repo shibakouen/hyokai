@@ -1,12 +1,22 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { AVAILABLE_MODELS, AIModel } from "@/lib/models";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonSupabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
 import { useUserContext } from "@/contexts/UserContextContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "hyokai-compare-model-indices";
+
+// Helper to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), ms)
+    )
+  ]);
+}
 
 export interface ComparisonResult {
   modelIndex: number;
@@ -54,12 +64,20 @@ export function useModelComparison() {
     if (!isAuthenticated || !user || hasLoadedFromDb) return;
 
     const loadFromDatabase = async () => {
+      // Add timeout to prevent infinite loading
+      const DB_TIMEOUT_MS = 5000;
+      const timeoutId = setTimeout(() => {
+        console.warn('ModelComparison database load timed out');
+        setHasLoadedFromDb(true);
+      }, DB_TIMEOUT_MS);
+
       try {
+        // Use maybeSingle() to avoid errors when no row exists
         const { data, error } = await supabase
           .from('user_preferences')
           .select('compare_model_indices')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (!error && data?.compare_model_indices) {
           const indices = data.compare_model_indices as number[];
@@ -70,9 +88,11 @@ export function useModelComparison() {
             }
           }
         }
+        clearTimeout(timeoutId);
         setHasLoadedFromDb(true);
       } catch (e) {
         console.error('Failed to load compare indices:', e);
+        clearTimeout(timeoutId);
         setHasLoadedFromDb(true);
       }
     };
@@ -165,15 +185,21 @@ export function useModelComparison() {
     const model = AVAILABLE_MODELS[modelIndex];
 
     try {
-      const { data, error } = await supabase.functions.invoke("transform-prompt", {
-        body: {
-          userPrompt,
-          userContext: currentUserContext || undefined,
-          model: model.id,
-          mode: currentMode,
-          thinking: model.thinking || false,
-        },
-      });
+      // Add 90 second timeout to prevent hanging forever
+      // Use anonSupabase to bypass auth session handling that can hang
+      const { data, error } = await withTimeout(
+        anonSupabase.functions.invoke("transform-prompt", {
+          body: {
+            userPrompt,
+            userContext: currentUserContext || undefined,
+            model: model.id,
+            mode: currentMode,
+            thinking: model.thinking || false,
+          },
+        }),
+        90000,
+        "Request timed out"
+      );
 
       if (error) {
         return { output: null, error: error.message || "Failed to transform" };

@@ -44,12 +44,20 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         if (!isAuthenticated || !user || hasLoadedFromDb) return;
 
         const loadFromDatabase = async () => {
+            // Add timeout to prevent infinite loading
+            const DB_TIMEOUT_MS = 5000;
+            const timeoutId = setTimeout(() => {
+                console.warn('ModeContext database load timed out');
+                setHasLoadedFromDb(true);
+            }, DB_TIMEOUT_MS);
+
             try {
+                // Use maybeSingle() to avoid errors when no row exists
                 const { data, error } = await supabase
                     .from('user_preferences')
                     .select('mode, beginner_mode')
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (!error && data) {
                     if (data.mode) {
@@ -59,9 +67,11 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
                         setIsBeginnerModeState(data.beginner_mode);
                     }
                 }
+                clearTimeout(timeoutId);
                 setHasLoadedFromDb(true);
             } catch (e) {
                 console.error('Failed to load preferences:', e);
+                clearTimeout(timeoutId);
                 setHasLoadedFromDb(true);
             }
         };

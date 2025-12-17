@@ -39,11 +39,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch user profile from database
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
+      // Use maybeSingle() to avoid PGRST116 errors when no profile exists yet
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -86,28 +87,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
+    let loadingComplete = false;
+
+    // Guaranteed fallback - ensure loading completes within 12 seconds no matter what
+    const fallbackTimeout = setTimeout(() => {
+      if (mounted && !loadingComplete) {
+        console.warn('Auth fallback timeout triggered - forcing loading complete');
+        setIsLoading(false);
+        loadingComplete = true;
+      }
+    }, 12000);
 
     const initAuth = async () => {
       try {
-        // Get initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        // Add timeout to prevent infinite loading - max 10 seconds
+        const AUTH_TIMEOUT_MS = 10000;
 
-        if (mounted) {
+        const getSessionWithTimeout = async () => {
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Auth initialization timed out')), AUTH_TIMEOUT_MS);
+          });
+
+          const sessionPromise = supabase.auth.getSession();
+          return Promise.race([sessionPromise, timeoutPromise]);
+        };
+
+        const { data: { session: initialSession } } = await getSessionWithTimeout();
+
+        if (mounted && !loadingComplete) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
 
           if (initialSession?.user) {
-            const profile = await fetchProfile(initialSession.user.id);
-            setUserProfile(profile);
-            setNeedsMigration(checkMigrationNeeded(profile));
+            // Profile fetch with its own timeout (5 seconds)
+            try {
+              const profilePromise = fetchProfile(initialSession.user.id);
+              const profileTimeoutPromise = new Promise<null>((resolve) => {
+                setTimeout(() => resolve(null), 5000);
+              });
+              const profile = await Promise.race([profilePromise, profileTimeoutPromise]);
+              setUserProfile(profile);
+              setNeedsMigration(checkMigrationNeeded(profile));
+            } catch (profileError) {
+              console.error('Error fetching profile:', profileError);
+              // Continue without profile - don't block loading
+            }
           }
 
           setIsLoading(false);
+          loadingComplete = true;
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        if (mounted) {
+
+        // If auth timed out, clear the potentially corrupted session
+        if (error instanceof Error && error.message.includes('timed out')) {
+          console.warn('Auth timed out - clearing session to prevent future hangs');
+          try {
+            // Clear Supabase auth storage
+            localStorage.removeItem('sb-znjqpxlijraodmjrhqaz-auth-token');
+            // Also try to sign out cleanly
+            supabase.auth.signOut().catch(() => {});
+          } catch (e) {
+            console.error('Failed to clear session:', e);
+          }
+        }
+
+        if (mounted && !loadingComplete) {
           setIsLoading(false);
+          loadingComplete = true;
         }
       }
     };
@@ -122,17 +170,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newSession?.user ?? null);
 
       if (newSession?.user) {
-        const profile = await fetchProfile(newSession.user.id);
-        setUserProfile(profile);
+        try {
+          const profile = await fetchProfile(newSession.user.id);
+          setUserProfile(profile);
 
-        const migrationNeeded = checkMigrationNeeded(profile);
-        setNeedsMigration(migrationNeeded);
+          const migrationNeeded = checkMigrationNeeded(profile);
+          setNeedsMigration(migrationNeeded);
 
-        // Dispatch first login event if migration is needed
-        if (event === 'SIGNED_IN' && migrationNeeded) {
-          window.dispatchEvent(new CustomEvent(AUTH_FIRST_LOGIN_EVENT, {
-            detail: { userId: newSession.user.id, profile }
-          }));
+          // Dispatch first login event if migration is needed
+          if (event === 'SIGNED_IN' && migrationNeeded) {
+            window.dispatchEvent(new CustomEvent(AUTH_FIRST_LOGIN_EVENT, {
+              detail: { userId: newSession.user.id, profile }
+            }));
+          }
+        } catch (profileError) {
+          console.error('Error fetching profile on auth change:', profileError);
         }
       } else {
         setUserProfile(null);
@@ -140,10 +192,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setIsLoading(false);
+      loadingComplete = true;
     });
 
     return () => {
       mounted = false;
+      clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
   }, [fetchProfile, checkMigrationNeeded]);

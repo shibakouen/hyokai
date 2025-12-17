@@ -118,26 +118,42 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated || !user || hasLoadedFromDb) return;
 
     const loadFromDatabase = async () => {
-      try {
-        // Load PAT from encrypted storage via edge function
-        const { data: patData, error: patError } = await supabase.functions.invoke('user-data', {
-          body: { action: 'getPAT' },
-        });
+      // Add timeout to prevent infinite loading - 10 seconds max (edge function can be slow)
+      const DB_TIMEOUT_MS = 10000;
+      const timeoutId = setTimeout(() => {
+        console.warn('GitRepo database load timed out');
+        setHasLoadedFromDb(true);
+      }, DB_TIMEOUT_MS);
 
-        if (!patError && patData?.pat) {
-          setPatState(patData.pat);
-          if (patData.username) {
-            setPatUsername(patData.username);
-            setPatStatus('valid');
+      try {
+        // Load PAT from encrypted storage via edge function - with its own timeout
+        try {
+          const patPromise = supabase.functions.invoke('user-data', {
+            body: { action: 'getPAT' },
+          });
+          const patTimeoutPromise = new Promise<{ data: null; error: Error }>((resolve) => {
+            setTimeout(() => resolve({ data: null, error: new Error('PAT load timed out') }), 5000);
+          });
+          const { data: patData, error: patError } = await Promise.race([patPromise, patTimeoutPromise]);
+
+          if (!patError && patData?.pat) {
+            setPatState(patData.pat);
+            if (patData.username) {
+              setPatUsername(patData.username);
+              setPatStatus('valid');
+            }
           }
+        } catch (patErr) {
+          console.error('Failed to load PAT:', patErr);
+          // Continue without PAT - don't block
         }
 
-        // Load settings from database
+        // Load settings from database - use maybeSingle() to avoid error on no rows
         const { data: settingsData, error: settingsError } = await supabase
           .from('github_settings')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (!settingsError && settingsData) {
           setSettings({
@@ -180,9 +196,11 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
           setConnections(loadedConnections);
         }
 
+        clearTimeout(timeoutId);
         setHasLoadedFromDb(true);
       } catch (e) {
         console.error('Failed to load git data from database:', e);
+        clearTimeout(timeoutId);
         setHasLoadedFromDb(true);
       }
     };

@@ -88,14 +88,28 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         return '';
     });
 
-    // Track if we've loaded from database
-    const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
+    // Track which user we've loaded from database (null = not loaded, string = loaded for that user)
+    const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
 
-    // Load from database when authenticated
+    // Load from database when authenticated - uses user.id to detect user changes
     useEffect(() => {
-        if (!isAuthenticated || !user || hasLoadedFromDb) return;
+        // Skip if not authenticated or no user
+        if (!isAuthenticated || !user) return;
+
+        // Skip if already loaded for this user
+        if (loadedForUserId === user.id) return;
 
         const loadFromDatabase = async () => {
+            // Add timeout to prevent infinite loading - 8 seconds max
+            const DB_TIMEOUT_MS = 8000;
+            let completed = false;
+            const timeoutId = setTimeout(() => {
+                if (!completed) {
+                    console.warn('UserContext database load timed out');
+                    setLoadedForUserId(user.id);
+                }
+            }, DB_TIMEOUT_MS);
+
             try {
                 // Load saved contexts
                 const { data: contextsData, error: contextsError } = await supabase
@@ -104,8 +118,11 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
                     .eq('user_id', user.id)
                     .order('updated_at', { ascending: false });
 
-                if (!contextsError && contextsData) {
-                    const loadedContexts: SavedContext[] = contextsData.map(ctx => ({
+                if (contextsError) {
+                    console.error('Error loading saved contexts:', contextsError);
+                } else {
+                    // Always set state - even if empty, to clear stale data
+                    const loadedContexts: SavedContext[] = (contextsData || []).map(ctx => ({
                         id: ctx.id,
                         name: ctx.name,
                         content: ctx.content,
@@ -115,34 +132,41 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
                     setSavedContexts(loadedContexts);
                 }
 
-                // Load active context state
+                // Load active context state - use maybeSingle() to avoid error on no rows
                 const { data: activeData, error: activeError } = await supabase
                     .from('user_active_context')
                     .select('*')
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
-                if (!activeError && activeData) {
-                    setActiveContextId(activeData.context_id);
-                    setUserContextState(activeData.current_content || '');
+                if (activeError) {
+                    console.error('Error loading active context:', activeError);
+                } else {
+                    // Always set state - use database value or clear if no data
+                    setActiveContextId(activeData?.context_id ?? null);
+                    setUserContextState(activeData?.current_content ?? '');
                 }
 
-                setHasLoadedFromDb(true);
+                completed = true;
+                clearTimeout(timeoutId);
+                setLoadedForUserId(user.id);
             } catch (e) {
                 console.error('Failed to load contexts from database:', e);
-                setHasLoadedFromDb(true);
+                completed = true;
+                clearTimeout(timeoutId);
+                setLoadedForUserId(user.id);
             }
         };
 
         loadFromDatabase();
-    }, [isAuthenticated, user, hasLoadedFromDb]);
+    }, [isAuthenticated, user, loadedForUserId]);
 
-    // Reset loaded flag when user changes
+    // Reset when user changes or logs out
     useEffect(() => {
-        if (!isAuthenticated) {
-            setHasLoadedFromDb(false);
+        if (!isAuthenticated || !user) {
+            setLoadedForUserId(null);
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, user]);
 
     // Persist saved contexts to localStorage
     useEffect(() => {
@@ -165,15 +189,19 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
 
     // Sync active context to database when it changes (for authenticated users)
     useEffect(() => {
-        if (!isAuthenticated || !user || !hasLoadedFromDb) return;
+        // Only sync after we've loaded for this user (prevents overwriting DB with empty state)
+        if (!isAuthenticated || !user || loadedForUserId !== user.id) return;
 
         const syncActiveContext = async () => {
             try {
+                // Use null for context_id if not set (to avoid foreign key issues)
+                const contextIdToSave = activeContextId || null;
+
                 await supabase
                     .from('user_active_context')
                     .upsert({
                         user_id: user.id,
-                        context_id: activeContextId,
+                        context_id: contextIdToSave,
                         current_content: userContext,
                     });
             } catch (e) {
@@ -181,10 +209,19 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
             }
         };
 
-        // Debounce to avoid too many writes
+        // Debounce to avoid too many writes - but also sync immediately on unmount
         const timeout = setTimeout(syncActiveContext, 500);
-        return () => clearTimeout(timeout);
-    }, [isAuthenticated, user, hasLoadedFromDb, activeContextId, userContext]);
+
+        return () => {
+            clearTimeout(timeout);
+            // Sync immediately on cleanup if user is still authenticated
+            // This ensures data is saved when navigating away or logging out
+            if (isAuthenticated && user && loadedForUserId === user.id) {
+                // Fire and forget - don't block cleanup
+                syncActiveContext().catch(console.error);
+            }
+        };
+    }, [isAuthenticated, user, loadedForUserId, activeContextId, userContext]);
 
     // Set context without any character limit
     const setUserContext = useCallback((context: string) => {

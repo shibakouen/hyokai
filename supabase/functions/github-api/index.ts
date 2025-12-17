@@ -333,21 +333,41 @@ Provide a summary (400-600 words) covering:
 Be specific - reference actual file paths and patterns you see in the code. This summary will help developers write better prompts for this codebase.`;
 
         try {
-          const response = await fetch(OPENROUTER_API_URL, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": "https://hyokai.app",
-              "X-Title": "Hyokai",
-            },
-            body: JSON.stringify({
-              model: "x-ai/grok-4-fast",
-              messages: [{ role: "user", content: prompt }],
-              max_tokens: 1500,
-              temperature: 0.3,
-            }),
-          });
+          // Add timeout to prevent hanging on slow API responses
+          const FETCH_TIMEOUT_MS = 60000; // 60 seconds for summary generation
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+          let response: Response;
+          try {
+            response = await fetch(OPENROUTER_API_URL, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://hyokai.app",
+                "X-Title": "Hyokai",
+              },
+              body: JSON.stringify({
+                model: "x-ai/grok-4-fast",
+                messages: [{ role: "user", content: prompt }],
+                max_tokens: 1500,
+                temperature: 0.3,
+              }),
+              signal: controller.signal,
+            });
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+              return new Response(
+                JSON.stringify({ error: "Summary generation timed out. Please try again." }),
+                { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            throw fetchError;
+          } finally {
+            clearTimeout(timeoutId);
+          }
 
           if (!response.ok) {
             const errorText = await response.text();

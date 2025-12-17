@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
+import { anonSupabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ChatGPTButton } from "@/components/ChatGPTButton";
 import {
@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/tooltip";
 import { SimpleHistoryPanel } from "@/components/SimpleHistoryPanel";
 import { AuthButtonCompact } from "@/components/AuthButton";
-import { addSimpleHistoryEntry, SimpleHistoryEntry } from "@/lib/simpleHistory";
+import { useAuth } from "@/contexts/AuthContext";
+import { addSimpleHistoryEntry, addSimpleHistoryEntryToDb, SimpleHistoryEntry } from "@/lib/simpleHistory";
 import { BEGINNER_PROMPTS, BeginnerPrompt } from "@/lib/beginnerPrompts";
 
 // Grok 4 Fast model ID - fast and reliable for beginners
@@ -31,8 +32,26 @@ const INPUT_STORAGE_KEY = "hyokai-beginner-input-height";
 // Unified height constant - matches advanced mode
 const UNIFIED_HEIGHT = 200;
 
+// Helper to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), ms)
+    )
+  ]);
+}
+
 export function BeginnerView() {
   const { t } = useLanguage();
+  const { isAuthenticated, user } = useAuth();
+
+  // Use refs for auth state to avoid stale closures in callbacks
+  const authRef = useRef({ isAuthenticated, user });
+  useEffect(() => {
+    authRef.current = { isAuthenticated, user };
+  }, [isAuthenticated, user]);
+
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [editedOutput, setEditedOutput] = useState("");
@@ -198,14 +217,20 @@ export function BeginnerView() {
     startTimer();
 
     try {
-      const { data, error } = await supabase.functions.invoke("transform-prompt", {
-        body: {
-          userPrompt: currentInput,
-          model: BEGINNER_MODEL_ID,
-          mode: "prompting",
-          beginnerMode: true,
-        },
-      });
+      // Add 60 second timeout to prevent hanging forever
+      // Use anonSupabase to bypass auth session handling that can hang
+      const { data, error } = await withTimeout(
+        anonSupabase.functions.invoke("transform-prompt", {
+          body: {
+            userPrompt: currentInput,
+            model: BEGINNER_MODEL_ID,
+            mode: "prompting",
+            beginnerMode: true,
+          },
+        }),
+        60000,
+        "Request timed out. Please try again."
+      );
 
       if (error) {
         throw new Error(error.message || t("beginner.errorGeneric"));
@@ -220,16 +245,27 @@ export function BeginnerView() {
 
       // Save to history
       const finalElapsedTime = startTimeRef.current ? Date.now() - startTimeRef.current : null;
-      addSimpleHistoryEntry({
+      const entryData = {
         input: currentInput,
         output: resultOutput,
         elapsedTime: finalElapsedTime,
-      });
+      };
+
+      // Save to localStorage (for all users)
+      addSimpleHistoryEntry(entryData);
+
+      // Also save to database for authenticated users (use ref to avoid stale closure)
+      const auth = authRef.current;
+      if (auth.isAuthenticated && auth.user) {
+        addSimpleHistoryEntryToDb(auth.user.id, entryData).catch(e => {
+          console.error('Failed to save simple history to database:', e);
+        });
+      }
     } catch (error) {
       console.error("Transform error:", error);
       toast({
         title: t("beginner.errorTitle"),
-        description: t("beginner.errorMessage"),
+        description: error instanceof Error ? error.message : t("beginner.errorMessage"),
         variant: "destructive",
       });
     } finally {

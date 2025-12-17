@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -20,11 +20,15 @@ import {
   Clock,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   HistoryEntry,
   loadHistory,
   deleteHistoryEntry,
   clearHistory,
+  loadHistoryFromDb,
+  deleteHistoryEntryFromDb,
+  clearHistoryFromDb,
   formatTimestamp,
   truncateText,
 } from "@/lib/history";
@@ -240,21 +244,49 @@ function HistoryEntryCard({
 export function HistoryPanel({ onRestore }: HistoryPanelProps) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
+  const { isAuthenticated, user } = useAuth();
 
   // Load history when panel opens
+  const loadHistoryData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      if (isAuthenticated && user) {
+        // Load from database for authenticated users
+        const dbHistory = await loadHistoryFromDb(user.id);
+        setHistory(dbHistory);
+      } else {
+        // Load from localStorage for guests
+        setHistory(loadHistory());
+      }
+    } catch (e) {
+      console.error('Failed to load history:', e);
+      // Fallback to localStorage
+      setHistory(loadHistory());
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, user]);
+
   useEffect(() => {
     if (isOpen) {
-      setHistory(loadHistory());
+      loadHistoryData();
     }
-  }, [isOpen]);
+  }, [isOpen, loadHistoryData]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (isAuthenticated && user) {
+      await deleteHistoryEntryFromDb(user.id, id);
+    }
     deleteHistoryEntry(id);
     setHistory(prev => prev.filter(e => e.id !== id));
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
+    if (isAuthenticated && user) {
+      await clearHistoryFromDb(user.id);
+    }
     clearHistory();
     setHistory([]);
   };
