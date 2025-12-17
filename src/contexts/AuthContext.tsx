@@ -115,10 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session: initialSession } } = await getSessionWithTimeout();
 
         if (mounted && !loadingComplete) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-
+          // Only update session state if we have a valid session
+          // If null, don't clear state - onAuthStateChange will handle it
+          // This prevents race conditions where getSession returns null temporarily
           if (initialSession?.user) {
+            setSession(initialSession);
+            setUser(initialSession.user);
+
             // Profile fetch with its own timeout (5 seconds)
             try {
               const profilePromise = fetchProfile(initialSession.user.id);
@@ -126,13 +129,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setTimeout(() => resolve(null), 5000);
               });
               const profile = await Promise.race([profilePromise, profileTimeoutPromise]);
-              setUserProfile(profile);
-              setNeedsMigration(checkMigrationNeeded(profile));
+              if (mounted) {
+                setUserProfile(profile);
+                setNeedsMigration(checkMigrationNeeded(profile));
+              }
             } catch (profileError) {
               console.error('Error fetching profile:', profileError);
               // Continue without profile - don't block loading
             }
           }
+          // Note: If initialSession is null, we still complete loading
+          // The onAuthStateChange listener may provide the session later
+          // or INITIAL_SESSION event will confirm no session exists
 
           setIsLoading(false);
           loadingComplete = true;
@@ -160,33 +168,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
 
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
+      // IMPORTANT: Only clear session on explicit SIGNED_OUT event
+      // For other events (INITIAL_SESSION, TOKEN_REFRESHED, etc.),
+      // a null session might be temporary during token validation
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        setUserProfile(null);
+        setNeedsMigration(false);
+        setIsLoading(false);
+        loadingComplete = true;
+        return;
+      }
 
+      // For all other events, only update state if we have a valid session
+      // This prevents premature logout during token refresh or initial session restoration
       if (newSession?.user) {
+        setSession(newSession);
+        setUser(newSession.user);
+
         try {
           const profile = await fetchProfile(newSession.user.id);
-          setUserProfile(profile);
+          if (mounted) {
+            setUserProfile(profile);
 
-          const migrationNeeded = checkMigrationNeeded(profile);
-          setNeedsMigration(migrationNeeded);
+            const migrationNeeded = checkMigrationNeeded(profile);
+            setNeedsMigration(migrationNeeded);
 
-          // Dispatch first login event if migration is needed
-          if (event === 'SIGNED_IN' && migrationNeeded) {
-            window.dispatchEvent(new CustomEvent(AUTH_FIRST_LOGIN_EVENT, {
-              detail: { userId: newSession.user.id, profile }
-            }));
+            // Dispatch first login event if migration is needed
+            if (event === 'SIGNED_IN' && migrationNeeded) {
+              window.dispatchEvent(new CustomEvent(AUTH_FIRST_LOGIN_EVENT, {
+                detail: { userId: newSession.user.id, profile }
+              }));
+            }
           }
         } catch (profileError) {
           console.error('Error fetching profile on auth change:', profileError);
         }
-      } else {
-        setUserProfile(null);
-        setNeedsMigration(false);
-      }
 
-      setIsLoading(false);
-      loadingComplete = true;
+        if (mounted) {
+          setIsLoading(false);
+          loadingComplete = true;
+        }
+      } else if (event === 'INITIAL_SESSION') {
+        // INITIAL_SESSION with null session means no stored session exists
+        // This is a valid state (new user or cleared storage), so complete loading
+        setIsLoading(false);
+        loadingComplete = true;
+      }
+      // For TOKEN_REFRESHED or other events with null session,
+      // don't update state - wait for the next event with valid session
     });
 
     return () => {
