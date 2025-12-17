@@ -18,6 +18,31 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): 
   ]);
 }
 
+// Helper to delay execution
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Check if error is retryable (transient)
+function isRetryableError(error: string): boolean {
+  const retryablePatterns = [
+    'timed out',
+    'timeout',
+    'rate limit',
+    '429',
+    '502',
+    '503',
+    '504',
+    'network',
+    'fetch failed',
+    'connection',
+    'ECONNRESET',
+    'socket hang up',
+  ];
+  const lowerError = error.toLowerCase();
+  return retryablePatterns.some(pattern => lowerError.includes(pattern.toLowerCase()));
+}
+
 export interface ComparisonResult {
   modelIndex: number;
   model: AIModel;
@@ -175,7 +200,7 @@ export function useModelComparison() {
     startTimesRef.current.clear();
   }, []);
 
-  // Transform a single model
+  // Transform a single model with retry logic
   const transformWithModel = useCallback(async (
     modelIndex: number,
     userPrompt: string,
@@ -183,39 +208,83 @@ export function useModelComparison() {
     currentUserContext: string
   ): Promise<{ output: string | null; error: string | null }> => {
     const model = AVAILABLE_MODELS[modelIndex];
+    const MAX_RETRIES = 2;
+    const BASE_DELAY_MS = 1000; // 1 second base delay for exponential backoff
 
-    try {
-      // Add 90 second timeout to prevent hanging forever
-      // Use anonSupabase to bypass auth session handling that can hang
-      const { data, error } = await withTimeout(
-        anonSupabase.functions.invoke("transform-prompt", {
-          body: {
-            userPrompt,
-            userContext: currentUserContext || undefined,
-            model: model.id,
-            mode: currentMode,
-            thinking: model.thinking || false,
-          },
-        }),
-        90000,
-        "Request timed out"
-      );
+    let lastError: string | null = null;
 
-      if (error) {
-        return { output: null, error: error.message || "Failed to transform" };
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        // Add exponential backoff delay before retries (not before first attempt)
+        if (attempt > 0) {
+          const backoffDelay = BASE_DELAY_MS * Math.pow(2, attempt - 1); // 1s, 2s
+          console.log(`[Compare] Retry ${attempt}/${MAX_RETRIES} for ${model.name} after ${backoffDelay}ms`);
+          await delay(backoffDelay);
+        }
+
+        // Add 90 second timeout to prevent hanging forever
+        // Use anonSupabase to bypass auth session handling that can hang
+        const { data, error } = await withTimeout(
+          anonSupabase.functions.invoke("transform-prompt", {
+            body: {
+              userPrompt,
+              userContext: currentUserContext || undefined,
+              model: model.id,
+              mode: currentMode,
+              thinking: model.thinking || false,
+            },
+          }),
+          90000,
+          "Request timed out. The model is taking too long to respond."
+        );
+
+        if (error) {
+          const errorMsg = error.message || "Failed to transform";
+          lastError = errorMsg;
+
+          // Only retry on transient errors
+          if (attempt < MAX_RETRIES && isRetryableError(errorMsg)) {
+            console.warn(`[Compare] Retryable error for ${model.name}: ${errorMsg}`);
+            continue;
+          }
+          return { output: null, error: errorMsg };
+        }
+
+        if (data?.error) {
+          lastError = data.error;
+
+          // Only retry on transient errors
+          if (attempt < MAX_RETRIES && isRetryableError(data.error)) {
+            console.warn(`[Compare] Retryable error for ${model.name}: ${data.error}`);
+            continue;
+          }
+          return { output: null, error: data.error };
+        }
+
+        // Success!
+        if (attempt > 0) {
+          console.log(`[Compare] ${model.name} succeeded on retry ${attempt}`);
+        }
+        return { output: data?.result || "No output received", error: null };
+
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        lastError = errorMsg;
+
+        // Only retry on transient errors
+        if (attempt < MAX_RETRIES && isRetryableError(errorMsg)) {
+          console.warn(`[Compare] Retryable exception for ${model.name}: ${errorMsg}`);
+          continue;
+        }
+        return { output: null, error: errorMsg };
       }
-
-      if (data?.error) {
-        return { output: null, error: data.error };
-      }
-
-      return { output: data?.result || "No output received", error: null };
-    } catch (err) {
-      return {
-        output: null,
-        error: err instanceof Error ? err.message : "Unknown error"
-      };
     }
+
+    // All retries exhausted
+    return {
+      output: null,
+      error: `Failed after ${MAX_RETRIES + 1} attempts: ${lastError}`
+    };
   }, []);
 
   // Run comparison
@@ -272,8 +341,16 @@ export function useModelComparison() {
       timersRef.current.set(index, timer);
     });
 
-    // Run all transformations concurrently
-    const promises = selectedIndices.map(async (index) => {
+    // Run all transformations with staggered starts to avoid rate limiting
+    // Small delay between starting each request reduces simultaneous load
+    const STAGGER_DELAY_MS = 200; // 200ms between each model start
+
+    const promises = selectedIndices.map(async (index, position) => {
+      // Stagger the start of each request
+      if (position > 0) {
+        await delay(position * STAGGER_DELAY_MS);
+      }
+
       const result = await transformWithModel(index, currentInput, mode, userContext);
       const startTime = startTimesRef.current.get(index);
       const finalTime = startTime ? Date.now() - startTime : null;

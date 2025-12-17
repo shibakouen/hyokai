@@ -323,9 +323,10 @@ const Index = () => {
           <>
             <GitRepoEditor />
             <UserContextEditor />
-            <HistoryPanel onRestore={handleRestore} />
           </>
         )}
+        {/* History panel visible in all modes - restore disabled in beginner mode since BeginnerView has separate state */}
+        <HistoryPanel onRestore={isBeginnerMode ? undefined : handleRestore} />
       </div>
 
       <div className={`relative z-10 container mx-auto py-6 sm:py-8 md:py-16 px-4 ${isCompareMode ? 'max-w-6xl' : 'max-w-4xl'}`}>

@@ -35,15 +35,11 @@ export function AdvancedPromptLibrary({ onSelectPrompt }: AdvancedPromptLibraryP
     setSelectedPromptId(null);
   }, [totalPages]);
 
+  // Toggle selection - shows suggestion preview without inserting into input
+  // Matches beginner mode behavior: click to preview, user writes their own prompt
   const handleSelectPrompt = useCallback((prompt: AdvancedPrompt) => {
-    if (selectedPromptId === prompt.id) {
-      setSelectedPromptId(null);
-    } else {
-      setSelectedPromptId(prompt.id);
-      const promptText = t(prompt.promptKey as TranslationKey);
-      onSelectPrompt(promptText);
-    }
-  }, [selectedPromptId, t, onSelectPrompt]);
+    setSelectedPromptId(prev => prev === prompt.id ? null : prompt.id);
+  }, []);
 
   const selectedPrompt = prompts.find(p => p.id === selectedPromptId);
 
@@ -86,18 +82,24 @@ export function AdvancedPromptLibrary({ onSelectPrompt }: AdvancedPromptLibraryP
         )}
       </div>
 
-      {/* Selected Prompt Display */}
+      {/* Selected Prompt Suggestion Preview - matches beginner mode behavior */}
       {selectedPrompt && (
-        <div className="frost-glass rounded-xl p-4 space-y-2 border border-cb-blue/20 bg-cb-blue/5">
-          <div className="flex items-start gap-2">
+        <div className="frost-glass rounded-xl p-4 border border-cb-blue/30 bg-cb-blue/5 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-start gap-3">
             <Sparkles className="w-4 h-4 text-cb-blue mt-0.5 flex-shrink-0" />
-            <div className="space-y-1 min-w-0">
+            <div className="space-y-2 min-w-0 flex-1">
               <p className="text-xs font-medium text-cb-blue">
                 {t('advPrompts.tryThis' as TranslationKey)}
               </p>
-              <p className="text-sm text-foreground/80">
+              {/* Show full prompt text as preview */}
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {t(selectedPrompt.promptKey as TranslationKey)}
+              </p>
+              {/* Explanation as additional context */}
+              <p className="text-xs text-muted-foreground/80 border-t border-cb-blue/10 pt-2 mt-2">
                 {t(selectedPrompt.explanationKey as TranslationKey)}
               </p>
+              {/* Edit hint */}
               <p className="text-xs text-muted-foreground/70 italic">
                 {t('advPrompts.editHint' as TranslationKey)}
               </p>
