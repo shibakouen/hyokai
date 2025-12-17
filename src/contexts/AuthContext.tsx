@@ -89,19 +89,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     let loadingComplete = false;
 
-    // Guaranteed fallback - ensure loading completes within 12 seconds no matter what
+    // Guaranteed fallback - ensure loading completes within 20 seconds no matter what
     const fallbackTimeout = setTimeout(() => {
       if (mounted && !loadingComplete) {
         console.warn('Auth fallback timeout triggered - forcing loading complete');
         setIsLoading(false);
         loadingComplete = true;
       }
-    }, 12000);
+    }, 20000);
 
     const initAuth = async () => {
       try {
-        // Add timeout to prevent infinite loading - max 10 seconds
-        const AUTH_TIMEOUT_MS = 10000;
+        // Add timeout to prevent infinite loading - max 15 seconds (generous for slow networks)
+        const AUTH_TIMEOUT_MS = 15000;
 
         const getSessionWithTimeout = async () => {
           const timeoutPromise = new Promise<never>((_, reject) => {
@@ -140,17 +140,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error initializing auth:', error);
 
-        // If auth timed out, clear the potentially corrupted session
+        // On timeout, DON'T clear the session - it may still be valid
+        // The onAuthStateChange listener will pick up the real state
+        // A timeout just means the network was slow, not that the session is corrupted
         if (error instanceof Error && error.message.includes('timed out')) {
-          console.warn('Auth timed out - clearing session to prevent future hangs');
-          try {
-            // Clear Supabase auth storage
-            localStorage.removeItem('sb-znjqpxlijraodmjrhqaz-auth-token');
-            // Also try to sign out cleanly
-            supabase.auth.signOut().catch(() => {});
-          } catch (e) {
-            console.error('Failed to clear session:', e);
-          }
+          console.warn('Auth initialization timed out - session may still be valid, letting onAuthStateChange handle it');
         }
 
         if (mounted && !loadingComplete) {
