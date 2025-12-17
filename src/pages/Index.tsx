@@ -6,7 +6,7 @@ import { OutputPanel } from "@/components/OutputPanel";
 import { Button } from "@/components/ui/button";
 import { usePromptTransformer } from "@/hooks/usePromptTransformer";
 import { useModelComparison } from "@/hooks/useModelComparison";
-import { Sparkles, ArrowDown, GitCompare, ArrowLeft } from "lucide-react";
+import { Sparkles, GitCompare, ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "@/hooks/use-toast";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -396,25 +396,22 @@ const Index = () => {
                     )}
                   </div>
 
-                  {/* Arrow indicator */}
-                  <div className="flex justify-center">
-                    <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
-                  </div>
-
                   {/* Advanced Prompt Library - Prompt Templates */}
                   <AdvancedPromptLibrary onSelectPrompt={setInput} />
 
-                  {/* Output Section - Show placeholder or previous output */}
-                  <div ref={outputSectionRef} className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">
-                      {t('output.label')}
-                    </label>
-                    {isCompareMode ? (
-                      <ComparisonPanel results={results} isLoading={isLoading} />
-                    ) : (
-                      <OutputPanel content={output} isLoading={singleIsLoading} onNewPrompt={handleNewPrompt} />
-                    )}
-                  </div>
+                  {/* Output Section - Only show when loading or has output (no empty placeholder) */}
+                  {(isLoading || output || results.some(r => r.output)) && (
+                    <div ref={outputSectionRef} className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        {t('output.label')}
+                      </label>
+                      {isCompareMode ? (
+                        <ComparisonPanel results={results} isLoading={isLoading} />
+                      ) : (
+                        <OutputPanel content={output} isLoading={singleIsLoading} />
+                      )}
+                    </div>
+                  )}
                 </>
               ) : (
                 /* OUTPUT VIEW - Show output with prominent back/new prompt buttons */

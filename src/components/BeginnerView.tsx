@@ -7,13 +7,11 @@ import { toast } from "@/hooks/use-toast";
 import { ChatGPTButton } from "@/components/ChatGPTButton";
 import {
   Sparkles,
-  ArrowDown,
   ArrowLeft,
   Copy,
   Check,
   Lightbulb,
   HelpCircle,
-  RefreshCw,
   RotateCcw,
 } from "lucide-react";
 import {
@@ -677,13 +675,9 @@ export function BeginnerView() {
           </div>
         </div>
 
-        {/* Arrow indicator */}
-        <div className="flex justify-center">
-          <ArrowDown className="w-5 h-5 text-muted-foreground/50" />
-        </div>
-
-        {/* Step 3: Output */}
-        <div ref={outputSectionRef} className="space-y-2">
+        {/* Step 2: Output - Only show when loading or has output (no empty placeholder) */}
+        {(isLoading || editedOutput) && (
+        <div ref={outputSectionRef} className="space-y-2 mt-6">
           <div className="flex items-center gap-2">
             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-cb-blue/10 text-cb-blue text-xs font-semibold">
               2
@@ -789,18 +783,10 @@ export function BeginnerView() {
                   {isOutputEdited && <span className="text-cb-blue">{t("output.edited")}</span>}
                 </div>
               </div>
-            ) : (
-              <div
-                className="frost-glass rounded-2xl p-5 transition-all duration-300 flex items-center justify-center text-muted-foreground text-sm"
-                style={{ minHeight: `${UNIFIED_HEIGHT}px` }}
-                role="region"
-                aria-label={t("beginner.outputAria")}
-              >
-                {t("beginner.outputPlaceholder")}
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
+        )}
         </div>
         {/* End of INPUT VIEW wrapper */}
       </div>
