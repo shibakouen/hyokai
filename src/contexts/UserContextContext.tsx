@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -90,6 +90,58 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
 
     // Track which user we've loaded from database (null = not loaded, string = loaded for that user)
     const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
+
+    // Refs to track current state (for cleanup functions that need latest values)
+    const stateRef = useRef({
+        userContext,
+        activeContextId,
+        savedContexts,
+        loadedForUserId,
+        isAuthenticated,
+        userId: user?.id ?? null,
+    });
+
+    // Keep refs in sync with state, and save on logout BEFORE updating ref
+    useEffect(() => {
+        const prev = stateRef.current;
+        const nowAuth = isAuthenticated;
+        const nowUserId = user?.id ?? null;
+
+        // Detect logout: was authenticated, now not authenticated
+        // Save BEFORE updating the ref so we have access to old state
+        if (prev.isAuthenticated && !nowAuth && prev.userId && prev.loadedForUserId === prev.userId) {
+            // Validate context_id exists to avoid foreign key issues
+            let contextIdToSave: string | null = null;
+            if (prev.activeContextId) {
+                const contextExists = prev.savedContexts.some(c => c.id === prev.activeContextId);
+                contextIdToSave = contextExists ? prev.activeContextId : null;
+            }
+
+            // Save using the PREVIOUS state before updating
+            supabase
+                .from('user_active_context')
+                .upsert({
+                    user_id: prev.userId,
+                    context_id: contextIdToSave,
+                    current_content: prev.userContext,
+                })
+                .then(({ error }) => {
+                    if (error) {
+                        console.error('Failed to save context on logout:', error);
+                    }
+                });
+        }
+
+        // Now update the ref with new state
+        stateRef.current = {
+            userContext,
+            activeContextId,
+            savedContexts,
+            loadedForUserId,
+            isAuthenticated,
+            userId: nowUserId,
+        };
+    }, [userContext, activeContextId, savedContexts, loadedForUserId, isAuthenticated, user?.id]);
 
     // Load from database when authenticated - uses user.id to detect user changes
     useEffect(() => {
@@ -194,16 +246,25 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
 
         const syncActiveContext = async () => {
             try {
-                // Use null for context_id if not set (to avoid foreign key issues)
-                const contextIdToSave = activeContextId || null;
+                // Validate context_id exists in savedContexts to avoid foreign key issues
+                // If activeContextId doesn't exist in our saved contexts, use null
+                let contextIdToSave: string | null = null;
+                if (activeContextId) {
+                    const contextExists = savedContexts.some(c => c.id === activeContextId);
+                    contextIdToSave = contextExists ? activeContextId : null;
+                }
 
-                await supabase
+                const { error } = await supabase
                     .from('user_active_context')
                     .upsert({
                         user_id: user.id,
                         context_id: contextIdToSave,
                         current_content: userContext,
                     });
+
+                if (error) {
+                    console.error('Failed to sync active context to database:', error);
+                }
             } catch (e) {
                 console.error('Failed to sync active context:', e);
             }
@@ -221,7 +282,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
                 syncActiveContext().catch(console.error);
             }
         };
-    }, [isAuthenticated, user, loadedForUserId, activeContextId, userContext]);
+    }, [isAuthenticated, user, loadedForUserId, activeContextId, userContext, savedContexts]);
 
     // Set context without any character limit
     const setUserContext = useCallback((context: string) => {
