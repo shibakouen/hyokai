@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -250,113 +250,121 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
   const { t } = useLanguage();
   const { isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
 
-  // Load history when panel opens or auth state changes
-  const loadHistoryData = useCallback(async () => {
-    console.log('[HistoryPanel] loadHistoryData called', { isAuthLoading, isAuthenticated, userId: user?.id });
+  // Track if we've loaded from DB for current user to avoid duplicate loads
+  const loadedUserIdRef = useRef<string | null>(null);
+  // Track the last user.id we tried to load for
+  const lastUserIdRef = useRef<string | null>(null);
 
-    // Don't load while auth is still initializing, unless we already have a user
-    if (isAuthLoading && !user) {
-      console.log('[HistoryPanel] Skipping - auth still loading');
-      return;
+  // Load history - ALWAYS show localStorage immediately, then enhance with DB data
+  const loadHistoryData = useCallback(async () => {
+    // Step 1: ALWAYS load and show localStorage immediately (no waiting for auth)
+    const localHistory = loadHistory();
+
+    // Only update state if we don't already have data or if local has more
+    if (history.length === 0 || localHistory.length > history.length) {
+      setHistory(localHistory);
     }
 
-    setIsLoadingHistory(true);
-    try {
-      // Always load localStorage first (fallback/cache)
-      const localHistory = loadHistory();
+    // Step 2: If we have a user, try to load from database
+    if (user?.id) {
+      // Avoid duplicate loads for the same user
+      if (loadedUserIdRef.current === user.id) {
+        return;
+      }
 
-      if (isAuthenticated && user) {
-        console.log('[HistoryPanel] Loading from database for user:', user.id);
+      // Mark that we're attempting to load for this user
+      lastUserIdRef.current = user.id;
 
-        try {
-          // Load from database for authenticated users
-          const dbHistory = await loadHistoryFromDb(user.id);
-          
-          if (dbHistory === null) {
-             console.warn('[HistoryPanel] Database load failed (returned null), using localStorage fallback');
-             setHistory(localHistory);
-          } else {
-            console.log('[HistoryPanel] DB history loaded:', dbHistory.length, 'entries');
+      setIsLoadingHistory(true);
+      try {
+        const dbHistory = await loadHistoryFromDb(user.id);
 
-            if (dbHistory.length > 0) {
-              // Merge: DB entries are authoritative, but include unsynced local entries
-              const dbIds = new Set(dbHistory.map(e => e.id));
-              const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
+        // Check if user changed while we were loading
+        if (lastUserIdRef.current !== user.id) {
+          return;
+        }
 
-              if (unsyncedLocal.length > 0) {
-                console.log('[HistoryPanel] Found', unsyncedLocal.length, 'unsynced local entries, syncing...');
+        if (dbHistory === null) {
+          // Database load failed - keep localStorage data
+          console.warn('[HistoryPanel] Database load failed, keeping localStorage data');
+        } else if (dbHistory.length > 0) {
+          // Got data from database
+          console.log('[HistoryPanel] Loaded', dbHistory.length, 'entries from database');
 
-                // Sync unsynced entries to database (fire and forget)
-                for (const entry of unsyncedLocal) {
-                  addHistoryEntryToDb(user.id, {
-                    input: entry.input,
-                    taskMode: entry.taskMode,
-                    result: entry.result,
-                  }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
-                }
-              }
+          // Merge with any unsynced local entries
+          const dbIds = new Set(dbHistory.map(e => e.id));
+          const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
 
-              // Merge and sort by timestamp (newest first)
-              const merged = [...dbHistory, ...unsyncedLocal]
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 50);
-
-              console.log('[HistoryPanel] Using merged history:', merged.length, 'entries');
-              setHistory(merged);
-
-              // Update localStorage cache with merged data
-              saveHistory(merged);
-            } else if (localHistory.length > 0) {
-              // Database is empty but localStorage has data - use localStorage
-              // Also sync to database for future sessions
-              console.log('[HistoryPanel] Using localStorage (DB empty, local has data)');
-              setHistory(localHistory);
-
-              // Sync local entries to database
-              for (const entry of localHistory.slice(0, 50)) {
-                addHistoryEntryToDb(user.id, {
-                  input: entry.input,
-                  taskMode: entry.taskMode,
-                  result: entry.result,
-                }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
-              }
-            } else {
-              // Both empty
-              console.log('[HistoryPanel] Both DB and local are empty');
-              setHistory([]);
+          // Sync unsynced entries to database (fire and forget)
+          if (unsyncedLocal.length > 0) {
+            console.log('[HistoryPanel] Syncing', unsyncedLocal.length, 'local entries to database');
+            for (const entry of unsyncedLocal) {
+              addHistoryEntryToDb(user.id, {
+                input: entry.input,
+                taskMode: entry.taskMode,
+                result: entry.result,
+              }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
             }
           }
-        } catch (dbError) {
-          // Database load failed - use localStorage as fallback
-          console.error('[HistoryPanel] Unexpected error loading from DB, using localStorage:', dbError);
-          setHistory(localHistory);
-        }
-      } else {
-        console.log('[HistoryPanel] Not authenticated, using localStorage');
-        // Load from localStorage for guests
-        setHistory(localHistory);
-      }
-    } catch (e) {
-      console.error('[HistoryPanel] Failed to load history:', e);
-      // Fallback to localStorage
-      setHistory(loadHistory());
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  }, [isAuthenticated, user, isAuthLoading]);
 
+          // Merge and sort
+          const merged = [...dbHistory, ...unsyncedLocal]
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 50);
+
+          setHistory(merged);
+          saveHistory(merged); // Update localStorage cache
+          loadedUserIdRef.current = user.id;
+
+        } else if (localHistory.length > 0) {
+          // Database is empty but we have local data - sync it
+          console.log('[HistoryPanel] Database empty, syncing', localHistory.length, 'local entries');
+          setHistory(localHistory);
+
+          // Sync to database
+          for (const entry of localHistory.slice(0, 50)) {
+            addHistoryEntryToDb(user.id, {
+              input: entry.input,
+              taskMode: entry.taskMode,
+              result: entry.result,
+            }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
+          }
+          loadedUserIdRef.current = user.id;
+        } else {
+          // Both empty - that's fine
+          loadedUserIdRef.current = user.id;
+        }
+      } catch (e) {
+        console.error('[HistoryPanel] Error loading from database:', e);
+        // Keep localStorage data
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    }
+  }, [user?.id, history.length]);
+
+  // Load immediately when panel opens
   useEffect(() => {
     if (isOpen) {
+      // Reset loaded state when panel opens to force reload
+      loadedUserIdRef.current = null;
       loadHistoryData();
     }
-  }, [isOpen, loadHistoryData]);
+  }, [isOpen]);
 
-  // Reload when auth state finishes loading (handles race conditions)
+  // Reload when user becomes available (handles race condition with auth)
   useEffect(() => {
-    if (isOpen && !isAuthLoading) {
+    if (isOpen && user?.id && loadedUserIdRef.current !== user.id) {
       loadHistoryData();
     }
-  }, [isOpen, isAuthLoading, loadHistoryData]);
+  }, [isOpen, user?.id, loadHistoryData]);
+
+  // Also reload when auth finishes loading (belt and suspenders)
+  useEffect(() => {
+    if (isOpen && !isAuthLoading && user?.id && loadedUserIdRef.current !== user.id) {
+      loadHistoryData();
+    }
+  }, [isOpen, isAuthLoading, user?.id, loadHistoryData]);
 
   const handleDelete = async (id: string) => {
     if (isAuthenticated && user) {
@@ -372,6 +380,7 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
     }
     clearHistory();
     setHistory([]);
+    loadedUserIdRef.current = null; // Reset so next open will try DB again
   };
 
   const handleRestore = (entry: HistoryEntry) => {
