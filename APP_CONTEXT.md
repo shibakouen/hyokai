@@ -4,6 +4,64 @@
 
 **Hyokai** (氷解 - "ice melt") is a prompt transformation tool that converts natural language requests into precise technical specifications for AI coding agents and general assistants. Supports dual modes (coding/prompting), multi-model comparison, and bilingual UI (EN/JP).
 
+## Deployment Architecture
+
+Hyokai uses a **two-deployment architecture** with separate Vercel projects for the landing page and main application.
+
+### Deployment Map
+
+| Role | Vercel Project | Domain (Planned) | Description |
+|------|----------------|------------------|-------------|
+| **Landing Page** | `hyokai---curveball-edition` | `hyokai.io` | Marketing/intro page with "Launch App" CTA |
+| **Main App** | `Hyokai-Vercel` | `app.hyokai.io` | The actual Hyokai transformation tool |
+
+### Configuration
+
+Deployment configuration is centralized in `src/config/deployments.ts`:
+
+```typescript
+import { LANDING_PAGE, MAIN_APP, getAppUrl, getLandingUrl } from '@/config/deployments';
+
+// Get URL to launch app from landing page
+const launchUrl = getAppUrl();           // https://app.hyokai.io
+const libraryUrl = getAppUrl('/library'); // https://app.hyokai.io/library
+
+// Get URL back to landing page
+const homeUrl = getLandingUrl();          // https://hyokai.io
+
+// CORS configuration
+import { getAllowedOrigins, isAllowedOrigin } from '@/config/deployments';
+```
+
+### User Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         hyokai.io (Landing)                          │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Marketing content, features overview, "Launch App" button    │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼ "Launch App"
+┌─────────────────────────────────────────────────────────────────────┐
+│                       app.hyokai.io (Main App)                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Prompt transformation, model comparison, history, settings   │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Domain Configuration Checklist
+
+When setting up production domains:
+
+1. [ ] Configure `hyokai.io` → `hyokai---curveball-edition` in Vercel
+2. [ ] Configure `app.hyokai.io` → `Hyokai-Vercel` in Vercel
+3. [ ] Update `src/config/deployments.ts` with actual domains
+4. [ ] Update Supabase CORS settings to include new domains
+5. [ ] Test cross-origin navigation between landing and app
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -45,7 +103,10 @@ src/
 │   ├── CompareToggle.tsx    # Single/Compare switch
 │   ├── LanguageSelector.tsx # EN/JP toggle
 │   └── HistoryPanel.tsx     # History sidebar
+├── config/
+│   └── deployments.ts       # Landing/App deployment configuration
 ├── contexts/
+│   ├── AuthContext.tsx      # Supabase auth state + wasEverAuthenticated ref
 │   ├── ModeContext.tsx      # Task mode state (coding|prompting)
 │   └── LanguageContext.tsx  # Language state (en|jp) + t() function
 ├── hooks/
@@ -54,12 +115,14 @@ src/
 ├── lib/
 │   ├── models.ts            # AIModel[] definitions
 │   ├── translations.ts      # EN/JP string map
-│   ├── history.ts           # localStorage CRUD for history
+│   ├── history.ts           # localStorage + DB CRUD for history
+│   ├── dbRetry.ts           # Exponential backoff retry utility
 │   └── utils.ts             # clsx/tailwind-merge helper
 └── integrations/supabase/   # Supabase client setup
 
 supabase/functions/
-└── transform-prompt/index.ts  # Edge function: LLM API integration
+├── transform-prompt/index.ts  # Edge function: LLM API integration
+└── user-data/index.ts         # Edge function: PAT encryption/decryption
 ```
 
 ## Data Models / Schema
@@ -176,5 +239,6 @@ Both enforce: transform-only output, no preamble, add structure/criteria/edge ca
 - Compare mode uses per-model timers via `Map<number, NodeJS.Timeout>`
 - Model selection stores index (not ID) because thinking variants share same model ID
 - Edge function strips unwanted headers from LLM output (indexOf + regex fallback)
-- No backend database - all persistence is client-side localStorage
+- Hybrid persistence: localStorage (offline) + Supabase DB (authenticated users)
+- Two-deployment architecture: Landing Page + Main App (see Deployment Architecture)
 - Deployed via Vercel (frontend) + Supabase CLI (edge functions)
