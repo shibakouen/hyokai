@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -22,6 +22,8 @@ interface AuthContextType {
   resendConfirmation: (email: string) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
   needsMigration: boolean;
+  // Track if user was ever authenticated in this session (to distinguish logout from initial load)
+  wasEverAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [needsMigration, setNeedsMigration] = useState(false);
+  // Track if user was ever authenticated (to distinguish logout from initial load)
+  const [wasEverAuthenticated, setWasEverAuthenticated] = useState(false);
 
   // Fetch user profile from database
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
@@ -150,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.log('Session restored:', initialSession.user.id);
               setSession(initialSession);
               setUser(initialSession.user);
+              setWasEverAuthenticated(true);
 
               // Profile fetch with its own timeout (5 seconds)
               try {
@@ -226,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (newSession?.user) {
         setSession(newSession);
         setUser(newSession.user);
+        setWasEverAuthenticated(true);
 
         try {
           const profile = await fetchProfile(newSession.user.id);
@@ -402,6 +408,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resendConfirmation,
       refreshProfile,
       needsMigration,
+      wasEverAuthenticated,
     }}>
       {children}
     </AuthContext.Provider>

@@ -193,7 +193,7 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const { t } = useLanguage();
-  const { isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
+  const { isAuthenticated, user, isLoading: isAuthLoading, wasEverAuthenticated } = useAuth();
 
   // Track if we've loaded from DB for current user to avoid duplicate loads
   const loadedUserIdRef = useRef<string | null>(null);
@@ -312,13 +312,13 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
     }
   }, [isOpen, isAuthLoading, user?.id, loadHistoryData]);
 
-  // Reset state when user logs out (localStorage already cleared by AuthContext.signOut)
+  // Reset state when user logs out (only if they were previously authenticated)
   useEffect(() => {
-    if (!isAuthenticated && !isAuthLoading) {
+    if (!isAuthenticated && !isAuthLoading && wasEverAuthenticated) {
       setHistory([]);
       loadedUserIdRef.current = null;
     }
-  }, [isAuthenticated, isAuthLoading]);
+  }, [isAuthenticated, isAuthLoading, wasEverAuthenticated]);
 
   const handleDelete = async (id: string) => {
     if (isAuthenticated && user) {
