@@ -29,6 +29,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Custom event for first login (triggers migration)
 export const AUTH_FIRST_LOGIN_EVENT = 'hyokai-auth-first-login';
 
+// Keys to clear on logout (all account-level data)
+const USER_DATA_KEYS = [
+  'hyokai-user-context',
+  'hyokai-saved-contexts',
+  'hyokai-active-context-id',
+  'hyokai-history',
+  'hyokai-simple-history',
+  'hyokai-github-pat',
+  'hyokai-github-repos',
+  'hyokai-github-settings',
+  'hyokai-mode',
+  'hyokai-language',
+  'hyokai-beginner-mode',
+  'hyokai-selected-model-index',
+  'hyokai-compare-model-indices',
+];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -89,19 +106,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     let loadingComplete = false;
 
-    // Guaranteed fallback - ensure loading completes within 20 seconds no matter what
+    // Guaranteed fallback - ensure loading completes within 10 seconds no matter what
     const fallbackTimeout = setTimeout(() => {
       if (mounted && !loadingComplete) {
         console.warn('Auth fallback timeout triggered - forcing loading complete');
         setIsLoading(false);
         loadingComplete = true;
       }
-    }, 20000);
+    }, 10000);
 
     const initAuth = async () => {
       try {
-        // Add timeout to prevent infinite loading - max 15 seconds (generous for slow networks)
-        const AUTH_TIMEOUT_MS = 15000;
+        // Check if any Supabase auth tokens exist in localStorage
+        // If not, we can skip the network check and show guest state immediately
+        const hasStoredSession = Object.keys(localStorage).some(
+          key => key.startsWith('sb-') && key.includes('-auth-')
+        );
+
+        if (!hasStoredSession) {
+          // No stored session - immediately show guest state (no spinner)
+          console.log('[Auth] No stored session found - showing guest state');
+          setIsLoading(false);
+          loadingComplete = true;
+          return;
+        }
+
+        // Add timeout to prevent infinite loading - max 8 seconds
+        const AUTH_TIMEOUT_MS = 8000;
 
         // Start session fetch immediately
         const sessionPromise = supabase.auth.getSession();
@@ -307,9 +338,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Clear all user-specific localStorage data
+  const clearUserData = useCallback(() => {
+    USER_DATA_KEYS.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.error(`Failed to remove ${key}:`, e);
+      }
+    });
+  }, []);
+
   // Sign out
   const signOut = useCallback(async () => {
-    // Optimistically clear state immediately to ensure UI updates
+    // Clear user-specific localStorage data FIRST
+    clearUserData();
+
+    // Then clear React state immediately for instant UI feedback
     setSession(null);
     setUser(null);
     setUserProfile(null);
@@ -327,7 +372,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error signing out:', error);
       // Ignore error as we've already handled the UI state
     }
-  }, []);
+  }, [clearUserData]);
 
   // Helper to clear Supabase auth storage manually
   const clearSupabaseStorage = useCallback(() => {

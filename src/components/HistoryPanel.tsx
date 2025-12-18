@@ -366,6 +366,14 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
     }
   }, [isOpen, isAuthLoading, user?.id, loadHistoryData]);
 
+  // Reset state when user logs out (localStorage already cleared by AuthContext.signOut)
+  useEffect(() => {
+    if (!isAuthenticated && !isAuthLoading) {
+      setHistory([]);
+      loadedUserIdRef.current = null;
+    }
+  }, [isAuthenticated, isAuthLoading]);
+
   const handleDelete = async (id: string) => {
     if (isAuthenticated && user) {
       await deleteHistoryEntryFromDb(user.id, id);

@@ -64,7 +64,7 @@ interface GitRepoContextType {
 const GitRepoContext = createContext<GitRepoContextType | undefined>(undefined);
 
 export function GitRepoProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
 
   // Load PAT from localStorage (for guests)
   const [pat, setPatState] = useState<string | null>(() => {
@@ -253,12 +253,19 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     loadFromDatabase();
   }, [isAuthenticated, user, hasLoadedFromDb]);
 
-  // Reset loaded flag when user changes
+  // Reset state when user logs out (not during initial auth check)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isAuthLoading) {
+      // Clear all state when logged out (localStorage is already cleared by AuthContext.signOut)
+      setPatState(null);
+      setPatStatus('idle');
+      setPatUsername(null);
+      setConnections([]);
+      setSettings(getDefaultSettings());
+      setAvailableRepos([]);
       setHasLoadedFromDb(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAuthLoading]);
 
   // Persist PAT to localStorage (always, for guests and as fallback)
   useEffect(() => {
