@@ -360,31 +360,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Sign out
-  const signOut = useCallback(async () => {
-    // Clear user-specific localStorage data FIRST
-    clearUserData();
-
-    // Then clear React state immediately for instant UI feedback
-    setSession(null);
-    setUser(null);
-    setUserProfile(null);
-    setNeedsMigration(false);
-    setIsLoading(false);
-
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Error signing out:', error);
-        // We don't throw here because we've already cleared the local state
-        // so from the user's perspective, they are signed out.
-      }
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Ignore error as we've already handled the UI state
-    }
-  }, [clearUserData]);
-
   // Helper to clear Supabase auth storage manually
   const clearSupabaseStorage = useCallback(() => {
     try {
@@ -397,6 +372,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error clearing Supabase storage:', e);
     }
   }, []);
+
+  // Sign out
+  const signOut = useCallback(async () => {
+    // Clear Supabase auth tokens FIRST to prevent accidental re-login on refresh
+    // This is critical - if supabase.auth.signOut() fails, we still want to be logged out
+    clearSupabaseStorage();
+
+    // Clear user-specific localStorage data
+    clearUserData();
+
+    // Reset the wasEverAuthenticated ref
+    wasEverAuthenticatedRef.current = false;
+
+    // Then clear React state immediately for instant UI feedback
+    setSession(null);
+    setUser(null);
+    setUserProfile(null);
+    setNeedsMigration(false);
+    setIsLoading(false);
+
+    try {
+      // This call may fail but we've already cleared local storage above
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        // We don't throw here because we've already cleared the local state
+        // so from the user's perspective, they are signed out.
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Ignore error as we've already handled the UI state
+    }
+  }, [clearUserData, clearSupabaseStorage]);
 
   const isAuthenticated = !!user && !!session;
 
