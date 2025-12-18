@@ -69,6 +69,9 @@ const Index = () => {
   const prevSingleLoadingRef = useRef(singleIsLoading);
   const prevCompareLoadingRef = useRef(compareIsLoading);
 
+  // Guard to prevent duplicate history saves in compare mode
+  const compareHistorySavedRef = useRef(false);
+
   // Ref for output section to enable auto-scroll
   const outputSectionRef = useRef<HTMLDivElement>(null);
 
@@ -129,11 +132,19 @@ const Index = () => {
     const wasLoading = prevCompareLoadingRef.current;
     prevCompareLoadingRef.current = compareIsLoading;
 
+    // Reset the save guard when a new transformation starts
+    if (!wasLoading && compareIsLoading) {
+      compareHistorySavedRef.current = false;
+    }
+
     // Check if loading just finished and we have results
     if (wasLoading && !compareIsLoading && results.length > 0 && compareInput.trim()) {
-      // Only save if all results are complete (not loading)
+      // Only save if all results are complete (not loading) AND we haven't saved yet
       const allComplete = results.every(r => !r.isLoading);
-      if (allComplete) {
+      if (allComplete && !compareHistorySavedRef.current) {
+        // Mark as saved FIRST to prevent any race conditions
+        compareHistorySavedRef.current = true;
+
         const entryData = {
           input: compareInput,
           taskMode,
