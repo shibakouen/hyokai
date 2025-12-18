@@ -295,7 +295,8 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
       loadedUserIdRef.current = null;
       loadHistoryData();
     }
-  }, [isOpen, loadHistoryData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); // Intentionally exclude loadHistoryData to prevent infinite loop
 
   // Reload when user becomes available (handles race condition with auth)
   useEffect(() => {
