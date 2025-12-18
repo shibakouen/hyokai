@@ -21,6 +21,7 @@ import { BeginnerModeToggle } from "@/components/BeginnerModeToggle";
 import { BeginnerView } from "@/components/BeginnerView";
 import { AdvancedPromptLibrary } from "@/components/AdvancedPromptLibrary";
 import { AuthButton } from "@/components/AuthButton";
+import { TokenUsageDisplay } from "@/components/TokenUsageDisplay";
 import { useMode } from "@/contexts/ModeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AVAILABLE_MODELS } from "@/lib/models";
@@ -328,6 +329,7 @@ const Index = () => {
 
       {/* Controls - top right, responsive with beginner mode optimization */}
       <div className={`absolute top-3 right-3 md:top-4 md:right-4 z-50 flex items-center gap-1.5 md:gap-2 flex-wrap justify-end ${isBeginnerMode ? 'max-w-[calc(100%-5rem)]' : 'max-w-[calc(100%-4rem)]'}`}>
+        <TokenUsageDisplay compact className="hidden sm:flex" />
         <AuthButton />
         <BeginnerModeToggle />
         {!isBeginnerMode && (

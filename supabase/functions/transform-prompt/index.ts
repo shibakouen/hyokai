@@ -1,9 +1,287 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// ============================================================================
+// RATE LIMITING CONFIGURATION
+// ============================================================================
+const RATE_LIMITS = {
+  // Authenticated users
+  authenticated: {
+    daily: 1000,      // tokens per day
+    monthly: 10000,   // tokens per month
+    perRequest: 500,  // max tokens per single request
+  },
+  // Anonymous users (by session)
+  anonymous: {
+    daily: 1000,      // tokens per day (same as authenticated for free tier)
+    perRequest: 300,  // slightly lower per-request limit
+  },
+  // Email that bypasses all limits
+  unlimitedEmail: "reimutomonari@gmail.com",
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// Estimate tokens from text (roughly 4 chars per token)
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+// Parse token usage from OpenRouter response
+function parseTokenUsage(data: {
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
+}): { input: number; output: number; estimated: boolean } {
+  if (data.usage?.prompt_tokens !== undefined) {
+    return {
+      input: data.usage.prompt_tokens,
+      output: data.usage.completion_tokens || 0,
+      estimated: false,
+    };
+  }
+  return { input: 0, output: 0, estimated: true };
+}
+
+// Create Supabase client with service role for admin operations
+function createServiceClient() {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing Supabase configuration");
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+
+// Extract user from JWT token
+async function getUserFromToken(authHeader: string | null): Promise<{
+  userId: string | null;
+  email: string | null;
+  isUnlimited: boolean;
+}> {
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { userId: null, email: null, isUnlimited: false };
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return { userId: null, email: null, isUnlimited: false };
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      return { userId: null, email: null, isUnlimited: false };
+    }
+
+    return {
+      userId: user.id,
+      email: user.email || null,
+      isUnlimited: user.email === RATE_LIMITS.unlimitedEmail,
+    };
+  } catch {
+    return { userId: null, email: null, isUnlimited: false };
+  }
+}
+
+// Check rate limits for authenticated user
+async function checkAuthenticatedLimits(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  estimatedTokens: number
+): Promise<{ allowed: boolean; error?: string; dailyRemaining?: number; monthlyRemaining?: number }> {
+  // Get user's limits
+  const { data: limits } = await supabase
+    .from("user_usage_limits")
+    .select("daily_token_limit, monthly_token_limit, max_tokens_per_request, is_unlimited")
+    .eq("user_id", userId)
+    .single();
+
+  // If unlimited, allow immediately
+  if (limits?.is_unlimited) {
+    return { allowed: true, dailyRemaining: -1, monthlyRemaining: -1 };
+  }
+
+  const dailyLimit = limits?.daily_token_limit || RATE_LIMITS.authenticated.daily;
+  const monthlyLimit = limits?.monthly_token_limit || RATE_LIMITS.authenticated.monthly;
+  const perRequestLimit = limits?.max_tokens_per_request || RATE_LIMITS.authenticated.perRequest;
+
+  // Check per-request limit
+  if (estimatedTokens > perRequestLimit) {
+    return {
+      allowed: false,
+      error: `Request too large (est. ${estimatedTokens} tokens). Maximum ${perRequestLimit} tokens per request. Try reducing your prompt or context.`,
+    };
+  }
+
+  // Get daily usage
+  const today = new Date().toISOString().split("T")[0];
+  const { data: dailyUsage } = await supabase
+    .from("api_usage")
+    .select("total_tokens")
+    .eq("user_id", userId)
+    .gte("created_at", today)
+    .lt("created_at", `${today}T23:59:59.999Z`);
+
+  const dailyTotal = dailyUsage?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
+
+  if (dailyTotal + estimatedTokens > dailyLimit) {
+    return {
+      allowed: false,
+      error: `Daily limit reached (${dailyTotal}/${dailyLimit} tokens). Resets at midnight UTC.`,
+      dailyRemaining: Math.max(0, dailyLimit - dailyTotal),
+    };
+  }
+
+  // Get monthly usage
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const { data: monthlyUsage } = await supabase
+    .from("api_usage")
+    .select("total_tokens")
+    .eq("user_id", userId)
+    .gte("created_at", monthStart.toISOString());
+
+  const monthlyTotal = monthlyUsage?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
+
+  if (monthlyTotal + estimatedTokens > monthlyLimit) {
+    return {
+      allowed: false,
+      error: `Monthly limit reached (${monthlyTotal}/${monthlyLimit} tokens). Resets on the 1st.`,
+      dailyRemaining: Math.max(0, dailyLimit - dailyTotal),
+      monthlyRemaining: Math.max(0, monthlyLimit - monthlyTotal),
+    };
+  }
+
+  return {
+    allowed: true,
+    dailyRemaining: dailyLimit - dailyTotal - estimatedTokens,
+    monthlyRemaining: monthlyLimit - monthlyTotal - estimatedTokens,
+  };
+}
+
+// Check rate limits for anonymous user (by session)
+async function checkAnonymousLimits(
+  supabase: ReturnType<typeof createClient>,
+  sessionId: string,
+  estimatedTokens: number
+): Promise<{ allowed: boolean; error?: string; dailyRemaining?: number }> {
+  const today = new Date().toISOString().split("T")[0];
+
+  // Check per-request limit
+  if (estimatedTokens > RATE_LIMITS.anonymous.perRequest) {
+    return {
+      allowed: false,
+      error: `Request too large. Sign in to unlock higher limits.`,
+    };
+  }
+
+  // Get or create anonymous usage record
+  const { data: existing } = await supabase
+    .from("anonymous_usage")
+    .select("tokens_today, last_request_date")
+    .eq("session_id", sessionId)
+    .single();
+
+  let tokensToday = 0;
+
+  if (existing) {
+    // Reset if new day
+    if (existing.last_request_date !== today) {
+      tokensToday = 0;
+    } else {
+      tokensToday = existing.tokens_today || 0;
+    }
+  }
+
+  if (tokensToday + estimatedTokens > RATE_LIMITS.anonymous.daily) {
+    return {
+      allowed: false,
+      error: `Daily limit reached. Sign in for more tokens or wait until tomorrow.`,
+      dailyRemaining: Math.max(0, RATE_LIMITS.anonymous.daily - tokensToday),
+    };
+  }
+
+  return {
+    allowed: true,
+    dailyRemaining: RATE_LIMITS.anonymous.daily - tokensToday - estimatedTokens,
+  };
+}
+
+// Log usage to database
+async function logUsage(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    userId: string | null;
+    sessionId: string | null;
+    model: string;
+    mode: string;
+    inputTokens: number;
+    outputTokens: number;
+    estimated: boolean;
+    requestChars: number;
+    responseChars: number;
+  }
+): Promise<void> {
+  try {
+    // Log to api_usage table
+    await supabase.from("api_usage").insert({
+      user_id: params.userId,
+      session_id: params.sessionId,
+      model: params.model,
+      mode: params.mode,
+      input_tokens: params.inputTokens,
+      output_tokens: params.outputTokens,
+      tokens_estimated: params.estimated,
+      request_chars: params.requestChars,
+      response_chars: params.responseChars,
+    });
+
+    // Update anonymous usage if applicable
+    if (!params.userId && params.sessionId) {
+      const today = new Date().toISOString().split("T")[0];
+      const totalTokens = params.inputTokens + params.outputTokens;
+
+      await supabase.rpc("upsert_anonymous_usage", {
+        p_session_id: params.sessionId,
+        p_tokens: totalTokens,
+        p_date: today,
+      }).catch(() => {
+        // Fallback: manual upsert if RPC doesn't exist
+        supabase.from("anonymous_usage").upsert({
+          session_id: params.sessionId,
+          tokens_today: totalTokens,
+          total_tokens: totalTokens,
+          request_count: 1,
+          last_request_date: today,
+          last_seen: new Date().toISOString(),
+        }, { onConflict: "session_id" });
+      });
+    }
+  } catch (err) {
+    console.error("Failed to log usage:", err);
+    // Don't throw - logging failure shouldn't block the request
+  }
+}
 
 const CODING_MODE_SYSTEM_PROMPT = `YOU ARE A PROMPT TRANSFORMER. YOU DO NOT ANSWER REQUESTS. YOU DO NOT FULFILL TASKS. YOU ONLY REWRITE PROMPTS.
 
@@ -448,7 +726,58 @@ serve(async (req) => {
       throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
-    const { userPrompt, userContext, gitContext, model, mode, thinking, beginnerMode } = await req.json();
+    const { userPrompt, userContext, gitContext, model, mode, thinking, beginnerMode, sessionId } = await req.json();
+
+    // ========================================================================
+    // AUTHENTICATION & RATE LIMITING
+    // ========================================================================
+    const authHeader = req.headers.get("Authorization");
+    const { userId, email, isUnlimited } = await getUserFromToken(authHeader);
+
+    // Create service client for database operations
+    let serviceClient: ReturnType<typeof createClient> | null = null;
+    try {
+      serviceClient = createServiceClient();
+    } catch {
+      console.warn("Rate limiting disabled: missing Supabase config");
+    }
+
+    // Estimate input tokens for rate limiting check
+    const inputText = `${userPrompt || ""}${userContext || ""}${gitContext || ""}`;
+    const estimatedInputTokens = estimateTokens(inputText);
+
+    // Check rate limits (skip for unlimited users)
+    let rateLimitResult: { allowed: boolean; error?: string; dailyRemaining?: number; monthlyRemaining?: number } = { allowed: true };
+
+    if (serviceClient && !isUnlimited) {
+      if (userId) {
+        // Authenticated user
+        rateLimitResult = await checkAuthenticatedLimits(serviceClient, userId, estimatedInputTokens);
+      } else if (sessionId) {
+        // Anonymous user with session
+        rateLimitResult = await checkAnonymousLimits(serviceClient, sessionId, estimatedInputTokens);
+      }
+      // If no userId and no sessionId, allow (first-time user gets one free request)
+    }
+
+    // Return 429 if rate limited
+    if (!rateLimitResult.allowed) {
+      console.log(`Rate limit exceeded for ${userId || sessionId || "unknown"}: ${rateLimitResult.error}`);
+      return new Response(
+        JSON.stringify({
+          error: rateLimitResult.error,
+          code: "RATE_LIMIT_EXCEEDED",
+          dailyRemaining: rateLimitResult.dailyRemaining,
+          monthlyRemaining: rateLimitResult.monthlyRemaining,
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log(`Auth: ${userId ? `user:${userId.slice(0, 8)}...` : sessionId ? `session:${sessionId.slice(0, 8)}...` : "anonymous"}, unlimited: ${isUnlimited}`);
 
     // Select system prompt based on mode
     let systemPrompt = mode === 'prompting'
@@ -633,7 +962,48 @@ serve(async (req) => {
 
     console.log(`Output length: ${result.length} characters`);
 
-    return new Response(JSON.stringify({ result }), {
+    // ========================================================================
+    // LOG USAGE TO DATABASE
+    // ========================================================================
+    if (serviceClient) {
+      const tokenUsage = parseTokenUsage(data);
+
+      // If API didn't return usage, estimate it
+      let inputTokens = tokenUsage.input;
+      let outputTokens = tokenUsage.output;
+      let tokensEstimated = tokenUsage.estimated;
+
+      if (tokensEstimated) {
+        // Conservative estimate: 4 chars per token for input, actual for output
+        inputTokens = estimatedInputTokens;
+        outputTokens = estimateTokens(result);
+      }
+
+      // Log usage asynchronously (don't block response)
+      logUsage(serviceClient, {
+        userId,
+        sessionId: sessionId || null,
+        model: model || "google/gemini-3-pro-preview",
+        mode: mode || "coding",
+        inputTokens,
+        outputTokens,
+        estimated: tokensEstimated,
+        requestChars: inputText.length,
+        responseChars: result.length,
+      }).catch(err => console.error("Usage logging failed:", err));
+
+      console.log(`Tokens: ${inputTokens} in + ${outputTokens} out = ${inputTokens + outputTokens} total (${tokensEstimated ? "estimated" : "actual"})`);
+    }
+
+    // Include remaining tokens in response for UI display
+    return new Response(JSON.stringify({
+      result,
+      usage: {
+        dailyRemaining: rateLimitResult.dailyRemaining,
+        monthlyRemaining: rateLimitResult.monthlyRemaining,
+        isUnlimited,
+      }
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

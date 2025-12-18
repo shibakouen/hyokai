@@ -6,6 +6,7 @@ import { useMode } from "@/contexts/ModeContext";
 import { useUserContext } from "@/contexts/UserContextContext";
 import { useGitContext } from "@/hooks/useGitContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUsage } from "@/contexts/UsageContext";
 
 const STORAGE_KEY = "hyokai-selected-model-index";
 
@@ -31,7 +32,8 @@ export function usePromptTransformer() {
   const { mode } = useMode();
   const { userContext } = useUserContext();
   const { gitContext } = useGitContext();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, session } = useAuth();
+  const { updateRemaining, getSessionId, refreshUsage } = useUsage();
 
   // Track if we've loaded from database
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
@@ -176,19 +178,33 @@ export function usePromptTransformer() {
     startTimer();
 
     try {
+      // Get session ID for anonymous tracking
+      const sessionId = !isAuthenticated ? getSessionId() : undefined;
+
+      // Build request options with auth header if authenticated
+      const requestOptions: { body: Record<string, unknown>; headers?: Record<string, string> } = {
+        body: {
+          userPrompt: currentInput,
+          userContext: userContext || undefined,
+          gitContext: gitContext || undefined,
+          model: selectedModel.id,
+          mode: mode,
+          thinking: selectedModel.thinking || false,
+          sessionId,
+        },
+      };
+
+      // Add auth header if we have a session
+      if (session?.access_token) {
+        requestOptions.headers = {
+          Authorization: `Bearer ${session.access_token}`,
+        };
+      }
+
       // Add 90 second timeout to prevent hanging forever (thinking models can be slow)
       // Use anonSupabase to bypass auth session handling that can hang
       const { data, error } = await withTimeout(
-        anonSupabase.functions.invoke("transform-prompt", {
-          body: {
-            userPrompt: currentInput,
-            userContext: userContext || undefined,
-            gitContext: gitContext || undefined,
-            model: selectedModel.id,
-            mode: mode,
-            thinking: selectedModel.thinking || false,
-          },
-        }),
+        anonSupabase.functions.invoke("transform-prompt", requestOptions),
         90000,
         "Request timed out. Please try again or select a faster model."
       );
@@ -197,11 +213,38 @@ export function usePromptTransformer() {
         throw new Error(error.message || "Failed to transform prompt");
       }
 
+      // Handle rate limit errors
+      if (data?.code === "RATE_LIMIT_EXCEEDED") {
+        toast({
+          title: "Rate limit exceeded",
+          description: data.error || "You have reached your usage limit. Please try again later.",
+          variant: "destructive",
+        });
+        // Update the UI with remaining tokens
+        if (data.dailyRemaining !== undefined || data.monthlyRemaining !== undefined) {
+          updateRemaining(
+            data.dailyRemaining ?? -1,
+            data.monthlyRemaining ?? -1,
+            false
+          );
+        }
+        return;
+      }
+
       if (data?.error) {
         throw new Error(data.error);
       }
 
       setOutput(data?.result || "No output received");
+
+      // Update usage stats from response
+      if (data?.usage) {
+        updateRemaining(
+          data.usage.dailyRemaining ?? -1,
+          data.usage.monthlyRemaining ?? -1,
+          data.usage.isUnlimited ?? false
+        );
+      }
     } catch (error) {
       console.error("Transform error:", error);
       toast({
@@ -213,7 +256,7 @@ export function usePromptTransformer() {
       stopTimer();
       setIsLoading(false);
     }
-  }, [selectedModel, mode, userContext, gitContext, startTimer, stopTimer]);
+  }, [selectedModel, mode, userContext, gitContext, startTimer, stopTimer, isAuthenticated, session, getSessionId, updateRemaining]);
 
   return {
     input,

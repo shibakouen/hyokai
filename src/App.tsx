@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { UsageProvider } from "@/contexts/UsageContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ModeProvider } from "@/contexts/ModeContext";
 import { UserContextProvider } from "@/contexts/UserContextContext";
@@ -17,11 +18,12 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <LanguageProvider>
-        <ModeProvider>
-          <GitRepoProvider>
-            <UserContextProvider>
-              <TooltipProvider>
+      <UsageProvider>
+        <LanguageProvider>
+          <ModeProvider>
+            <GitRepoProvider>
+              <UserContextProvider>
+                <TooltipProvider>
                 <Toaster />
                 <Sonner />
                 <MigrationDialog />
@@ -32,11 +34,12 @@ const App = () => (
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>
-              </TooltipProvider>
-            </UserContextProvider>
-          </GitRepoProvider>
-        </ModeProvider>
-      </LanguageProvider>
+                </TooltipProvider>
+              </UserContextProvider>
+            </GitRepoProvider>
+          </ModeProvider>
+        </LanguageProvider>
+      </UsageProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

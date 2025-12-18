@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { useMode } from "@/contexts/ModeContext";
 import { useUserContext } from "@/contexts/UserContextContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUsage } from "@/contexts/UsageContext";
 
 const STORAGE_KEY = "hyokai-compare-model-indices";
 
@@ -57,7 +58,8 @@ export function useModelComparison() {
   // Ref to always have latest input value (fixes mobile stale closure issues)
   const inputValueRef = useRef(input);
   const [isCompareMode, setIsCompareMode] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, session } = useAuth();
+  const { updateRemaining, getSessionId } = useUsage();
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
 
   const [selectedIndices, setSelectedIndices] = useState<number[]>(() => {
@@ -222,18 +224,32 @@ export function useModelComparison() {
           await delay(backoffDelay);
         }
 
+        // Get session ID for anonymous tracking
+        const sessionId = !isAuthenticated ? getSessionId() : undefined;
+
+        // Build request options with auth header if authenticated
+        const requestOptions: { body: Record<string, unknown>; headers?: Record<string, string> } = {
+          body: {
+            userPrompt,
+            userContext: currentUserContext || undefined,
+            model: model.id,
+            mode: currentMode,
+            thinking: model.thinking || false,
+            sessionId,
+          },
+        };
+
+        // Add auth header if we have a session
+        if (session?.access_token) {
+          requestOptions.headers = {
+            Authorization: `Bearer ${session.access_token}`,
+          };
+        }
+
         // Add 90 second timeout to prevent hanging forever
         // Use anonSupabase to bypass auth session handling that can hang
         const { data, error } = await withTimeout(
-          anonSupabase.functions.invoke("transform-prompt", {
-            body: {
-              userPrompt,
-              userContext: currentUserContext || undefined,
-              model: model.id,
-              mode: currentMode,
-              thinking: model.thinking || false,
-            },
-          }),
+          anonSupabase.functions.invoke("transform-prompt", requestOptions),
           90000,
           "Request timed out. The model is taking too long to respond."
         );
@@ -248,6 +264,19 @@ export function useModelComparison() {
             continue;
           }
           return { output: null, error: errorMsg };
+        }
+
+        // Handle rate limit errors
+        if (data?.code === "RATE_LIMIT_EXCEEDED") {
+          // Update the UI with remaining tokens
+          if (data.dailyRemaining !== undefined || data.monthlyRemaining !== undefined) {
+            updateRemaining(
+              data.dailyRemaining ?? -1,
+              data.monthlyRemaining ?? -1,
+              false
+            );
+          }
+          return { output: null, error: data.error || "Rate limit exceeded" };
         }
 
         if (data?.error) {
@@ -265,6 +294,16 @@ export function useModelComparison() {
         if (attempt > 0) {
           console.log(`[Compare] ${model.name} succeeded on retry ${attempt}`);
         }
+
+        // Update usage stats from response
+        if (data?.usage) {
+          updateRemaining(
+            data.usage.dailyRemaining ?? -1,
+            data.usage.monthlyRemaining ?? -1,
+            data.usage.isUnlimited ?? false
+          );
+        }
+
         return { output: data?.result || "No output received", error: null };
 
       } catch (err) {
@@ -285,7 +324,7 @@ export function useModelComparison() {
       output: null,
       error: `Failed after ${MAX_RETRIES + 1} attempts: ${lastError}`
     };
-  }, []);
+  }, [isAuthenticated, session, getSessionId, updateRemaining]);
 
   // Run comparison
   const compare = useCallback(async () => {

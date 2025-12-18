@@ -42,6 +42,22 @@ export const translations = {
         // Errors
         'error.empty': 'Please enter a prompt to transform.',
         'error.failed': 'Transformation failed',
+        'error.rateLimitExceeded': 'Rate limit exceeded',
+        'error.rateLimitMessage': 'You have reached your usage limit. Please try again later.',
+
+        // Usage/Rate Limiting
+        'usage.tokenUsage': 'Token Usage',
+        'usage.unlimited': 'Unlimited',
+        'usage.unlimitedAccess': 'You have unlimited access',
+        'usage.today': 'Today',
+        'usage.thisMonth': 'This Month',
+        'usage.dailyTokens': 'Daily Tokens',
+        'usage.monthlyTokens': 'Monthly Tokens',
+        'usage.remaining': 'remaining',
+        'usage.used': 'used',
+        'usage.signInForMore': 'Sign in for more tokens',
+        'usage.dailyLimitReached': 'Daily limit reached. Resets at midnight UTC.',
+        'usage.monthlyLimitReached': 'Monthly limit reached. Resets on the 1st.',
 
         // Model Descriptions
         'model.llama4scout': 'Ultra-fast inference for real-time applications. 2,600 tokens/sec.',
@@ -609,6 +625,22 @@ export const translations = {
         // Errors
         'error.empty': '変換するプロンプトを入力してください。',
         'error.failed': '変換に失敗しました',
+        'error.rateLimitExceeded': '利用制限に達しました',
+        'error.rateLimitMessage': '利用制限に達しました。しばらくしてからもう一度お試しください。',
+
+        // Usage/Rate Limiting
+        'usage.tokenUsage': 'トークン使用量',
+        'usage.unlimited': '無制限',
+        'usage.unlimitedAccess': '無制限アクセス',
+        'usage.today': '今日',
+        'usage.thisMonth': '今月',
+        'usage.dailyTokens': '日次トークン',
+        'usage.monthlyTokens': '月次トークン',
+        'usage.remaining': '残り',
+        'usage.used': '使用済み',
+        'usage.signInForMore': 'ログインするとより多くのトークンが利用可能',
+        'usage.dailyLimitReached': '1日の制限に達しました。UTC深夜0時にリセットされます。',
+        'usage.monthlyLimitReached': '月間制限に達しました。1日にリセットされます。',
 
         // Model Descriptions
         'model.llama4scout': '超高速推論でリアルタイムアプリケーション対応。毎秒2,600トークン。',
