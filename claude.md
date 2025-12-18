@@ -186,3 +186,165 @@ src/hooks/usePromptLibrarySearch.ts  # Fuse.js search
 - localStorage persistence: `hyokai-library-preferences`
 
 ### Full plan: `/Users/matteo/.claude/plans/smooth-petting-pie.md`
+
+---
+
+## CRITICAL: Auth Race Condition Bug (Dec 2024) - BIGGEST ISSUE
+
+This bug survived **20+ fix attempts** across multiple commits. Document everything here for future reference.
+
+### Symptoms
+1. User data (history, contexts, GitHub settings) disappears on page refresh despite being logged in
+2. Refreshing while logged out unexpectedly logs user back in
+3. After unexpected re-login, all history and context data is lost
+4. Intermittent behavior - sometimes works, sometimes doesn't
+
+### Failed Fix Attempts (What NOT to do)
+| Commit | Approach | Why It Failed |
+|--------|----------|---------------|
+| `650d5a3` | Initial auth implementation | No logout detection |
+| `325c15e` | Prevent session clearing on refresh | Didn't address root cause |
+| `e4a6e6b` | Clear all data on logout | Made it worse - cleared too eagerly |
+| `87e3ed0` | Added `wasEverAuthenticated` STATE | React batching caused stale values |
+| `17bfb52` | Changed to `useRef` for synchronous updates | Still had signOut race condition |
+| `b67c10d` | Clear localStorage before signOut | Created NEW race condition |
+
+### Root Cause #1: False Logout Detection
+**Problem:** Consumer components cleared data when `!isAuthenticated && !isAuthLoading` was true during initial auth loading.
+
+**Timeline of "danger zone":**
+```
+Page Load:     [isLoading=true,  isAuth=false, wasEver=false] → OK, loading
+Auth Start:    [isLoading=true,  isAuth=false, wasEver=false] → OK, loading
+DANGER ZONE:   [isLoading=false, isAuth=false, wasEver=false] → Effects fire!
+Auth Complete: [isLoading=false, isAuth=true,  wasEver=true]  → Too late
+```
+
+**Solution:** Added `wasEverAuthenticated` ref (NOT state) set synchronously BEFORE state updates:
+```typescript
+// AuthContext.tsx
+const wasEverAuthenticatedRef = useRef(false);
+
+// When session found - set ref BEFORE state updates
+if (initialSession?.user) {
+  wasEverAuthenticatedRef.current = true;  // Synchronous!
+  setSession(initialSession);              // Async batched
+  setUser(initialSession.user);            // Async batched
+}
+
+// Consumer components check all three conditions
+if (!isAuthenticated && !isAuthLoading && wasEverAuthenticated) {
+  // Only clear if user WAS authenticated (real logout, not initial load)
+}
+```
+
+**Why useRef instead of useState:**
+- `useState` updates are batched/async - effects may run before new value propagates
+- `useRef` updates are synchronous - value is immediately available
+- The ref is read during render and included in context value
+
+### Root Cause #2: SignOut Race Condition
+**Problem:** Original signOut flow:
+1. Clear localStorage tokens
+2. Clear app data
+3. Call `supabase.auth.signOut()` (async)
+
+This allowed Supabase's background token refresh (or another tab) to write NEW tokens AFTER we cleared localStorage but BEFORE server session was invalidated.
+
+**Solution:** Reorder operations - call signOut() FIRST:
+```typescript
+const signOut = useCallback(async () => {
+  // 1. Call signOut FIRST - stops token refresh, invalidates server session
+  try {
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error('Error signing out:', error);
+  }
+
+  // 2. Clear localStorage (backup - signOut should have done this)
+  clearSupabaseStorage();
+  clearUserData();
+
+  // 3. Clear React state
+  wasEverAuthenticatedRef.current = false;
+  setSession(null);
+  setUser(null);
+  // ...
+}, []);
+```
+
+### Root Cause #3: Edge Case - Quick Navigation
+**Problem:** If user clicks sign out then immediately refreshes/navigates, `signOut()` might not complete.
+
+**Solution:** Added redundant cleanup in `SIGNED_OUT` event handler:
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    // Clear localStorage here too (backup)
+    clearSupabaseStorage();
+    USER_DATA_KEYS.forEach(key => localStorage.removeItem(key));
+
+    wasEverAuthenticatedRef.current = false;
+    setSession(null);
+    // ...
+  }
+});
+```
+
+### Files Involved
+| File | Purpose |
+|------|---------|
+| `src/contexts/AuthContext.tsx` | Main auth state, signOut logic, wasEverAuthenticatedRef |
+| `src/contexts/UserContextContext.tsx` | Saved contexts - has logout detection effect |
+| `src/contexts/GitRepoContext.tsx` | GitHub PAT/repos - has logout detection effect |
+| `src/components/HistoryPanel.tsx` | Advanced history - has logout detection effect |
+| `src/components/SimpleHistoryPanel.tsx` | Simple history - has logout detection effect |
+
+### Correct Logout Detection Pattern
+All consumer components must use this exact pattern:
+```typescript
+const { isAuthenticated, isLoading: isAuthLoading, wasEverAuthenticated } = useAuth();
+
+useEffect(() => {
+  if (!isAuthenticated && !isAuthLoading && wasEverAuthenticated) {
+    // User explicitly logged out - safe to clear data
+    // This does NOT fire during initial page load
+    setData([]);
+  }
+}, [isAuthenticated, isAuthLoading, wasEverAuthenticated]);
+```
+
+### localStorage Keys Cleared on Logout
+```typescript
+const USER_DATA_KEYS = [
+  'hyokai-user-context',
+  'hyokai-saved-contexts',
+  'hyokai-active-context-id',
+  'hyokai-history',
+  'hyokai-simple-history',
+  'hyokai-github-pat',
+  'hyokai-github-repos',
+  'hyokai-github-settings',
+  'hyokai-mode',
+  'hyokai-language',
+  'hyokai-beginner-mode',
+  'hyokai-selected-model-index',
+  'hyokai-compare-model-indices',
+];
+```
+
+### Testing Checklist
+1. **Login → Create data → Refresh 5x** - Data persists
+2. **Login → Logout → Refresh 5x** - Stays logged out, no data
+3. **Login → Create data → Logout** - Data is cleared
+4. **Login as A → Create data → Logout → Login as B** - B sees no A data
+5. **Two tabs: Logout in one** - Both tabs log out
+6. **Slow network during logout** - Still logs out properly
+7. **Quick refresh after logout click** - Stays logged out
+
+### Key Lessons Learned
+1. **React state batching is async** - Don't rely on useState for race condition guards
+2. **useRef for synchronous values** - When timing matters, use refs
+3. **Order of operations matters** - In signOut, invalidate server session BEFORE clearing local state
+4. **Redundant cleanup is good** - Multiple code paths clearing data prevents edge cases
+5. **Supabase has background operations** - Token refresh runs independently and can write to localStorage
