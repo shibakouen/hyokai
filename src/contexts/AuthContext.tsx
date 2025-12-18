@@ -55,7 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [needsMigration, setNeedsMigration] = useState(false);
   // Track if user was ever authenticated (to distinguish logout from initial load)
-  const [wasEverAuthenticated, setWasEverAuthenticated] = useState(false);
+  // Using ref instead of state for synchronous updates - prevents race conditions
+  const wasEverAuthenticatedRef = useRef(false);
 
   // Fetch user profile from database
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
@@ -152,9 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // If we found a session, update state
             if (initialSession?.user) {
               console.log('Session restored:', initialSession.user.id);
+              // Set ref synchronously BEFORE state updates - prevents race conditions
+              wasEverAuthenticatedRef.current = true;
               setSession(initialSession);
               setUser(initialSession.user);
-              setWasEverAuthenticated(true);
 
               // Profile fetch with its own timeout (5 seconds)
               try {
@@ -217,6 +219,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // For other events (INITIAL_SESSION, TOKEN_REFRESHED, etc.),
       // a null session might be temporary during token validation
       if (event === 'SIGNED_OUT') {
+        // Reset ref synchronously - allows next login to start fresh
+        wasEverAuthenticatedRef.current = false;
         setSession(null);
         setUser(null);
         setUserProfile(null);
@@ -229,9 +233,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // For all other events, only update state if we have a valid session
       // This prevents premature logout during token refresh or initial session restoration
       if (newSession?.user) {
+        // Set ref synchronously BEFORE state updates - prevents race conditions
+        wasEverAuthenticatedRef.current = true;
         setSession(newSession);
         setUser(newSession.user);
-        setWasEverAuthenticated(true);
 
         try {
           const profile = await fetchProfile(newSession.user.id);
@@ -408,7 +413,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resendConfirmation,
       refreshProfile,
       needsMigration,
-      wasEverAuthenticated,
+      wasEverAuthenticated: wasEverAuthenticatedRef.current,
     }}>
       {children}
     </AuthContext.Provider>
