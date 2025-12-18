@@ -24,9 +24,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   HistoryEntry,
   loadHistory,
+  saveHistory,
   deleteHistoryEntry,
   clearHistory,
   loadHistoryFromDb,
+  addHistoryEntryToDb,
   deleteHistoryEntryFromDb,
   clearHistoryFromDb,
   formatTimestamp,
@@ -250,36 +252,87 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
 
   // Load history when panel opens or auth state changes
   const loadHistoryData = useCallback(async () => {
+    console.log('[HistoryPanel] loadHistoryData called', { isAuthLoading, isAuthenticated, userId: user?.id });
+
     // Don't load while auth is still initializing
-    if (isAuthLoading) return;
+    if (isAuthLoading) {
+      console.log('[HistoryPanel] Skipping - auth still loading');
+      return;
+    }
 
     setIsLoadingHistory(true);
     try {
+      // Always load localStorage first (fallback/cache)
+      const localHistory = loadHistory();
+      console.log('[HistoryPanel] Local history:', localHistory.length, 'entries');
+
       if (isAuthenticated && user) {
-        // Load from database for authenticated users
-        const dbHistory = await loadHistoryFromDb(user.id);
+        console.log('[HistoryPanel] Loading from database for user:', user.id);
 
-        // Also check localStorage for any entries that might have been saved
-        // during auth issues (race conditions, token refresh, etc.)
-        const localHistory = loadHistory();
+        try {
+          // Load from database for authenticated users
+          const dbHistory = await loadHistoryFromDb(user.id);
+          console.log('[HistoryPanel] DB history loaded:', dbHistory.length, 'entries');
 
-        if (dbHistory.length === 0 && localHistory.length > 0) {
-          // Database is empty but localStorage has data - use localStorage
-          // This handles cases where auth was briefly unavailable
+          if (dbHistory.length > 0) {
+            // Merge: DB entries are authoritative, but include unsynced local entries
+            const dbIds = new Set(dbHistory.map(e => e.id));
+            const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
+
+            if (unsyncedLocal.length > 0) {
+              console.log('[HistoryPanel] Found', unsyncedLocal.length, 'unsynced local entries, syncing...');
+
+              // Sync unsynced entries to database (fire and forget)
+              for (const entry of unsyncedLocal) {
+                addHistoryEntryToDb(user.id, {
+                  input: entry.input,
+                  taskMode: entry.taskMode,
+                  result: entry.result,
+                }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
+              }
+            }
+
+            // Merge and sort by timestamp (newest first)
+            const merged = [...dbHistory, ...unsyncedLocal]
+              .sort((a, b) => b.timestamp - a.timestamp)
+              .slice(0, 50);
+
+            console.log('[HistoryPanel] Using merged history:', merged.length, 'entries');
+            setHistory(merged);
+
+            // Update localStorage cache with merged data
+            saveHistory(merged);
+          } else if (localHistory.length > 0) {
+            // Database is empty but localStorage has data - use localStorage
+            // Also sync to database for future sessions
+            console.log('[HistoryPanel] Using localStorage (DB empty, local has data)');
+            setHistory(localHistory);
+
+            // Sync local entries to database
+            for (const entry of localHistory.slice(0, 50)) {
+              addHistoryEntryToDb(user.id, {
+                input: entry.input,
+                taskMode: entry.taskMode,
+                result: entry.result,
+              }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
+            }
+          } else {
+            // Both empty
+            console.log('[HistoryPanel] Both DB and local are empty');
+            setHistory([]);
+          }
+        } catch (dbError) {
+          // Database load failed - use localStorage as fallback
+          console.error('[HistoryPanel] Database load failed, using localStorage:', dbError);
           setHistory(localHistory);
-        } else if (dbHistory.length > 0) {
-          // Use database history (authoritative source)
-          setHistory(dbHistory);
-        } else {
-          // Both empty
-          setHistory([]);
         }
       } else {
+        console.log('[HistoryPanel] Not authenticated, using localStorage');
         // Load from localStorage for guests
-        setHistory(loadHistory());
+        setHistory(localHistory);
       }
     } catch (e) {
-      console.error('Failed to load history:', e);
+      console.error('[HistoryPanel] Failed to load history:', e);
       // Fallback to localStorage
       setHistory(loadHistory());
     } finally {

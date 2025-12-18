@@ -103,9 +103,9 @@ export async function migrateLocalStorageToDatabase(
     await migrateHistory(userId);
     updateProgress();
 
-    // Step 7: Mark migration as complete and clear localStorage
+    // Step 7: Mark migration as complete (preserve localStorage as cache)
     await markMigrationComplete(userId);
-    clearLocalStorage();
+    markLocalStorageAsMigrated();
     updateProgress();
 
   } catch (error) {
@@ -350,8 +350,21 @@ async function markMigrationComplete(userId: string): Promise<void> {
   }
 }
 
+// Mark localStorage as migrated without clearing (preserves data as fallback cache)
+function markLocalStorageAsMigrated(): void {
+  localStorage.setItem('hyokai-migration-complete', new Date().toISOString());
+}
+
+// Check if localStorage has been migrated to database
+export function isLocalStorageMigrated(): boolean {
+  return !!localStorage.getItem('hyokai-migration-complete');
+}
+
+// Legacy function - no longer clears localStorage, just marks as migrated
+// Keeping for backward compatibility if called elsewhere
 function clearLocalStorage(): void {
-  Object.values(STORAGE_KEYS).forEach(key => {
-    localStorage.removeItem(key);
-  });
+  // Previously cleared all localStorage keys, which caused data loss
+  // when database loads failed after migration.
+  // Now we preserve localStorage as a fallback cache.
+  markLocalStorageAsMigrated();
 }

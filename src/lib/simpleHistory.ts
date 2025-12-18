@@ -1,6 +1,8 @@
 // Simple mode history types and localStorage utilities
 // Completely separate from advanced mode history
 import { supabase } from '@/integrations/supabase/client';
+import { withRetry } from '@/lib/dbRetry';
+import { safeSetJSON } from '@/lib/storage';
 
 export interface SimpleHistoryEntry {
   id: string;
@@ -36,17 +38,12 @@ export function loadSimpleHistory(): SimpleHistoryEntry[] {
   }
 }
 
-// Save history to localStorage
+// Save history to localStorage (with quota handling)
 export function saveSimpleHistory(entries: SimpleHistoryEntry[]): void {
   if (typeof window === 'undefined') return;
 
-  try {
-    // Keep only the most recent entries
-    const trimmed = entries.slice(0, MAX_HISTORY_ENTRIES);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-  } catch (error) {
-    console.error('Failed to save simple history to localStorage:', error);
-  }
+  // Use safe storage with automatic trimming on quota exceeded
+  safeSetJSON(STORAGE_KEY, entries, MAX_HISTORY_ENTRIES);
 }
 
 // Add a new entry to history
@@ -126,20 +123,23 @@ export function truncateSimpleText(text: string, maxLength: number = 80): string
 // Database sync functions (for authenticated users)
 // ============================================
 
-// Load simple history from database
+// Load simple history from database with retry
 export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHistoryEntry[]> {
   try {
-    const { data, error } = await supabase
-      .from('simple_history_entries')
-      .select('*')
-      .eq('user_id', userId)
-      .order('timestamp', { ascending: false })
-      .limit(MAX_HISTORY_ENTRIES);
+    const data = await withRetry(
+      async () => {
+        const { data, error } = await supabase
+          .from('simple_history_entries')
+          .select('*')
+          .eq('user_id', userId)
+          .order('timestamp', { ascending: false })
+          .limit(MAX_HISTORY_ENTRIES);
 
-    if (error) {
-      console.error('Failed to load simple history from database:', error);
-      return [];
-    }
+        if (error) throw error;
+        return data;
+      },
+      { maxRetries: 2 }
+    );
 
     return (data || []).map(entry => ({
       id: entry.id,
@@ -149,12 +149,12 @@ export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHis
       elapsedTime: entry.elapsed_time,
     }));
   } catch (e) {
-    console.error('Failed to load simple history from database:', e);
+    console.error('Failed to load simple history from database after retries:', e);
     return [];
   }
 }
 
-// Add entry to database
+// Add entry to database with retry
 export async function addSimpleHistoryEntryToDb(
   userId: string,
   entry: Omit<SimpleHistoryEntry, 'id' | 'timestamp'>
@@ -166,58 +166,67 @@ export async function addSimpleHistoryEntryToDb(
   };
 
   try {
-    const { error } = await supabase
-      .from('simple_history_entries')
-      .insert({
-        id: newEntry.id,
-        user_id: userId,
-        timestamp: new Date(newEntry.timestamp).toISOString(),
-        input: newEntry.input,
-        output: newEntry.output,
-        elapsed_time: newEntry.elapsedTime,
-      });
+    await withRetry(
+      async () => {
+        const { error } = await supabase
+          .from('simple_history_entries')
+          .insert({
+            id: newEntry.id,
+            user_id: userId,
+            timestamp: new Date(newEntry.timestamp).toISOString(),
+            input: newEntry.input,
+            output: newEntry.output,
+            elapsed_time: newEntry.elapsedTime,
+          });
 
-    if (error) {
-      console.error('Failed to add simple history entry to database:', error);
-      return null;
-    }
+        if (error) throw error;
+      },
+      { maxRetries: 2 }
+    );
 
     return newEntry;
   } catch (e) {
-    console.error('Failed to add simple history entry to database:', e);
+    console.error('Failed to add simple history entry to database after retries:', e);
+    // Entry is still saved in localStorage as fallback
     return null;
   }
 }
 
-// Delete entry from database
+// Delete entry from database with retry
 export async function deleteSimpleHistoryEntryFromDb(userId: string, id: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('simple_history_entries')
-      .delete()
-      .eq('user_id', userId)
-      .eq('id', id);
+    await withRetry(
+      async () => {
+        const { error } = await supabase
+          .from('simple_history_entries')
+          .delete()
+          .eq('user_id', userId)
+          .eq('id', id);
 
-    if (error) {
-      console.error('Failed to delete simple history entry from database:', error);
-    }
+        if (error) throw error;
+      },
+      { maxRetries: 2 }
+    );
   } catch (e) {
-    console.error('Failed to delete simple history entry from database:', e);
+    console.error('Failed to delete simple history entry from database after retries:', e);
   }
 }
 
-// Clear all simple history from database
+// Clear all simple history from database with retry
 export async function clearSimpleHistoryFromDb(userId: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('simple_history_entries')
-      .delete()
-      .eq('user_id', userId);
+    await withRetry(
+      async () => {
+        const { error } = await supabase
+          .from('simple_history_entries')
+          .delete()
+          .eq('user_id', userId);
 
-    if (error) {
-      console.error('Failed to clear simple history from database:', error);
-    }
+        if (error) throw error;
+      },
+      { maxRetries: 2 }
+    );
   } catch (e) {
-    console.error('Failed to clear simple history from database:', e);
+    console.error('Failed to clear simple history from database after retries:', e);
   }
 }

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { withRetry } from '@/lib/dbRetry';
+import { safeSetItem, safeGetJSON } from '@/lib/storage';
 
 // Types for multi-context support
 export interface SavedContext {
@@ -152,29 +154,37 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         if (loadedForUserId === user.id) return;
 
         const loadFromDatabase = async () => {
-            // Add timeout to prevent infinite loading - 8 seconds max
-            const DB_TIMEOUT_MS = 8000;
+            // Add timeout to prevent infinite loading - 10 seconds max
+            const DB_TIMEOUT_MS = 10000;
             let completed = false;
             const timeoutId = setTimeout(() => {
                 if (!completed) {
-                    console.warn('UserContext database load timed out');
-                    setLoadedForUserId(user.id);
+                    console.warn('UserContext database load timed out - keeping localStorage data as fallback');
+                    // DON'T set loadedForUserId here - allow retry on next effect trigger
+                    // Keep existing localStorage state as fallback (don't set empty)
                 }
             }, DB_TIMEOUT_MS);
 
             try {
-                // Load saved contexts
-                const { data: contextsData, error: contextsError } = await supabase
-                    .from('saved_contexts')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('updated_at', { ascending: false });
+                // Load saved contexts with retry
+                const contextsResult = await withRetry(
+                    async () => {
+                        const { data, error } = await supabase
+                            .from('saved_contexts')
+                            .select('*')
+                            .eq('user_id', user.id)
+                            .order('updated_at', { ascending: false });
+                        if (error) throw error;
+                        return data;
+                    },
+                    { maxRetries: 2 }
+                ).catch(e => {
+                    console.error('Error loading saved contexts after retries:', e);
+                    return null;
+                });
 
-                if (contextsError) {
-                    console.error('Error loading saved contexts:', contextsError);
-                } else {
-                    // Always set state - even if empty, to clear stale data
-                    const loadedContexts: SavedContext[] = (contextsData || []).map(ctx => ({
+                if (contextsResult && contextsResult.length > 0) {
+                    const loadedContexts: SavedContext[] = contextsResult.map(ctx => ({
                         id: ctx.id,
                         name: ctx.name,
                         content: ctx.content,
@@ -182,22 +192,38 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
                         updatedAt: new Date(ctx.updated_at).getTime(),
                     }));
                     setSavedContexts(loadedContexts);
+                    // Update localStorage as cache
+                    safeSetItem(SAVED_CONTEXTS_KEY, JSON.stringify(loadedContexts));
                 }
+                // If database returns empty or error, keep localStorage data (might be pre-migration or fallback)
 
-                // Load active context state - use maybeSingle() to avoid error on no rows
-                const { data: activeData, error: activeError } = await supabase
-                    .from('user_active_context')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
+                // Load active context state with retry
+                const activeResult = await withRetry(
+                    async () => {
+                        const { data, error } = await supabase
+                            .from('user_active_context')
+                            .select('*')
+                            .eq('user_id', user.id)
+                            .maybeSingle();
+                        if (error) throw error;
+                        return data;
+                    },
+                    { maxRetries: 2 }
+                ).catch(e => {
+                    console.error('Error loading active context after retries:', e);
+                    return null;
+                });
 
-                if (activeError) {
-                    console.error('Error loading active context:', activeError);
-                } else {
-                    // Always set state - use database value or clear if no data
-                    setActiveContextId(activeData?.context_id ?? null);
-                    setUserContextState(activeData?.current_content ?? '');
+                if (activeResult) {
+                    setActiveContextId(activeResult.context_id ?? null);
+                    setUserContextState(activeResult.current_content ?? '');
+                    // Update localStorage as cache
+                    if (activeResult.context_id) {
+                        safeSetItem(ACTIVE_CONTEXT_KEY, activeResult.context_id);
+                    }
+                    safeSetItem(STORAGE_KEY, activeResult.current_content ?? '');
                 }
+                // If no activeResult, keep localStorage values as fallback
 
                 completed = true;
                 clearTimeout(timeoutId);
@@ -206,7 +232,8 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
                 console.error('Failed to load contexts from database:', e);
                 completed = true;
                 clearTimeout(timeoutId);
-                setLoadedForUserId(user.id);
+                // Don't set loadedForUserId - allow retry on next render
+                // Keep localStorage data as fallback
             }
         };
 
@@ -245,28 +272,31 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         if (!isAuthenticated || !user || loadedForUserId !== user.id) return;
 
         const syncActiveContext = async () => {
+            // Validate context_id exists in savedContexts to avoid foreign key issues
+            // If activeContextId doesn't exist in our saved contexts, use null
+            let contextIdToSave: string | null = null;
+            if (activeContextId) {
+                const contextExists = savedContexts.some(c => c.id === activeContextId);
+                contextIdToSave = contextExists ? activeContextId : null;
+            }
+
             try {
-                // Validate context_id exists in savedContexts to avoid foreign key issues
-                // If activeContextId doesn't exist in our saved contexts, use null
-                let contextIdToSave: string | null = null;
-                if (activeContextId) {
-                    const contextExists = savedContexts.some(c => c.id === activeContextId);
-                    contextIdToSave = contextExists ? activeContextId : null;
-                }
-
-                const { error } = await supabase
-                    .from('user_active_context')
-                    .upsert({
-                        user_id: user.id,
-                        context_id: contextIdToSave,
-                        current_content: userContext,
-                    });
-
-                if (error) {
-                    console.error('Failed to sync active context to database:', error);
-                }
+                await withRetry(
+                    async () => {
+                        const { error } = await supabase
+                            .from('user_active_context')
+                            .upsert({
+                                user_id: user.id,
+                                context_id: contextIdToSave,
+                                current_content: userContext,
+                            });
+                        if (error) throw error;
+                    },
+                    { maxRetries: 2 }
+                );
             } catch (e) {
-                console.error('Failed to sync active context:', e);
+                console.error('Failed to sync active context to database after retries:', e);
+                // Data is still in localStorage as fallback
             }
         };
 

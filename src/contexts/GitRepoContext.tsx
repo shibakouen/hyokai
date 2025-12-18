@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { withRetry } from '@/lib/dbRetry';
+import { safeSetItem } from '@/lib/storage';
 import {
   GitHubRepository,
   GitHubTreeEntry,
@@ -118,90 +120,133 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated || !user || hasLoadedFromDb) return;
 
     const loadFromDatabase = async () => {
-      // Add timeout to prevent infinite loading - 10 seconds max (edge function can be slow)
-      const DB_TIMEOUT_MS = 10000;
+      // Add timeout to prevent infinite loading - 15 seconds max (edge function can be slow)
+      const DB_TIMEOUT_MS = 15000;
+      let completed = false;
       const timeoutId = setTimeout(() => {
-        console.warn('GitRepo database load timed out');
-        setHasLoadedFromDb(true);
+        if (!completed) {
+          console.warn('GitRepo database load timed out - keeping localStorage data as fallback');
+          // DON'T set hasLoadedFromDb here - allow retry on next effect trigger
+          // Keep existing localStorage state as fallback
+        }
       }, DB_TIMEOUT_MS);
 
       try {
-        // Load PAT from encrypted storage via edge function - with its own timeout
+        // Load PAT from encrypted storage via edge function with retry
+        // Edge functions can be slow due to cold starts, so use longer delays
         try {
-          const patPromise = supabase.functions.invoke('user-data', {
-            body: { action: 'getPAT' },
-          });
-          const patTimeoutPromise = new Promise<{ data: null; error: Error }>((resolve) => {
-            setTimeout(() => resolve({ data: null, error: new Error('PAT load timed out') }), 5000);
-          });
-          const { data: patData, error: patError } = await Promise.race([patPromise, patTimeoutPromise]);
+          const patData = await withRetry(
+            async () => {
+              const { data, error } = await supabase.functions.invoke('user-data', {
+                body: { action: 'getPAT' },
+              });
+              if (error) throw error;
+              return data;
+            },
+            { maxRetries: 2, baseDelayMs: 1000, maxDelayMs: 8000 }
+          );
 
-          if (!patError && patData?.pat) {
+          if (patData?.pat) {
             setPatState(patData.pat);
+            // Update localStorage as cache
+            safeSetItem(STORAGE_KEYS.PAT, encodePAT(patData.pat));
             if (patData.username) {
               setPatUsername(patData.username);
               setPatStatus('valid');
             }
           }
         } catch (patErr) {
-          console.error('Failed to load PAT:', patErr);
-          // Continue without PAT - don't block
+          console.error('Failed to load PAT after retries:', patErr);
+          // Keep localStorage PAT as fallback (already loaded in initial state)
         }
 
-        // Load settings from database - use maybeSingle() to avoid error on no rows
-        const { data: settingsData, error: settingsError } = await supabase
-          .from('github_settings')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // Load settings from database with retry
+        try {
+          const settingsData = await withRetry(
+            async () => {
+              const { data, error } = await supabase
+                .from('github_settings')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              if (error) throw error;
+              return data;
+            },
+            { maxRetries: 2 }
+          );
 
-        if (!settingsError && settingsData) {
-          setSettings({
-            enabled: settingsData.enabled,
-            autoIncludeInCoding: settingsData.auto_include_in_coding,
-            maxContextTokens: settingsData.max_context_tokens,
-          });
-        }
-
-        // Load repos from database
-        const { data: reposData, error: reposError } = await supabase
-          .from('github_repos')
-          .select('*, github_repo_cache(*)')
-          .eq('user_id', user.id);
-
-        if (!reposError && reposData) {
-          const loadedConnections: GitRepoConnection[] = reposData.map(repo => {
-            const cache = repo.github_repo_cache?.[0];
-            return {
-              repository: {
-                id: repo.id,
-                owner: repo.owner,
-                name: repo.name,
-                fullName: repo.full_name,
-                defaultBranch: repo.default_branch,
-                lastRefreshed: repo.last_refreshed ? new Date(repo.last_refreshed).getTime() : undefined,
-              },
-              cache: cache ? {
-                repoId: repo.id,
-                branch: cache.branch,
-                tree: cache.tree as GitHubTreeEntry[],
-                selectedPaths: cache.selected_paths || [],
-                fileContents: cache.file_contents || {},
-                fetchedAt: new Date(cache.fetched_at).getTime(),
-                summary: cache.summary || undefined,
-                keyFiles: cache.key_files || undefined,
-              } : null,
+          if (settingsData) {
+            const newSettings = {
+              enabled: settingsData.enabled,
+              autoIncludeInCoding: settingsData.auto_include_in_coding,
+              maxContextTokens: settingsData.max_context_tokens,
             };
-          });
-          setConnections(loadedConnections);
+            setSettings(newSettings);
+            // Update localStorage as cache
+            safeSetItem(STORAGE_KEYS.SETTINGS, JSON.stringify(newSettings));
+          }
+        } catch (e) {
+          console.error('Failed to load git settings after retries:', e);
+          // Keep localStorage settings as fallback
         }
 
+        // Load repos from database with retry
+        try {
+          const reposData = await withRetry(
+            async () => {
+              const { data, error } = await supabase
+                .from('github_repos')
+                .select('*, github_repo_cache(*)')
+                .eq('user_id', user.id);
+              if (error) throw error;
+              return data;
+            },
+            { maxRetries: 2 }
+          );
+
+          if (reposData && reposData.length > 0) {
+            const loadedConnections: GitRepoConnection[] = reposData.map(repo => {
+              const cache = repo.github_repo_cache?.[0];
+              return {
+                repository: {
+                  id: repo.id,
+                  owner: repo.owner,
+                  name: repo.name,
+                  fullName: repo.full_name,
+                  defaultBranch: repo.default_branch,
+                  lastRefreshed: repo.last_refreshed ? new Date(repo.last_refreshed).getTime() : undefined,
+                },
+                cache: cache ? {
+                  repoId: repo.id,
+                  branch: cache.branch,
+                  tree: cache.tree as GitHubTreeEntry[],
+                  selectedPaths: cache.selected_paths || [],
+                  fileContents: cache.file_contents || {},
+                  fetchedAt: new Date(cache.fetched_at).getTime(),
+                  summary: cache.summary || undefined,
+                  keyFiles: cache.key_files || undefined,
+                } : null,
+              };
+            });
+            setConnections(loadedConnections);
+            // Update localStorage as cache
+            safeSetItem(STORAGE_KEYS.CONNECTIONS, JSON.stringify(loadedConnections));
+          }
+          // If database returns empty, keep localStorage data as fallback
+        } catch (e) {
+          console.error('Failed to load git repos after retries:', e);
+          // Keep localStorage connections as fallback
+        }
+
+        completed = true;
         clearTimeout(timeoutId);
         setHasLoadedFromDb(true);
       } catch (e) {
         console.error('Failed to load git data from database:', e);
+        completed = true;
         clearTimeout(timeoutId);
-        setHasLoadedFromDb(true);
+        // Don't set hasLoadedFromDb - allow retry on next render
+        // Keep localStorage data as fallback
       }
     };
 
@@ -240,16 +285,23 @@ export function GitRepoProvider({ children }: { children: React.ReactNode }) {
 
     const syncSettings = async () => {
       try {
-        await supabase
-          .from('github_settings')
-          .upsert({
-            user_id: user.id,
-            enabled: settings.enabled,
-            auto_include_in_coding: settings.autoIncludeInCoding,
-            max_context_tokens: settings.maxContextTokens,
-          });
+        await withRetry(
+          async () => {
+            const { error } = await supabase
+              .from('github_settings')
+              .upsert({
+                user_id: user.id,
+                enabled: settings.enabled,
+                auto_include_in_coding: settings.autoIncludeInCoding,
+                max_context_tokens: settings.maxContextTokens,
+              });
+            if (error) throw error;
+          },
+          { maxRetries: 2 }
+        );
       } catch (e) {
-        console.error('Failed to sync git settings:', e);
+        console.error('Failed to sync git settings after retries:', e);
+        // Data is still in localStorage as fallback
       }
     };
 

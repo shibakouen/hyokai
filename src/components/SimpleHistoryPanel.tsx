@@ -22,9 +22,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   SimpleHistoryEntry,
   loadSimpleHistory,
+  saveSimpleHistory,
   deleteSimpleHistoryEntry,
   clearSimpleHistory,
   loadSimpleHistoryFromDb,
+  addSimpleHistoryEntryToDb,
   deleteSimpleHistoryEntryFromDb,
   clearSimpleHistoryFromDb,
   formatSimpleTimestamp,
@@ -200,28 +202,66 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
 
     setIsLoadingHistory(true);
     try {
+      // Always load localStorage first (fallback/cache)
+      const localHistory = loadSimpleHistory();
+
       if (isAuthenticated && user) {
-        // Load from database for authenticated users
-        const dbHistory = await loadSimpleHistoryFromDb(user.id);
+        try {
+          // Load from database for authenticated users
+          const dbHistory = await loadSimpleHistoryFromDb(user.id);
 
-        // Also check localStorage for any entries that might have been saved
-        // during auth issues (race conditions, token refresh, etc.)
-        const localHistory = loadSimpleHistory();
+          if (dbHistory.length > 0) {
+            // Merge: DB entries are authoritative, but include unsynced local entries
+            const dbIds = new Set(dbHistory.map(e => e.id));
+            const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
 
-        if (dbHistory.length === 0 && localHistory.length > 0) {
-          // Database is empty but localStorage has data - use localStorage
-          // This handles cases where auth was briefly unavailable
+            if (unsyncedLocal.length > 0) {
+              console.log('[SimpleHistoryPanel] Found', unsyncedLocal.length, 'unsynced local entries, syncing...');
+
+              // Sync unsynced entries to database (fire and forget)
+              for (const entry of unsyncedLocal) {
+                addSimpleHistoryEntryToDb(user.id, {
+                  input: entry.input,
+                  output: entry.output,
+                  elapsedTime: entry.elapsedTime,
+                }).catch(e => console.error('[SimpleHistoryPanel] Failed to sync entry:', e));
+              }
+            }
+
+            // Merge and sort by timestamp (newest first)
+            const merged = [...dbHistory, ...unsyncedLocal]
+              .sort((a, b) => b.timestamp - a.timestamp)
+              .slice(0, 30);
+
+            setHistory(merged);
+
+            // Update localStorage cache with merged data
+            saveSimpleHistory(merged);
+          } else if (localHistory.length > 0) {
+            // Database is empty but localStorage has data - use localStorage
+            // Also sync to database for future sessions
+            setHistory(localHistory);
+
+            // Sync local entries to database
+            for (const entry of localHistory.slice(0, 30)) {
+              addSimpleHistoryEntryToDb(user.id, {
+                input: entry.input,
+                output: entry.output,
+                elapsedTime: entry.elapsedTime,
+              }).catch(e => console.error('[SimpleHistoryPanel] Failed to sync entry:', e));
+            }
+          } else {
+            // Both empty
+            setHistory([]);
+          }
+        } catch (dbError) {
+          // Database load failed - use localStorage as fallback
+          console.error('[SimpleHistoryPanel] Database load failed, using localStorage:', dbError);
           setHistory(localHistory);
-        } else if (dbHistory.length > 0) {
-          // Use database history (authoritative source)
-          setHistory(dbHistory);
-        } else {
-          // Both empty
-          setHistory([]);
         }
       } else {
         // Load from localStorage for guests
-        setHistory(loadSimpleHistory());
+        setHistory(localHistory);
       }
     } catch (e) {
       console.error('Failed to load simple history:', e);
