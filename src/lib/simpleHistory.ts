@@ -124,7 +124,7 @@ export function truncateSimpleText(text: string, maxLength: number = 80): string
 // ============================================
 
 // Load simple history from database with retry
-export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHistoryEntry[]> {
+export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHistoryEntry[] | null> {
   try {
     const data = await withRetry(
       async () => {
@@ -150,7 +150,7 @@ export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHis
     }));
   } catch (e) {
     console.error('Failed to load simple history from database after retries:', e);
-    return [];
+    return null;
   }
 }
 

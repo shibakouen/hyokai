@@ -140,7 +140,7 @@ export function truncateText(text: string, maxLength: number = 100): string {
 // ============================================
 
 // Load history from database with retry
-export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[]> {
+export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[] | null> {
   try {
     const data = await withRetry(
       async () => {
@@ -166,7 +166,7 @@ export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[]>
     }));
   } catch (e) {
     console.error('Failed to load history from database after retries:', e);
-    return [];
+    return null;
   }
 }
 

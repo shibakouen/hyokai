@@ -14,12 +14,47 @@ const DEFAULT_OPTIONS: Required<Omit<RetryOptions, 'onRetry'>> = {
 };
 
 /**
+ * Custom error class for auth-related database errors.
+ * These should not be retried and indicate the user needs to re-authenticate.
+ */
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+/**
+ * Checks if an error is auth-related (should not retry, should clear auth state).
+ */
+export function isAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const message = error.message.toLowerCase();
+  const authPatterns = [
+    'jwt',
+    'token',
+    'auth',
+    'unauthorized',
+    '401',
+    'invalid claim',
+    'expired',
+    'not authenticated',
+    'permission denied',
+    'pgrst301', // PostgREST auth error code
+  ];
+
+  return authPatterns.some(pattern => message.includes(pattern));
+}
+
+/**
  * Wraps an async operation with retry logic using exponential backoff.
+ * Will NOT retry auth errors - these are thrown immediately.
  *
  * @param operation - The async function to retry
  * @param options - Configuration for retry behavior
  * @returns The result of the operation
- * @throws The last error if all retries fail
+ * @throws The last error if all retries fail, or AuthError immediately for auth issues
  */
 export async function withRetry<T>(
   operation: () => Promise<T>,
@@ -37,6 +72,11 @@ export async function withRetry<T>(
       return await operation();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Don't retry auth errors - throw immediately
+      if (isAuthError(lastError)) {
+        throw new AuthError(lastError.message);
+      }
 
       if (attempt < maxRetries) {
         const delay = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);

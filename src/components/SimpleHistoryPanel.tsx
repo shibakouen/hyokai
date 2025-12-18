@@ -197,8 +197,8 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
 
   // Load history when panel opens or auth state changes
   const loadHistoryData = useCallback(async () => {
-    // Don't load while auth is still initializing
-    if (isAuthLoading) return;
+    // Don't load while auth is still initializing, unless we have a user
+    if (isAuthLoading && !user) return;
 
     setIsLoadingHistory(true);
     try {
@@ -210,7 +210,10 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
           // Load from database for authenticated users
           const dbHistory = await loadSimpleHistoryFromDb(user.id);
 
-          if (dbHistory.length > 0) {
+          if (dbHistory === null) {
+             console.warn('[SimpleHistoryPanel] Database load failed (returned null), using localStorage fallback');
+             setHistory(localHistory);
+          } else if (dbHistory.length > 0) {
             // Merge: DB entries are authoritative, but include unsynced local entries
             const dbIds = new Set(dbHistory.map(e => e.id));
             const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
@@ -256,7 +259,7 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
           }
         } catch (dbError) {
           // Database load failed - use localStorage as fallback
-          console.error('[SimpleHistoryPanel] Database load failed, using localStorage:', dbError);
+          console.error('[SimpleHistoryPanel] Unexpected error loading from DB, using localStorage:', dbError);
           setHistory(localHistory);
         }
       } else {

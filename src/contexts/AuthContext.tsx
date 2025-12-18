@@ -103,56 +103,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Add timeout to prevent infinite loading - max 15 seconds (generous for slow networks)
         const AUTH_TIMEOUT_MS = 15000;
 
-        const getSessionWithTimeout = async () => {
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Auth initialization timed out')), AUTH_TIMEOUT_MS);
-          });
+        // Start session fetch immediately
+        const sessionPromise = supabase.auth.getSession();
 
-          const sessionPromise = supabase.auth.getSession();
-          return Promise.race([sessionPromise, timeoutPromise]);
-        };
+        // Handle session result whenever it arrives (even after timeout)
+        sessionPromise.then(async ({ data: { session: initialSession }, error }) => {
+          if (error) {
+            console.error('Error getting session:', error);
+            return;
+          }
 
-        const { data: { session: initialSession } } = await getSessionWithTimeout();
+          if (mounted) {
+            // If we found a session, update state
+            if (initialSession?.user) {
+              console.log('Session restored:', initialSession.user.id);
+              setSession(initialSession);
+              setUser(initialSession.user);
 
-        if (mounted && !loadingComplete) {
-          // Only update session state if we have a valid session
-          // If null, don't clear state - onAuthStateChange will handle it
-          // This prevents race conditions where getSession returns null temporarily
-          if (initialSession?.user) {
-            setSession(initialSession);
-            setUser(initialSession.user);
-
-            // Profile fetch with its own timeout (5 seconds)
-            try {
-              const profilePromise = fetchProfile(initialSession.user.id);
-              const profileTimeoutPromise = new Promise<null>((resolve) => {
-                setTimeout(() => resolve(null), 5000);
-              });
-              const profile = await Promise.race([profilePromise, profileTimeoutPromise]);
-              if (mounted) {
-                setUserProfile(profile);
-                setNeedsMigration(checkMigrationNeeded(profile));
+              // Profile fetch with its own timeout (5 seconds)
+              try {
+                const profilePromise = fetchProfile(initialSession.user.id);
+                const profileTimeoutPromise = new Promise<null>((resolve) => {
+                  setTimeout(() => resolve(null), 5000);
+                });
+                const profile = await Promise.race([profilePromise, profileTimeoutPromise]);
+                if (mounted) {
+                  setUserProfile(profile);
+                  setNeedsMigration(checkMigrationNeeded(profile));
+                }
+              } catch (profileError) {
+                console.error('Error fetching profile:', profileError);
               }
-            } catch (profileError) {
-              console.error('Error fetching profile:', profileError);
-              // Continue without profile - don't block loading
+            }
+            
+            // Ensure loading is complete
+            if (!loadingComplete) {
+              setIsLoading(false);
+              loadingComplete = true;
             }
           }
-          // Note: If initialSession is null, we still complete loading
-          // The onAuthStateChange listener may provide the session later
-          // or INITIAL_SESSION event will confirm no session exists
+        }).catch(err => {
+          console.error('Session promise error:', err);
+        });
 
-          setIsLoading(false);
-          loadingComplete = true;
-        }
+        // Wait for session OR timeout to unblock UI
+        const timeoutPromise = new Promise<void>((_, reject) => {
+          setTimeout(() => reject(new Error('Auth initialization timed out')), AUTH_TIMEOUT_MS);
+        });
+
+        // We only wait for the RACE. If session wins, great. If timeout wins, we catch it.
+        // The sessionPromise.then() above handles the data setting in both cases.
+        await Promise.race([sessionPromise, timeoutPromise]);
+
       } catch (error) {
         console.error('Error initializing auth:', error);
 
-        // On timeout, DON'T clear the session - it may still be valid
-        // The onAuthStateChange listener will pick up the real state
-        // A timeout just means the network was slow, not that the session is corrupted
+        // On timeout, we let the UI render (likely as Guest initially).
+        // If the sessionPromise resolves later, it will upgrade the user.
         if (error instanceof Error && error.message.includes('timed out')) {
-          console.warn('Auth initialization timed out - session may still be valid, letting onAuthStateChange handle it');
+          console.warn('Auth initialization timed out - allowing app to render while session checks continue');
         }
 
         if (mounted && !loadingComplete) {
@@ -300,15 +309,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign out
   const signOut = useCallback(async () => {
+    // Optimistically clear state immediately to ensure UI updates
+    setSession(null);
+    setUser(null);
+    setUserProfile(null);
+    setNeedsMigration(false);
+    setIsLoading(false);
+
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Error signing out:', error);
-        throw error;
+        // We don't throw here because we've already cleared the local state
+        // so from the user's perspective, they are signed out.
       }
     } catch (error) {
       console.error('Error signing out:', error);
-      throw error;
+      // Ignore error as we've already handled the UI state
+    }
+  }, []);
+
+  // Helper to clear Supabase auth storage manually
+  const clearSupabaseStorage = useCallback(() => {
+    try {
+      // Clear all Supabase auth keys from localStorage
+      const keysToRemove = Object.keys(localStorage).filter(
+        key => key.startsWith('sb-') && key.includes('-auth-')
+      );
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } catch (e) {
+      console.error('Error clearing Supabase storage:', e);
     }
   }, []);
 
