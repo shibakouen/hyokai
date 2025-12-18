@@ -47,7 +47,7 @@ const HARD_TOKEN_LIMIT = 16000; // Error threshold
 const generateId = () => `ctx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 export function UserContextProvider({ children }: { children: React.ReactNode }) {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
 
     // Load saved contexts from localStorage
     const [savedContexts, setSavedContexts] = useState<SavedContext[]>(() => {
@@ -240,12 +240,16 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         loadFromDatabase();
     }, [isAuthenticated, user, loadedForUserId]);
 
-    // Reset when user changes or logs out
+    // Reset state when user logs out (not during initial auth check)
     useEffect(() => {
-        if (!isAuthenticated || !user) {
+        if (!isAuthenticated && !isAuthLoading) {
+            // Clear all state when logged out (localStorage is already cleared by AuthContext.signOut)
+            setUserContextState('');
+            setSavedContexts([]);
+            setActiveContextId(null);
             setLoadedForUserId(null);
         }
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, isAuthLoading]);
 
     // Persist saved contexts to localStorage
     useEffect(() => {
