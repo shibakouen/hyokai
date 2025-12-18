@@ -178,7 +178,49 @@ export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[] 
   }
 }
 
-// Add entry to database with retry
+// Save an existing entry to database (preserves ID) with retry
+export async function saveHistoryEntryToDb(
+  userId: string,
+  entry: HistoryEntry
+): Promise<boolean> {
+  console.log('[History] Saving to database:', { id: entry.id, userId: userId.slice(0, 8) + '...' });
+
+  try {
+    await withRetry(
+      async () => {
+        const { error } = await supabase
+          .from('history_entries')
+          .insert({
+            id: entry.id,
+            user_id: userId,
+            timestamp: new Date(entry.timestamp).toISOString(),
+            input: entry.input,
+            task_mode: entry.taskMode,
+            result_data: entry.result,
+          });
+
+        if (error) {
+          // Ignore duplicate key errors (entry already exists)
+          if (error.code === '23505') {
+            console.log('[History] Entry already exists in database:', entry.id);
+            return;
+          }
+          console.error('[History] Database insert error:', error.message);
+          throw error;
+        }
+      },
+      { maxRetries: 2 }
+    );
+
+    console.log('[History] Successfully saved to database:', entry.id);
+    return true;
+  } catch (e) {
+    console.error('[History] Failed to save entry to database after retries:', e);
+    return false;
+  }
+}
+
+// Add entry to database with retry (generates new ID - DEPRECATED, use saveHistoryEntryToDb)
 export async function addHistoryEntryToDb(
   userId: string,
   entry: Omit<HistoryEntry, 'id' | 'timestamp'>
@@ -189,37 +231,8 @@ export async function addHistoryEntryToDb(
     timestamp: Date.now(),
   };
 
-  console.log('[History] Saving to database:', { id: newEntry.id, userId: userId.slice(0, 8) + '...' });
-
-  try {
-    await withRetry(
-      async () => {
-        const { error } = await supabase
-          .from('history_entries')
-          .insert({
-            id: newEntry.id,
-            user_id: userId,
-            timestamp: new Date(newEntry.timestamp).toISOString(),
-            input: newEntry.input,
-            task_mode: newEntry.taskMode,
-            result_data: newEntry.result,
-          });
-
-        if (error) {
-          console.error('[History] Database insert error:', error.message);
-          throw error;
-        }
-      },
-      { maxRetries: 2 }
-    );
-
-    console.log('[History] Successfully saved to database:', newEntry.id);
-    return newEntry;
-  } catch (e) {
-    console.error('[History] Failed to add entry to database after retries:', e);
-    // Entry is still saved in localStorage as fallback
-    return null;
-  }
+  const success = await saveHistoryEntryToDb(userId, newEntry);
+  return success ? newEntry : null;
 }
 
 // Delete entry from database with retry

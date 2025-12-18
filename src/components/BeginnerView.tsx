@@ -23,7 +23,7 @@ import {
 import { SimpleHistoryPanel } from "@/components/SimpleHistoryPanel";
 import { AuthButtonCompact } from "@/components/AuthButton";
 import { useAuth } from "@/contexts/AuthContext";
-import { addSimpleHistoryEntry, addSimpleHistoryEntryToDb, SimpleHistoryEntry } from "@/lib/simpleHistory";
+import { addSimpleHistoryEntry, saveSimpleHistoryEntryToDb, SimpleHistoryEntry } from "@/lib/simpleHistory";
 import { BEGINNER_PROMPTS, BeginnerPrompt } from "@/lib/beginnerPrompts";
 
 // Grok 4 Fast model ID - fast and reliable for beginners
@@ -251,13 +251,13 @@ export function BeginnerView() {
         elapsedTime: finalElapsedTime,
       };
 
-      // Save to localStorage (for all users)
-      addSimpleHistoryEntry(entryData);
+      // Save to localStorage (for all users) - this generates the ID
+      const savedEntry = addSimpleHistoryEntry(entryData);
 
-      // Also save to database for authenticated users (use ref to avoid stale closure)
+      // Also save to database for authenticated users - use SAME entry with SAME ID
       const auth = authRef.current;
       if (auth.isAuthenticated && auth.user) {
-        addSimpleHistoryEntryToDb(auth.user.id, entryData).catch(e => {
+        saveSimpleHistoryEntryToDb(auth.user.id, savedEntry).catch(e => {
           console.error('Failed to save simple history to database:', e);
         });
       }

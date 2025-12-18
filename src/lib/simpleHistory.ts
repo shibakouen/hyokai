@@ -162,7 +162,49 @@ export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHis
   }
 }
 
-// Add entry to database with retry
+// Save an existing entry to database (preserves ID) with retry
+export async function saveSimpleHistoryEntryToDb(
+  userId: string,
+  entry: SimpleHistoryEntry
+): Promise<boolean> {
+  console.log('[SimpleHistory] Saving to database:', { id: entry.id, userId: userId.slice(0, 8) + '...' });
+
+  try {
+    await withRetry(
+      async () => {
+        const { error } = await supabase
+          .from('simple_history_entries')
+          .insert({
+            id: entry.id,
+            user_id: userId,
+            timestamp: new Date(entry.timestamp).toISOString(),
+            input: entry.input,
+            output: entry.output,
+            elapsed_time: entry.elapsedTime,
+          });
+
+        if (error) {
+          // Ignore duplicate key errors (entry already exists)
+          if (error.code === '23505') {
+            console.log('[SimpleHistory] Entry already exists in database:', entry.id);
+            return;
+          }
+          console.error('[SimpleHistory] Database insert error:', error.message);
+          throw error;
+        }
+      },
+      { maxRetries: 2 }
+    );
+
+    console.log('[SimpleHistory] Successfully saved to database:', entry.id);
+    return true;
+  } catch (e) {
+    console.error('[SimpleHistory] Failed to save entry to database after retries:', e);
+    return false;
+  }
+}
+
+// Add entry to database with retry (generates new ID - DEPRECATED, use saveSimpleHistoryEntryToDb)
 export async function addSimpleHistoryEntryToDb(
   userId: string,
   entry: Omit<SimpleHistoryEntry, 'id' | 'timestamp'>
@@ -173,37 +215,8 @@ export async function addSimpleHistoryEntryToDb(
     timestamp: Date.now(),
   };
 
-  console.log('[SimpleHistory] Saving to database:', { id: newEntry.id, userId: userId.slice(0, 8) + '...' });
-
-  try {
-    await withRetry(
-      async () => {
-        const { error } = await supabase
-          .from('simple_history_entries')
-          .insert({
-            id: newEntry.id,
-            user_id: userId,
-            timestamp: new Date(newEntry.timestamp).toISOString(),
-            input: newEntry.input,
-            output: newEntry.output,
-            elapsed_time: newEntry.elapsedTime,
-          });
-
-        if (error) {
-          console.error('[SimpleHistory] Database insert error:', error.message);
-          throw error;
-        }
-      },
-      { maxRetries: 2 }
-    );
-
-    console.log('[SimpleHistory] Successfully saved to database:', newEntry.id);
-    return newEntry;
-  } catch (e) {
-    console.error('[SimpleHistory] Failed to add entry to database after retries:', e);
-    // Entry is still saved in localStorage as fallback
-    return null;
-  }
+  const success = await saveSimpleHistoryEntryToDb(userId, newEntry);
+  return success ? newEntry : null;
 }
 
 // Delete entry from database with retry

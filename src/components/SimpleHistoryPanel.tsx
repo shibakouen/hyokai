@@ -26,7 +26,7 @@ import {
   deleteSimpleHistoryEntry,
   clearSimpleHistory,
   loadSimpleHistoryFromDb,
-  addSimpleHistoryEntryToDb,
+  saveSimpleHistoryEntryToDb,
   deleteSimpleHistoryEntryFromDb,
   clearSimpleHistoryFromDb,
   formatSimpleTimestamp,
@@ -240,15 +240,11 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
           const dbIds = new Set(dbHistory.map(e => e.id));
           const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
 
-          // Sync unsynced entries to database (fire and forget)
+          // Sync unsynced entries to database (fire and forget) - preserve original IDs
           if (unsyncedLocal.length > 0) {
             console.log('[SimpleHistoryPanel] Syncing', unsyncedLocal.length, 'local entries to database');
             for (const entry of unsyncedLocal) {
-              addSimpleHistoryEntryToDb(user.id, {
-                input: entry.input,
-                output: entry.output,
-                elapsedTime: entry.elapsedTime,
-              }).catch(e => console.error('[SimpleHistoryPanel] Failed to sync entry:', e));
+              saveSimpleHistoryEntryToDb(user.id, entry).catch(e => console.error('[SimpleHistoryPanel] Failed to sync entry:', e));
             }
           }
 
@@ -266,13 +262,9 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
           console.log('[SimpleHistoryPanel] Database empty, syncing', localHistory.length, 'local entries');
           setHistory(localHistory);
 
-          // Sync to database
+          // Sync to database - preserve original IDs
           for (const entry of localHistory.slice(0, 30)) {
-            addSimpleHistoryEntryToDb(user.id, {
-              input: entry.input,
-              output: entry.output,
-              elapsedTime: entry.elapsedTime,
-            }).catch(e => console.error('[SimpleHistoryPanel] Failed to sync entry:', e));
+            saveSimpleHistoryEntryToDb(user.id, entry).catch(e => console.error('[SimpleHistoryPanel] Failed to sync entry:', e));
           }
           loadedUserIdRef.current = user.id;
         } else {

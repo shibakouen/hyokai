@@ -24,7 +24,7 @@ import { AuthButton } from "@/components/AuthButton";
 import { useMode } from "@/contexts/ModeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AVAILABLE_MODELS } from "@/lib/models";
-import { addHistoryEntry, addHistoryEntryToDb, HistoryEntry } from "@/lib/history";
+import { addHistoryEntry, saveHistoryEntryToDb, HistoryEntry } from "@/lib/history";
 import { ComparisonResult } from "@/hooks/useModelComparison";
 
 const Index = () => {
@@ -101,12 +101,12 @@ const Index = () => {
         },
       };
 
-      // Save to localStorage (for all users)
-      addHistoryEntry(entryData);
+      // Save to localStorage (for all users) - this generates the ID
+      const savedEntry = addHistoryEntry(entryData);
 
-      // Also save to database for authenticated users
+      // Also save to database for authenticated users - use SAME entry with SAME ID
       if (isAuthenticated && user) {
-        addHistoryEntryToDb(user.id, entryData).catch(e => {
+        saveHistoryEntryToDb(user.id, savedEntry).catch(e => {
           console.error('Failed to save history to database:', e);
         });
       }
@@ -160,12 +160,12 @@ const Index = () => {
           },
         };
 
-        // Save to localStorage (for all users)
-        addHistoryEntry(entryData);
+        // Save to localStorage (for all users) - this generates the ID
+        const savedEntry = addHistoryEntry(entryData);
 
-        // Also save to database for authenticated users
+        // Also save to database for authenticated users - use SAME entry with SAME ID
         if (isAuthenticated && user) {
-          addHistoryEntryToDb(user.id, entryData).catch(e => {
+          saveHistoryEntryToDb(user.id, savedEntry).catch(e => {
             console.error('Failed to save compare history to database:', e);
           });
         }

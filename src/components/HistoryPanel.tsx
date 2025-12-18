@@ -28,7 +28,7 @@ import {
   deleteHistoryEntry,
   clearHistory,
   loadHistoryFromDb,
-  addHistoryEntryToDb,
+  saveHistoryEntryToDb,
   deleteHistoryEntryFromDb,
   clearHistoryFromDb,
   formatTimestamp,
@@ -295,15 +295,11 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
           const dbIds = new Set(dbHistory.map(e => e.id));
           const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
 
-          // Sync unsynced entries to database (fire and forget)
+          // Sync unsynced entries to database (fire and forget) - preserve original IDs
           if (unsyncedLocal.length > 0) {
             console.log('[HistoryPanel] Syncing', unsyncedLocal.length, 'local entries to database');
             for (const entry of unsyncedLocal) {
-              addHistoryEntryToDb(user.id, {
-                input: entry.input,
-                taskMode: entry.taskMode,
-                result: entry.result,
-              }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
+              saveHistoryEntryToDb(user.id, entry).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
             }
           }
 
@@ -321,13 +317,9 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
           console.log('[HistoryPanel] Database empty, syncing', localHistory.length, 'local entries');
           setHistory(localHistory);
 
-          // Sync to database
+          // Sync to database - preserve original IDs
           for (const entry of localHistory.slice(0, 50)) {
-            addHistoryEntryToDb(user.id, {
-              input: entry.input,
-              taskMode: entry.taskMode,
-              result: entry.result,
-            }).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
+            saveHistoryEntryToDb(user.id, entry).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
           }
           loadedUserIdRef.current = user.id;
         } else {
