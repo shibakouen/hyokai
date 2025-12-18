@@ -141,6 +141,8 @@ export function truncateText(text: string, maxLength: number = 100): string {
 
 // Load history from database with retry
 export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[] | null> {
+  console.log('[History] Loading from database for user:', userId.slice(0, 8) + '...');
+
   try {
     const data = await withRetry(
       async () => {
@@ -151,21 +153,27 @@ export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[] 
           .order('timestamp', { ascending: false })
           .limit(MAX_HISTORY_ENTRIES);
 
-        if (error) throw error;
+        if (error) {
+          console.error('[History] Database select error:', error.message);
+          throw error;
+        }
         return data;
       },
       { maxRetries: 2 }
     );
 
-    return (data || []).map(entry => ({
+    const entries = (data || []).map(entry => ({
       id: entry.id,
       timestamp: new Date(entry.timestamp).getTime(),
       input: entry.input,
       taskMode: entry.task_mode as 'coding' | 'prompting',
       result: entry.result_data as SingleModelResult | CompareModelResult,
     }));
+
+    console.log('[History] Loaded from database:', entries.length, 'entries');
+    return entries;
   } catch (e) {
-    console.error('Failed to load history from database after retries:', e);
+    console.error('[History] Failed to load from database after retries:', e);
     return null;
   }
 }
@@ -181,6 +189,8 @@ export async function addHistoryEntryToDb(
     timestamp: Date.now(),
   };
 
+  console.log('[History] Saving to database:', { id: newEntry.id, userId: userId.slice(0, 8) + '...' });
+
   try {
     await withRetry(
       async () => {
@@ -195,14 +205,18 @@ export async function addHistoryEntryToDb(
             result_data: newEntry.result,
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[History] Database insert error:', error.message);
+          throw error;
+        }
       },
       { maxRetries: 2 }
     );
 
+    console.log('[History] Successfully saved to database:', newEntry.id);
     return newEntry;
   } catch (e) {
-    console.error('Failed to add history entry to database after retries:', e);
+    console.error('[History] Failed to add entry to database after retries:', e);
     // Entry is still saved in localStorage as fallback
     return null;
   }

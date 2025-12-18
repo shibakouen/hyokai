@@ -295,7 +295,7 @@ export function SimpleHistoryPanel({ onRestore }: SimpleHistoryPanelProps) {
       loadedUserIdRef.current = null;
       loadHistoryData();
     }
-  }, [isOpen]);
+  }, [isOpen, loadHistoryData]);
 
   // Reload when user becomes available (handles race condition with auth)
   useEffect(() => {

@@ -125,6 +125,8 @@ export function truncateSimpleText(text: string, maxLength: number = 80): string
 
 // Load simple history from database with retry
 export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHistoryEntry[] | null> {
+  console.log('[SimpleHistory] Loading from database for user:', userId.slice(0, 8) + '...');
+
   try {
     const data = await withRetry(
       async () => {
@@ -135,21 +137,27 @@ export async function loadSimpleHistoryFromDb(userId: string): Promise<SimpleHis
           .order('timestamp', { ascending: false })
           .limit(MAX_HISTORY_ENTRIES);
 
-        if (error) throw error;
+        if (error) {
+          console.error('[SimpleHistory] Database select error:', error.message);
+          throw error;
+        }
         return data;
       },
       { maxRetries: 2 }
     );
 
-    return (data || []).map(entry => ({
+    const entries = (data || []).map(entry => ({
       id: entry.id,
       timestamp: new Date(entry.timestamp).getTime(),
       input: entry.input,
       output: entry.output,
       elapsedTime: entry.elapsed_time,
     }));
+
+    console.log('[SimpleHistory] Loaded from database:', entries.length, 'entries');
+    return entries;
   } catch (e) {
-    console.error('Failed to load simple history from database after retries:', e);
+    console.error('[SimpleHistory] Failed to load from database after retries:', e);
     return null;
   }
 }
@@ -165,6 +173,8 @@ export async function addSimpleHistoryEntryToDb(
     timestamp: Date.now(),
   };
 
+  console.log('[SimpleHistory] Saving to database:', { id: newEntry.id, userId: userId.slice(0, 8) + '...' });
+
   try {
     await withRetry(
       async () => {
@@ -179,14 +189,18 @@ export async function addSimpleHistoryEntryToDb(
             elapsed_time: newEntry.elapsedTime,
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[SimpleHistory] Database insert error:', error.message);
+          throw error;
+        }
       },
       { maxRetries: 2 }
     );
 
+    console.log('[SimpleHistory] Successfully saved to database:', newEntry.id);
     return newEntry;
   } catch (e) {
-    console.error('Failed to add simple history entry to database after retries:', e);
+    console.error('[SimpleHistory] Failed to add entry to database after retries:', e);
     // Entry is still saved in localStorage as fallback
     return null;
   }
