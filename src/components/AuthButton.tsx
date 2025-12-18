@@ -32,6 +32,7 @@ export function AuthButton() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
 
@@ -120,15 +121,19 @@ export function AuthButton() {
   };
 
   const handleSignOut = async () => {
+    if (isSigningOut) return; // Prevent double-clicks
+    setIsSigningOut(true);
     try {
       await signOut();
     } catch (error) {
       console.error('Sign out error:', error);
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
-  // Loading state
-  if (isLoading) {
+  // Loading state (auth loading or signing out)
+  if (isLoading || isSigningOut) {
     return (
       <Button variant="ghost" size="sm" className="h-8 px-2" disabled>
         <Loader2 className="w-4 h-4 animate-spin" />
@@ -336,9 +341,23 @@ export function AuthButton() {
 // Compact version for mobile
 export function AuthButtonCompact() {
   const { isAuthenticated, isLoading, signOut, userProfile, user } = useAuth();
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  if (isLoading) {
+  const handleSignOut = async () => {
+    if (isSigningOut) return; // Prevent double-clicks
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  if (isLoading || isSigningOut) {
     return (
       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled>
         <Loader2 className="w-4 h-4 animate-spin" />
@@ -381,9 +400,9 @@ export function AuthButtonCompact() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="frost-glass">
-        <DropdownMenuItem onClick={signOut} className="text-destructive">
+        <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
           <LogOut className="w-4 h-4 mr-2" />
-          Sign out
+          {t('auth.signOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -394,17 +394,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign out
   const signOut = useCallback(async () => {
-    // IMPORTANT: Call supabase.auth.signOut() FIRST
+    // IMPORTANT: Call supabase.auth.signOut() FIRST with global scope
     // This stops any background token refresh and invalidates the server session
+    // Using scope: 'global' ensures sign out works across all tabs/windows
     // Doing this before clearing localStorage prevents race conditions where:
     // 1. We clear localStorage
     // 2. Supabase's token refresh (or another tab) writes new tokens
     // 3. User appears logged back in on refresh
     try {
-      await supabase.auth.signOut();
+      // Add timeout to prevent hanging - 5 seconds max
+      const signOutPromise = supabase.auth.signOut({ scope: 'global' });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Sign out timed out')), 5000);
+      });
+      await Promise.race([signOutPromise, timeoutPromise]);
     } catch (error) {
       console.error('Error signing out from Supabase:', error);
-      // Continue with local cleanup even if server call fails
+      // Continue with local cleanup even if server call fails or times out
     }
 
     // Clear Supabase auth tokens (backup - signOut should have done this)

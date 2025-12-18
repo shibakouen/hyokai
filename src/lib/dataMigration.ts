@@ -28,14 +28,24 @@ export interface MigrationPreview {
   simpleHistoryEntries: number;
 }
 
+// Safe JSON parse that returns default value on error
+function safeJsonParse<T>(value: string | null, defaultValue: T): T {
+  if (!value) return defaultValue;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return defaultValue;
+  }
+}
+
 // Get preview of what will be migrated
 export function getMigrationPreview(): MigrationPreview {
-  const savedContexts = JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED_CONTEXTS) || '[]');
+  const savedContexts = safeJsonParse<unknown[]>(localStorage.getItem(STORAGE_KEYS.SAVED_CONTEXTS), []);
   const currentContext = localStorage.getItem(STORAGE_KEYS.USER_CONTEXT);
   const githubPAT = localStorage.getItem(STORAGE_KEYS.GITHUB_PAT);
-  const githubRepos = JSON.parse(localStorage.getItem(STORAGE_KEYS.GITHUB_REPOS) || '[]');
-  const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]');
-  const simpleHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.SIMPLE_HISTORY) || '[]');
+  const githubRepos = safeJsonParse<unknown[]>(localStorage.getItem(STORAGE_KEYS.GITHUB_REPOS), []);
+  const history = safeJsonParse<unknown[]>(localStorage.getItem(STORAGE_KEYS.HISTORY), []);
+  const simpleHistory = safeJsonParse<unknown[]>(localStorage.getItem(STORAGE_KEYS.SIMPLE_HISTORY), []);
 
   const hasPreferences = !!(
     localStorage.getItem(STORAGE_KEYS.MODE) ||
