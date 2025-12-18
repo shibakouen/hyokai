@@ -219,6 +219,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // For other events (INITIAL_SESSION, TOKEN_REFRESHED, etc.),
       // a null session might be temporary during token validation
       if (event === 'SIGNED_OUT') {
+        // Clear Supabase auth tokens (backup cleanup)
+        try {
+          const keysToRemove = Object.keys(localStorage).filter(
+            key => key.startsWith('sb-') && key.includes('-auth-')
+          );
+          keysToRemove.forEach(key => localStorage.removeItem(key));
+        } catch (e) {
+          console.error('Error clearing Supabase storage in SIGNED_OUT handler:', e);
+        }
+
+        // Clear user-specific localStorage data
+        USER_DATA_KEYS.forEach(key => {
+          try {
+            localStorage.removeItem(key);
+          } catch (e) {
+            console.error(`Failed to remove ${key}:`, e);
+          }
+        });
+
         // Reset ref synchronously - allows next login to start fresh
         wasEverAuthenticatedRef.current = false;
         setSession(null);
@@ -375,8 +394,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign out
   const signOut = useCallback(async () => {
-    // Clear Supabase auth tokens FIRST to prevent accidental re-login on refresh
-    // This is critical - if supabase.auth.signOut() fails, we still want to be logged out
+    // IMPORTANT: Call supabase.auth.signOut() FIRST
+    // This stops any background token refresh and invalidates the server session
+    // Doing this before clearing localStorage prevents race conditions where:
+    // 1. We clear localStorage
+    // 2. Supabase's token refresh (or another tab) writes new tokens
+    // 3. User appears logged back in on refresh
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out from Supabase:', error);
+      // Continue with local cleanup even if server call fails
+    }
+
+    // Clear Supabase auth tokens (backup - signOut should have done this)
     clearSupabaseStorage();
 
     // Clear user-specific localStorage data
@@ -385,25 +416,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Reset the wasEverAuthenticated ref
     wasEverAuthenticatedRef.current = false;
 
-    // Then clear React state immediately for instant UI feedback
+    // Clear React state for UI update
     setSession(null);
     setUser(null);
     setUserProfile(null);
     setNeedsMigration(false);
     setIsLoading(false);
-
-    try {
-      // This call may fail but we've already cleared local storage above
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Error signing out:', error);
-        // We don't throw here because we've already cleared the local state
-        // so from the user's perspective, they are signed out.
-      }
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Ignore error as we've already handled the UI state
-    }
   }, [clearUserData, clearSupabaseStorage]);
 
   const isAuthenticated = !!user && !!session;
