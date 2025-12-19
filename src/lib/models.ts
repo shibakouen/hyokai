@@ -11,11 +11,12 @@ export const PROVIDER_CONFIG: Record<string, { order: number; icon: string }> = 
   'Anthropic': { order: 2, icon: '/providers/anthropic.svg' },
   'xAI': { order: 3, icon: '/providers/xai.svg' },
   'OpenAI': { order: 4, icon: '/providers/openai.svg' },
-  'DeepSeek': { order: 5, icon: '/providers/deepseek.svg' },
-  'Zhipu': { order: 6, icon: '/providers/zhipu.svg' },
+  'Qwen': { order: 5, icon: '/providers/qwen.svg' },
+  'DeepSeek': { order: 6, icon: '/providers/deepseek.svg' },
+  'Zhipu': { order: 7, icon: '/providers/zhipu.svg' },
 };
 
-export const PROVIDER_ORDER = ['Google', 'Anthropic', 'xAI', 'OpenAI', 'DeepSeek', 'Zhipu'];
+export const PROVIDER_ORDER = ['Google', 'Anthropic', 'xAI', 'OpenAI', 'Qwen', 'DeepSeek', 'Zhipu'];
 
 export interface ModelWithIndex extends AIModel {
   originalIndex: number;
@@ -53,6 +54,17 @@ export const AVAILABLE_MODELS: AIModel[] = [
   {
     id: "anthropic/claude-sonnet-4.5",
     name: "Claude Sonnet 4.5 (Thinking)",
+    provider: "Anthropic",
+    thinking: true
+  },
+  {
+    id: "anthropic/claude-opus-4.5",
+    name: "Claude Opus 4.5",
+    provider: "Anthropic"
+  },
+  {
+    id: "anthropic/claude-opus-4.5",
+    name: "Claude Opus 4.5 (Thinking)",
     provider: "Anthropic",
     thinking: true
   },
@@ -109,6 +121,28 @@ export const AVAILABLE_MODELS: AIModel[] = [
     id: "openai/gpt-5-mini",
     name: "GPT-5 Mini (Thinking)",
     provider: "OpenAI",
+    thinking: true
+  },
+  {
+    id: "openai/gpt-5",
+    name: "GPT-5",
+    provider: "OpenAI"
+  },
+  {
+    id: "openai/gpt-5",
+    name: "GPT-5 (Thinking)",
+    provider: "OpenAI",
+    thinking: true
+  },
+  {
+    id: "qwen/qwen3-coder",
+    name: "Qwen3 Coder",
+    provider: "Qwen"
+  },
+  {
+    id: "qwen/qwen3-coder",
+    name: "Qwen3 Coder (Thinking)",
+    provider: "Qwen",
     thinking: true
   },
   {
