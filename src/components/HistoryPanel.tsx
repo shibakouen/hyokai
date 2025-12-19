@@ -33,6 +33,7 @@ import {
   clearHistoryFromDb,
   formatTimestamp,
   truncateText,
+  processSyncQueue,
 } from "@/lib/history";
 
 interface HistoryPanelProps {
@@ -295,13 +296,18 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
           const dbIds = new Set(dbHistory.map(e => e.id));
           const unsyncedLocal = localHistory.filter(e => !dbIds.has(e.id));
 
-          // Sync unsynced entries to database (fire and forget) - preserve original IDs
+          // Sync unsynced entries to database (background process)
           if (unsyncedLocal.length > 0) {
-            console.log('[HistoryPanel] Syncing', unsyncedLocal.length, 'local entries to database');
+            console.log('[HistoryPanel] Found', unsyncedLocal.length, 'unsynced local entries');
+            // We just process the queue which will handle these if they were already queued,
+            // or we could manually add them to the queue now.
+            // For now, let's just trigger a queue process and also attempt to sync these specific ones.
             for (const entry of unsyncedLocal) {
               saveHistoryEntryToDb(user.id, entry).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
             }
           }
+
+          processSyncQueue(user.id);
 
           // Merge and sort
           const merged = [...dbHistory, ...unsyncedLocal]
@@ -318,9 +324,11 @@ export function HistoryPanel({ onRestore }: HistoryPanelProps) {
           setHistory(localHistory);
 
           // Sync to database - preserve original IDs
+          // Sync to database - will automatically queue on failure
           for (const entry of localHistory.slice(0, 50)) {
             saveHistoryEntryToDb(user.id, entry).catch(e => console.error('[HistoryPanel] Failed to sync entry:', e));
           }
+          processSyncQueue(user.id);
           loadedUserIdRef.current = user.id;
         } else {
           // Both empty - that's fine

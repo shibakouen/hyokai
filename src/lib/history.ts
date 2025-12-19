@@ -31,6 +31,7 @@ export interface HistoryEntry {
 }
 
 const STORAGE_KEY = 'hyokai-history';
+const SYNC_QUEUE_KEY = 'hyokai-sync-queue';
 const MAX_HISTORY_ENTRIES = 50;
 
 // Generate a unique ID
@@ -90,6 +91,50 @@ export function deleteHistoryEntry(id: string): void {
 export function clearHistory(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(STORAGE_KEY);
+}
+
+// ============================================
+// Sync Queue Management
+// ============================================
+
+export function getSyncQueue(): HistoryEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(SYNC_QUEUE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addToSyncQueue(entry: HistoryEntry) {
+  if (typeof window === 'undefined') return;
+  const queue = getSyncQueue();
+  if (!queue.some(e => e.id === entry.id)) {
+    queue.push(entry);
+    safeSetJSON(SYNC_QUEUE_KEY, queue, 20); // Keep last 20 failed syncs
+  }
+}
+
+export function removeFromSyncQueue(id: string) {
+  if (typeof window === 'undefined') return;
+  const queue = getSyncQueue();
+  const filtered = queue.filter(e => e.id !== id);
+  safeSetJSON(SYNC_QUEUE_KEY, filtered, 20);
+}
+
+export async function processSyncQueue(userId: string) {
+  const queue = getSyncQueue();
+  if (queue.length === 0) return;
+
+  console.log(`[Sync] Processing queue for user ${userId.slice(0, 8)} (${queue.length} items)`);
+
+  for (const entry of queue) {
+    const success = await saveHistoryEntryToDb(userId, entry, false);
+    if (success) {
+      removeFromSyncQueue(entry.id);
+    }
+  }
 }
 
 // Format timestamp for display
@@ -167,7 +212,7 @@ export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[] 
       timestamp: new Date(entry.timestamp).getTime(),
       input: entry.input,
       taskMode: entry.task_mode as 'coding' | 'prompting',
-      result: entry.result_data as SingleModelResult | CompareModelResult,
+      result: entry.result_data as unknown as SingleModelResult | CompareModelResult,
     }));
 
     console.log('[History] Loaded from database:', entries.length, 'entries');
@@ -181,12 +226,13 @@ export async function loadHistoryFromDb(userId: string): Promise<HistoryEntry[] 
 // Save an existing entry to database (preserves ID) with retry
 export async function saveHistoryEntryToDb(
   userId: string,
-  entry: HistoryEntry
+  entry: HistoryEntry,
+  autoQueue: boolean = true
 ): Promise<boolean> {
   console.log('[History] Saving to database:', { id: entry.id, userId: userId.slice(0, 8) + '...' });
 
   try {
-    await withRetry(
+    const result = await withRetry(
       async () => {
         const { error } = await supabase
           .from('history_entries')
@@ -196,18 +242,19 @@ export async function saveHistoryEntryToDb(
             timestamp: new Date(entry.timestamp).toISOString(),
             input: entry.input,
             task_mode: entry.taskMode,
-            result_data: entry.result,
+            result_data: entry.result as any,
           });
 
         if (error) {
           // Ignore duplicate key errors (entry already exists)
           if (error.code === '23505') {
             console.log('[History] Entry already exists in database:', entry.id);
-            return;
+            return true;
           }
           console.error('[History] Database insert error:', error.message);
           throw error;
         }
+        return true;
       },
       { maxRetries: 2 }
     );
@@ -216,6 +263,13 @@ export async function saveHistoryEntryToDb(
     return true;
   } catch (e) {
     console.error('[History] Failed to save entry to database after retries:', e);
+
+    // Add to sync queue for later retry if specified
+    if (autoQueue) {
+      console.log('[History] Adding to sync queue for retry:', entry.id);
+      addToSyncQueue(entry);
+    }
+
     return false;
   }
 }
