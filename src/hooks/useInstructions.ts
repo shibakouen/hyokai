@@ -269,18 +269,8 @@ export function useInstructions(): UseInstructionsReturn {
 
     if (isAuthenticated && user) {
       try {
-        // Session check with 8s timeout (matches auth init timeout)
-        const sessionCheck = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error('Session check timed out')), 8000)
-          ),
-        ]);
-
-        if (!sessionCheck || !('data' in sessionCheck) || !sessionCheck.data.session) {
-          throw new Error('No valid session');
-        }
-
+        // Auth state is already verified by isAuthenticated && user check above
+        // No need for additional session check - withRetry handles timeouts
         const data = await withRetry(
           async () => {
             const { data, error } = await supabase
