@@ -6,6 +6,7 @@ import { OutputPanel } from "@/components/OutputPanel";
 import { Button } from "@/components/ui/button";
 import { usePromptTransformer } from "@/hooks/usePromptTransformer";
 import { useModelComparison } from "@/hooks/useModelComparison";
+import { useInstructions } from "@/hooks/useInstructions";
 import { Sparkles, GitCompare, ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "@/hooks/use-toast";
@@ -20,6 +21,7 @@ import { GitRepoEditor } from "@/components/GitRepoEditor";
 import { BeginnerModeToggle } from "@/components/BeginnerModeToggle";
 import { BeginnerView } from "@/components/BeginnerView";
 import { AdvancedPromptLibrary } from "@/components/AdvancedPromptLibrary";
+import { CustomInstructionsPanel } from "@/components/CustomInstructionsPanel";
 import { AuthButton } from "@/components/AuthButton";
 import { TokenUsageDisplay } from "@/components/TokenUsageDisplay";
 import { useMode } from "@/contexts/ModeContext";
@@ -66,6 +68,23 @@ const Index = () => {
   // Language hook - must be before useEffects that use t()
   const { t } = useLanguage();
 
+  // Custom instructions hook
+  const {
+    isEnabled: instructionsEnabled,
+    setIsEnabled: setInstructionsEnabled,
+    customInstructions,
+    setCustomInstructions,
+    savedInstructions,
+    selectedInstructionIds,
+    toggleInstructionSelection,
+    createInstruction,
+    updateInstruction,
+    deleteInstruction,
+    getAppendText,
+    getAppliedInstructions,
+    isLoading: instructionsLoading,
+  } = useInstructions();
+
   // Track previous loading states to detect when transformation completes
   const prevSingleLoadingRef = useRef(singleIsLoading);
   const prevCompareLoadingRef = useRef(compareIsLoading);
@@ -90,6 +109,17 @@ const Index = () => {
     // Check if loading just finished and we have output
     if (wasLoading && !singleIsLoading && output && singleInput.trim()) {
       const model = AVAILABLE_MODELS[selectedModelIndex];
+
+      // Append custom instructions to output if enabled
+      const appendText = getAppendText();
+      const finalOutput = appendText ? output + appendText : output;
+      const appliedInstructions = getAppliedInstructions();
+
+      // Update the output state with appended instructions
+      if (appendText) {
+        setOutput(finalOutput);
+      }
+
       const entryData = {
         input: singleInput,
         taskMode,
@@ -97,8 +127,9 @@ const Index = () => {
           type: 'single' as const,
           modelName: model.name,
           modelProvider: model.provider,
-          output,
+          output: finalOutput,
           elapsedTime,
+          appliedInstructions: appliedInstructions.length > 0 ? appliedInstructions : undefined,
         },
       };
 
@@ -116,8 +147,8 @@ const Index = () => {
       setIsViewingOutput(true);
       setShowMobileOutput(true);
 
-      // Auto-copy to clipboard (single model mode only)
-      navigator.clipboard.writeText(output).then(() => {
+      // Auto-copy to clipboard (single model mode only) - use final output with instructions
+      navigator.clipboard.writeText(finalOutput).then(() => {
         toast({
           title: t('output.autoCopied'),
           description: t('output.autoCopiedMessage'),
@@ -126,7 +157,7 @@ const Index = () => {
         // Silently fail - user can manually copy
       });
     }
-  }, [singleIsLoading, output, singleInput, selectedModelIndex, taskMode, elapsedTime, t, isAuthenticated, user]);
+  }, [singleIsLoading, output, singleInput, selectedModelIndex, taskMode, elapsedTime, t, isAuthenticated, user, getAppendText, getAppliedInstructions, setOutput]);
 
   // Save to history and handle post-transformation UX when compare mode transformation completes
   useEffect(() => {
@@ -146,6 +177,19 @@ const Index = () => {
         // Mark as saved FIRST to prevent any race conditions
         compareHistorySavedRef.current = true;
 
+        // Append custom instructions to each model's output if enabled
+        const appendText = getAppendText();
+        const appliedInstructions = getAppliedInstructions();
+
+        // Update results with appended instructions
+        if (appendText) {
+          const updatedResults = results.map(r => ({
+            ...r,
+            output: r.output ? r.output + appendText : r.output,
+          }));
+          setResults(updatedResults);
+        }
+
         const entryData = {
           input: compareInput,
           taskMode,
@@ -154,10 +198,11 @@ const Index = () => {
             results: results.map(r => ({
               modelName: r.model.name,
               modelProvider: r.model.provider,
-              output: r.output,
+              output: appendText && r.output ? r.output + appendText : r.output,
               error: r.error,
               elapsedTime: r.elapsedTime,
             })),
+            appliedInstructions: appliedInstructions.length > 0 ? appliedInstructions : undefined,
           },
         };
 
@@ -176,7 +221,7 @@ const Index = () => {
         setShowMobileOutput(true);
       }
     }
-  }, [compareIsLoading, results, compareInput, taskMode, isAuthenticated, user]);
+  }, [compareIsLoading, results, compareInput, taskMode, isAuthenticated, user, getAppendText, getAppliedInstructions, setResults]);
 
   // Shared state based on mode
   const input = isCompareMode ? compareInput : singleInput;
@@ -366,6 +411,21 @@ const Index = () => {
             <CompareToggle
               isCompareMode={isCompareMode}
               onToggle={handleCompareModeToggle}
+            />
+
+            {/* Custom Instructions Panel - Advanced Mode Only */}
+            <CustomInstructionsPanel
+              isEnabled={instructionsEnabled}
+              onToggle={setInstructionsEnabled}
+              customInstructions={customInstructions}
+              onCustomInstructionsChange={setCustomInstructions}
+              savedInstructions={savedInstructions}
+              selectedInstructionIds={selectedInstructionIds}
+              onToggleSelection={toggleInstructionSelection}
+              onCreateInstruction={createInstruction}
+              onUpdateInstruction={updateInstruction}
+              onDeleteInstruction={deleteInstruction}
+              isLoading={instructionsLoading}
             />
 
             <div className="space-y-8 mt-8">

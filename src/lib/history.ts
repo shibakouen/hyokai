@@ -3,12 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { withRetry } from '@/lib/dbRetry';
 import { safeSetJSON, safeGetJSON } from '@/lib/storage';
 
+// Applied instruction record for history
+export interface AppliedInstruction {
+  id: string;
+  name: string;
+  content: string;
+}
+
 export interface SingleModelResult {
   type: 'single';
   modelName: string;
   modelProvider: string;
   output: string;
   elapsedTime: number | null;
+  appliedInstructions?: AppliedInstruction[];
 }
 
 export interface CompareModelResult {
@@ -20,6 +28,7 @@ export interface CompareModelResult {
     error: string | null;
     elapsedTime: number | null;
   }>;
+  appliedInstructions?: AppliedInstruction[];
 }
 
 export interface HistoryEntry {

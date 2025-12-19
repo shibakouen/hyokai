@@ -68,7 +68,7 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
   const charCount = editedContent ? editedContent.length : 0;
 
   return (
-    <div className="relative">
+    <div className="relative" data-testid="output-panel">
       {isLoading ? (
         <div className="frost-glass rounded-2xl p-5 transition-all duration-300" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
           <div className="flex items-center justify-center h-[168px]">

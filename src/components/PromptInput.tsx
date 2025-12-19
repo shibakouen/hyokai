@@ -52,6 +52,7 @@ export function PromptInput({
     <div className="relative">
       <Textarea
         ref={textareaRef}
+        data-testid="prompt-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || t('input.placeholder')}
