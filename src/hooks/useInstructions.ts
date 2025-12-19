@@ -77,8 +77,19 @@ export function useInstructions(): UseInstructionsReturn {
     return '';
   });
 
-  // Saved instructions library
-  const [savedInstructions, setSavedInstructions] = useState<SavedInstruction[]>([]);
+  // Saved instructions library - initialize from localStorage SYNCHRONOUSLY
+  // This prevents flash of empty state before useEffect hydrates from DB
+  const [savedInstructions, setSavedInstructions] = useState<SavedInstruction[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(SAVED_INSTRUCTIONS_KEY);
+        return stored ? JSON.parse(stored) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   // Selected instructions for appending
@@ -129,14 +140,25 @@ export function useInstructions(): UseInstructionsReturn {
     try {
       const stored = localStorage.getItem(SAVED_INSTRUCTIONS_KEY);
       return stored ? JSON.parse(stored) : [];
-    } catch {
+    } catch (e) {
+      console.error('[Instructions] Failed to load from localStorage:', e);
       return [];
     }
   }, []);
 
   // Save instructions to localStorage
   const saveToLocalStorage = useCallback((instructions: SavedInstruction[]) => {
-    localStorage.setItem(SAVED_INSTRUCTIONS_KEY, JSON.stringify(instructions));
+    try {
+      const json = JSON.stringify(instructions);
+      localStorage.setItem(SAVED_INSTRUCTIONS_KEY, json);
+      // Verify the save worked (localStorage.setItem can silently fail in some edge cases)
+      const verifyRead = localStorage.getItem(SAVED_INSTRUCTIONS_KEY);
+      if (verifyRead !== json) {
+        console.error('[Instructions] localStorage save verification failed!');
+      }
+    } catch (e) {
+      console.error('[Instructions] Failed to save to localStorage:', e);
+    }
   }, []);
 
   // Load saved instructions from database
@@ -301,7 +323,6 @@ export function useInstructions(): UseInstructionsReturn {
       } catch (e) {
         console.error('Error creating instruction:', e);
         // Fall back to localStorage on DB failure
-        console.log('[Instructions] Falling back to localStorage');
         const fallbackInstruction: SavedInstruction = {
           id: generateId(),
           name,
