@@ -116,7 +116,8 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Fetch usage stats for authenticated user
-  const fetchStats = useCallback(async (userId: string): Promise<UsageStats> => {
+  // Note: Takes limits as parameter to avoid dependency on limits state (prevents infinite loop)
+  const fetchStats = useCallback(async (userId: string, currentLimits: UsageLimits): Promise<UsageStats> => {
     try {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -147,14 +148,14 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       return {
         dailyUsed,
         monthlyUsed,
-        dailyRemaining: limits.isUnlimited ? -1 : Math.max(0, limits.dailyLimit - dailyUsed),
-        monthlyRemaining: limits.isUnlimited ? -1 : Math.max(0, limits.monthlyLimit - monthlyUsed),
+        dailyRemaining: currentLimits.isUnlimited ? -1 : Math.max(0, currentLimits.dailyLimit - dailyUsed),
+        monthlyRemaining: currentLimits.isUnlimited ? -1 : Math.max(0, currentLimits.monthlyLimit - monthlyUsed),
         totalRequests,
       };
     } catch {
       return DEFAULT_STATS;
     }
-  }, [limits]);
+  }, []);
 
   // Refresh all usage data
   const refreshUsage = useCallback(async () => {
@@ -170,7 +171,8 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       const newLimits = await fetchLimits(user.id);
       setLimits(newLimits);
 
-      const newStats = await fetchStats(user.id);
+      // Pass limits as parameter to avoid dependency loop
+      const newStats = await fetchStats(user.id, newLimits);
       setStats(newStats);
     } finally {
       setIsLoading(false);
@@ -178,6 +180,10 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id, fetchLimits, fetchStats]);
 
   // Update remaining from API response (more accurate than fetching)
+  // Uses refs to avoid dependency on limits state (prevents callback recreation)
+  const limitsRef = React.useRef(limits);
+  limitsRef.current = limits;
+
   const updateRemaining = useCallback((
     dailyRemaining: number,
     monthlyRemaining: number,
@@ -189,14 +195,15 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const currentLimits = limitsRef.current;
     setStats(prev => ({
       ...prev,
       dailyRemaining: dailyRemaining >= 0 ? dailyRemaining : prev.dailyRemaining,
       monthlyRemaining: monthlyRemaining >= 0 ? monthlyRemaining : prev.monthlyRemaining,
-      dailyUsed: limits.dailyLimit - dailyRemaining,
-      monthlyUsed: limits.monthlyLimit - monthlyRemaining,
+      dailyUsed: currentLimits.dailyLimit - dailyRemaining,
+      monthlyUsed: currentLimits.monthlyLimit - monthlyRemaining,
     }));
-  }, [limits]);
+  }, []);
 
   // Quick check if user can make request
   const canMakeRequest = useCallback((estimatedTokens: number): boolean => {
