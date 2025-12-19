@@ -177,11 +177,33 @@ export function useInstructions(): UseInstructionsReturn {
 
   // Refresh instructions from storage
   const refreshInstructions = useCallback(async () => {
-    setIsLoading(true);
-    try {
+    // CRITICAL: Load localStorage FIRST and show immediately (no waiting for DB)
+    const localInstructions = loadFromLocalStorage();
+
+    // Show localStorage data immediately so UI is responsive
+    if (localInstructions.length > 0) {
+      setSavedInstructions(localInstructions);
+      // Auto-select defaults from local data
+      if (selectedInstructionIds.length === 0) {
+        const defaultIds = localInstructions
+          .filter(i => i.isDefault)
+          .map(i => i.id);
+        if (defaultIds.length > 0) {
+          setSelectedInstructionIds(defaultIds);
+        }
+      }
+    } else {
+      // Only show loading if we have NO localStorage data
+      // This prevents flashing/hiding content when we already have data
       if (isAuthenticated && user) {
+        setIsLoading(true);
+      }
+    }
+
+    // For authenticated users, try to merge with DB data in background
+    if (isAuthenticated && user) {
+      try {
         const dbInstructions = await loadFromDatabase();
-        const localInstructions = loadFromLocalStorage();
 
         // Merge: DB instructions take priority, but include local-only instructions
         // This handles the case where DB save failed and we fell back to localStorage
@@ -190,6 +212,9 @@ export function useInstructions(): UseInstructionsReturn {
         const mergedInstructions = [...dbInstructions, ...localOnlyInstructions];
 
         setSavedInstructions(mergedInstructions);
+
+        // Sync merged data back to localStorage
+        saveToLocalStorage(mergedInstructions);
 
         // Auto-select default instructions if nothing selected yet
         if (selectedInstructionIds.length === 0) {
@@ -200,24 +225,17 @@ export function useInstructions(): UseInstructionsReturn {
             setSelectedInstructionIds(defaultIds);
           }
         }
-      } else {
-        const localInstructions = loadFromLocalStorage();
-        setSavedInstructions(localInstructions);
-
-        // Auto-select defaults
-        if (selectedInstructionIds.length === 0) {
-          const defaultIds = localInstructions
-            .filter(i => i.isDefault)
-            .map(i => i.id);
-          if (defaultIds.length > 0) {
-            setSelectedInstructionIds(defaultIds);
-          }
-        }
+      } catch (e) {
+        console.error('DB load failed, using localStorage:', e);
+        // Keep localStorage data (already set above)
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
+    } else if (localInstructions.length === 0) {
+      // Only set empty state if we didn't already set localStorage data
+      setSavedInstructions([]);
     }
-  }, [isAuthenticated, user, loadFromDatabase, loadFromLocalStorage, selectedInstructionIds.length, setSelectedInstructionIds]);
+  }, [isAuthenticated, user, loadFromDatabase, loadFromLocalStorage, saveToLocalStorage, selectedInstructionIds.length, setSelectedInstructionIds]);
 
   // Create new instruction
   const createInstruction = useCallback(async (
@@ -271,7 +289,14 @@ export function useInstructions(): UseInstructionsReturn {
           updatedAt: data.updated_at,
         };
 
-        setSavedInstructions(prev => [newInstruction, ...prev]);
+        // Update React state
+        setSavedInstructions(prev => {
+          const updated = [newInstruction, ...prev];
+          // CRITICAL: Also save to localStorage as backup
+          // This ensures data persists even if DB load fails on refresh
+          saveToLocalStorage(updated);
+          return updated;
+        });
         return newInstruction;
       } catch (e) {
         console.error('Error creating instruction:', e);
@@ -349,9 +374,12 @@ export function useInstructions(): UseInstructionsReturn {
           { maxRetries: 2 }
         );
 
-        setSavedInstructions(prev =>
-          prev.map(i => i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i)
-        );
+        setSavedInstructions(prev => {
+          const updated = prev.map(i => i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i);
+          // CRITICAL: Also save to localStorage as backup
+          saveToLocalStorage(updated);
+          return updated;
+        });
         return true;
       } catch (e) {
         console.error('Error updating instruction:', e);
@@ -400,7 +428,12 @@ export function useInstructions(): UseInstructionsReturn {
           { maxRetries: 2 }
         );
 
-        setSavedInstructions(prev => prev.filter(i => i.id !== id));
+        setSavedInstructions(prev => {
+          const updated = prev.filter(i => i.id !== id);
+          // CRITICAL: Also save to localStorage as backup
+          saveToLocalStorage(updated);
+          return updated;
+        });
         // Remove from selection
         setSelectedInstructionIds(selectedInstructionIds.filter(i => i !== id));
         return true;
@@ -413,15 +446,15 @@ export function useInstructions(): UseInstructionsReturn {
         }
         return false;
       }
-    } else {
-      // localStorage
-      const updated = savedInstructions.filter(i => i.id !== id);
-      setSavedInstructions(updated);
-      saveToLocalStorage(updated);
-      // Remove from selection
-      setSelectedInstructionIds(selectedInstructionIds.filter(i => i !== id));
-      return true;
     }
+
+    // localStorage for anonymous users
+    const updated = savedInstructions.filter(i => i.id !== id);
+    setSavedInstructions(updated);
+    saveToLocalStorage(updated);
+    // Remove from selection
+    setSelectedInstructionIds(selectedInstructionIds.filter(i => i !== id));
+    return true;
   }, [isAuthenticated, user, savedInstructions, saveToLocalStorage, selectedInstructionIds, setSelectedInstructionIds]);
 
   // Get combined text to append

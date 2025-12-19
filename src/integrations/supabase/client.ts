@@ -29,11 +29,19 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 
 // Anonymous Supabase client for edge functions that don't require auth
 // This bypasses session handling which can hang when auth state is corrupted
+// Uses custom storage key to avoid "Multiple GoTrueClient instances" warning
 export const anonSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
     detectSessionInUrl: false,
+    storageKey: 'sb-anon-auth-token', // Different key to avoid conflict with main client
+    storage: {
+      // No-op storage since we don't persist sessions for anon client
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    },
   },
   global: {
     fetch: fetchWithTimeout,
