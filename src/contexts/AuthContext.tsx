@@ -46,6 +46,11 @@ const USER_DATA_KEYS = [
   'hyokai-beginner-mode',
   'hyokai-selected-model-index',
   'hyokai-compare-model-indices',
+  // Custom instructions keys
+  'hyokai-custom-instructions',
+  'hyokai-instructions-enabled',
+  'hyokai-saved-instructions',
+  'hyokai-selected-instructions',
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
