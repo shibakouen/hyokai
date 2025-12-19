@@ -45,17 +45,17 @@ const UsageContext = createContext<UsageContextType | undefined>(undefined);
 // ============================================================================
 
 const DEFAULT_LIMITS: UsageLimits = {
-  dailyLimit: 1000,
-  monthlyLimit: 10000,
-  maxPerRequest: 500,
+  dailyLimit: 100000,      // 100K tokens/day (generous for development)
+  monthlyLimit: 1000000,   // 1M tokens/month
+  maxPerRequest: 8000,     // 8K per request (for large prompts)
   isUnlimited: false,
 };
 
 const DEFAULT_STATS: UsageStats = {
   dailyUsed: 0,
   monthlyUsed: 0,
-  dailyRemaining: 1000,
-  monthlyRemaining: 10000,
+  dailyRemaining: 100000,
+  monthlyRemaining: 1000000,
   totalRequests: 0,
 };
 

@@ -12,14 +12,14 @@ const corsHeaders = {
 const RATE_LIMITS = {
   // Authenticated users
   authenticated: {
-    daily: 1000,      // tokens per day
-    monthly: 10000,   // tokens per month
-    perRequest: 500,  // max tokens per single request
+    daily: 100000,     // tokens per day (100K - generous for development)
+    monthly: 1000000,  // tokens per month (1M)
+    perRequest: 8000,  // max tokens per single request (for large prompts)
   },
   // Anonymous users (by session)
   anonymous: {
-    daily: 1000,      // tokens per day (same as authenticated for free tier)
-    perRequest: 300,  // slightly lower per-request limit
+    daily: 50000,      // tokens per day (50K - also generous for testing)
+    perRequest: 4000,  // slightly lower per-request limit
   },
   // Email that bypasses all limits
   unlimitedEmail: "reimutomonari@gmail.com",
