@@ -269,11 +269,11 @@ export function useInstructions(): UseInstructionsReturn {
 
     if (isAuthenticated && user) {
       try {
-        // Quick session check with 3s timeout to fail fast if auth is broken
+        // Session check with 8s timeout (matches auth init timeout)
         const sessionCheck = await Promise.race([
           supabase.auth.getSession(),
           new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error('Session check timed out')), 3000)
+            setTimeout(() => reject(new Error('Session check timed out')), 8000)
           ),
         ]);
 
@@ -299,7 +299,7 @@ export function useInstructions(): UseInstructionsReturn {
             }
             return data;
           },
-          { maxRetries: 1, timeoutMs: 5000 }
+          { maxRetries: 2, timeoutMs: 10000 }
         );
 
         const newInstruction: SavedInstruction = {
