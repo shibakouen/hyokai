@@ -8,6 +8,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { withRetry, AuthError } from '@/lib/dbRetry';
+import { toast } from 'sonner';
 
 // Storage keys
 const INSTRUCTIONS_KEY = 'hyokai-custom-instructions';
@@ -142,16 +144,21 @@ export function useInstructions(): UseInstructionsReturn {
     if (!user) return [];
 
     try {
-      const { data, error } = await supabase
-        .from('user_instructions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const data = await withRetry(
+        async () => {
+          const { data, error } = await supabase
+            .from('user_instructions')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Failed to load instructions from database:', error);
-        return [];
-      }
+          if (error) {
+            throw new Error(error.message);
+          }
+          return data;
+        },
+        { maxRetries: 2 }
+      );
 
       return (data || []).map(row => ({
         id: row.id,
@@ -163,6 +170,7 @@ export function useInstructions(): UseInstructionsReturn {
       }));
     } catch (e) {
       console.error('Error loading instructions:', e);
+      // Don't show toast on load failure - just return empty
       return [];
     }
   }, [user]);
@@ -173,11 +181,19 @@ export function useInstructions(): UseInstructionsReturn {
     try {
       if (isAuthenticated && user) {
         const dbInstructions = await loadFromDatabase();
-        setSavedInstructions(dbInstructions);
+        const localInstructions = loadFromLocalStorage();
+
+        // Merge: DB instructions take priority, but include local-only instructions
+        // This handles the case where DB save failed and we fell back to localStorage
+        const dbIds = new Set(dbInstructions.map(i => i.id));
+        const localOnlyInstructions = localInstructions.filter(i => !dbIds.has(i.id));
+        const mergedInstructions = [...dbInstructions, ...localOnlyInstructions];
+
+        setSavedInstructions(mergedInstructions);
 
         // Auto-select default instructions if nothing selected yet
         if (selectedInstructionIds.length === 0) {
-          const defaultIds = dbInstructions
+          const defaultIds = mergedInstructions
             .filter(i => i.isDefault)
             .map(i => i.id);
           if (defaultIds.length > 0) {
@@ -213,21 +229,38 @@ export function useInstructions(): UseInstructionsReturn {
 
     if (isAuthenticated && user) {
       try {
-        const { data, error } = await supabase
-          .from('user_instructions')
-          .insert({
-            user_id: user.id,
-            name,
-            content,
-            is_default: isDefault,
-          })
-          .select()
-          .single();
+        // Quick session check with 3s timeout to fail fast if auth is broken
+        const sessionCheck = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('Session check timed out')), 3000)
+          ),
+        ]);
 
-        if (error) {
-          console.error('Failed to create instruction:', error);
-          return null;
+        if (!sessionCheck || !('data' in sessionCheck) || !sessionCheck.data.session) {
+          throw new Error('No valid session');
         }
+
+        const data = await withRetry(
+          async () => {
+            const { data, error } = await supabase
+              .from('user_instructions')
+              .insert({
+                user_id: user.id,
+                name,
+                content,
+                is_default: isDefault,
+              })
+              .select()
+              .single();
+
+            if (error) {
+              throw new Error(error.message);
+            }
+            return data;
+          },
+          { maxRetries: 1, timeoutMs: 5000 }
+        );
 
         const newInstruction: SavedInstruction = {
           id: data.id,
@@ -242,32 +275,51 @@ export function useInstructions(): UseInstructionsReturn {
         return newInstruction;
       } catch (e) {
         console.error('Error creating instruction:', e);
-        return null;
+        // Fall back to localStorage on DB failure
+        console.log('[Instructions] Falling back to localStorage');
+        const fallbackInstruction: SavedInstruction = {
+          id: generateId(),
+          name,
+          content,
+          isDefault,
+          createdAt: now,
+          updatedAt: now,
+        };
+        const updated = [fallbackInstruction, ...savedInstructions];
+        if (isDefault) {
+          updated.forEach(i => {
+            if (i.id !== fallbackInstruction.id) i.isDefault = false;
+          });
+        }
+        setSavedInstructions(updated);
+        saveToLocalStorage(updated);
+        toast.info('Saved locally. Will sync when connection is restored.');
+        return fallbackInstruction;
       }
-    } else {
-      // localStorage for anonymous users
-      const newInstruction: SavedInstruction = {
-        id: generateId(),
-        name,
-        content,
-        isDefault,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      const updated = [newInstruction, ...savedInstructions];
-
-      // If this is default, clear other defaults
-      if (isDefault) {
-        updated.forEach(i => {
-          if (i.id !== newInstruction.id) i.isDefault = false;
-        });
-      }
-
-      setSavedInstructions(updated);
-      saveToLocalStorage(updated);
-      return newInstruction;
     }
+
+    // localStorage for anonymous users
+    const newInstruction: SavedInstruction = {
+      id: generateId(),
+      name,
+      content,
+      isDefault,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const updated = [newInstruction, ...savedInstructions];
+
+    // If this is default, clear other defaults
+    if (isDefault) {
+      updated.forEach(i => {
+        if (i.id !== newInstruction.id) i.isDefault = false;
+      });
+    }
+
+    setSavedInstructions(updated);
+    saveToLocalStorage(updated);
+    return newInstruction;
   }, [isAuthenticated, user, savedInstructions, saveToLocalStorage]);
 
   // Update instruction
@@ -282,16 +334,20 @@ export function useInstructions(): UseInstructionsReturn {
         if (updates.content !== undefined) dbUpdates.content = updates.content;
         if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault;
 
-        const { error } = await supabase
-          .from('user_instructions')
-          .update(dbUpdates)
-          .eq('id', id)
-          .eq('user_id', user.id);
+        await withRetry(
+          async () => {
+            const { error } = await supabase
+              .from('user_instructions')
+              .update(dbUpdates)
+              .eq('id', id)
+              .eq('user_id', user.id);
 
-        if (error) {
-          console.error('Failed to update instruction:', error);
-          return false;
-        }
+            if (error) {
+              throw new Error(error.message);
+            }
+          },
+          { maxRetries: 2 }
+        );
 
         setSavedInstructions(prev =>
           prev.map(i => i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i)
@@ -299,6 +355,11 @@ export function useInstructions(): UseInstructionsReturn {
         return true;
       } catch (e) {
         console.error('Error updating instruction:', e);
+        if (e instanceof AuthError) {
+          toast.error('Session expired. Please sign in again.');
+        } else {
+          toast.error('Failed to update instruction. Please try again.');
+        }
         return false;
       }
     } else {
@@ -324,16 +385,20 @@ export function useInstructions(): UseInstructionsReturn {
   const deleteInstruction = useCallback(async (id: string): Promise<boolean> => {
     if (isAuthenticated && user) {
       try {
-        const { error } = await supabase
-          .from('user_instructions')
-          .delete()
-          .eq('id', id)
-          .eq('user_id', user.id);
+        await withRetry(
+          async () => {
+            const { error } = await supabase
+              .from('user_instructions')
+              .delete()
+              .eq('id', id)
+              .eq('user_id', user.id);
 
-        if (error) {
-          console.error('Failed to delete instruction:', error);
-          return false;
-        }
+            if (error) {
+              throw new Error(error.message);
+            }
+          },
+          { maxRetries: 2 }
+        );
 
         setSavedInstructions(prev => prev.filter(i => i.id !== id));
         // Remove from selection
@@ -341,6 +406,11 @@ export function useInstructions(): UseInstructionsReturn {
         return true;
       } catch (e) {
         console.error('Error deleting instruction:', e);
+        if (e instanceof AuthError) {
+          toast.error('Session expired. Please sign in again.');
+        } else {
+          toast.error('Failed to delete instruction. Please try again.');
+        }
         return false;
       }
     } else {

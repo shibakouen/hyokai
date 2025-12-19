@@ -4,6 +4,7 @@ interface RetryOptions {
   maxRetries?: number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  timeoutMs?: number;
   onRetry?: (attempt: number, error: Error) => void;
 }
 
@@ -11,6 +12,7 @@ const DEFAULT_OPTIONS: Required<Omit<RetryOptions, 'onRetry'>> = {
   maxRetries: 3,
   baseDelayMs: 500,
   maxDelayMs: 5000,
+  timeoutMs: 10000, // 10 second timeout per operation
 };
 
 /**
@@ -56,11 +58,20 @@ export function isAuthError(error: unknown): boolean {
  * @returns The result of the operation
  * @throws The last error if all retries fail, or AuthError immediately for auth issues
  */
+/**
+ * Creates a promise that rejects after the specified timeout.
+ */
+function createTimeout<T>(ms: number): Promise<T> {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+  });
+}
+
 export async function withRetry<T>(
   operation: () => Promise<T>,
   options: RetryOptions = {}
 ): Promise<T> {
-  const { maxRetries, baseDelayMs, maxDelayMs, onRetry } = {
+  const { maxRetries, baseDelayMs, maxDelayMs, timeoutMs, onRetry } = {
     ...DEFAULT_OPTIONS,
     ...options,
   };
@@ -69,7 +80,12 @@ export async function withRetry<T>(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await operation();
+      // Race the operation against a timeout
+      const result = await Promise.race([
+        operation(),
+        createTimeout<T>(timeoutMs),
+      ]);
+      return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
