@@ -7,11 +7,91 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
+      anonymous_usage: {
+        Row: {
+          first_seen: string | null
+          ip_hash: string | null
+          last_request_date: string
+          last_seen: string | null
+          request_count: number
+          session_id: string
+          tokens_today: number
+          total_tokens: number
+        }
+        Insert: {
+          first_seen?: string | null
+          ip_hash?: string | null
+          last_request_date?: string
+          last_seen?: string | null
+          request_count?: number
+          session_id: string
+          tokens_today?: number
+          total_tokens?: number
+        }
+        Update: {
+          first_seen?: string | null
+          ip_hash?: string | null
+          last_request_date?: string
+          last_seen?: string | null
+          request_count?: number
+          session_id?: string
+          tokens_today?: number
+          total_tokens?: number
+        }
+        Relationships: []
+      }
+      api_usage: {
+        Row: {
+          created_at: string | null
+          id: string
+          input_tokens: number
+          mode: string
+          model: string
+          output_tokens: number
+          request_chars: number | null
+          response_chars: number | null
+          session_id: string | null
+          tokens_estimated: boolean
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          input_tokens?: number
+          mode: string
+          model: string
+          output_tokens?: number
+          request_chars?: number | null
+          response_chars?: number | null
+          session_id?: string | null
+          tokens_estimated?: boolean
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          input_tokens?: number
+          mode?: string
+          model?: string
+          output_tokens?: number
+          request_chars?: number | null
+          response_chars?: number | null
+          session_id?: string | null
+          tokens_estimated?: boolean
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       github_credentials: {
         Row: {
           created_at: string | null
@@ -38,24 +118,33 @@ export type Database = {
       }
       github_repo_cache: {
         Row: {
-          cached_at: string | null
+          branch: string
+          fetched_at: string | null
           file_contents: Json | null
+          key_files: Json | null
           repo_id: string
           selected_paths: string[] | null
+          summary: string | null
           tree: Json | null
         }
         Insert: {
-          cached_at?: string | null
+          branch?: string
+          fetched_at?: string | null
           file_contents?: Json | null
+          key_files?: Json | null
           repo_id: string
           selected_paths?: string[] | null
+          summary?: string | null
           tree?: Json | null
         }
         Update: {
-          cached_at?: string | null
+          branch?: string
+          fetched_at?: string | null
           file_contents?: Json | null
+          key_files?: Json | null
           repo_id?: string
           selected_paths?: string[] | null
+          summary?: string | null
           tree?: Json | null
         }
         Relationships: [
@@ -65,7 +154,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "github_repos"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       github_repos: {
@@ -74,6 +163,7 @@ export type Database = {
           default_branch: string | null
           full_name: string
           id: string
+          last_refreshed: string | null
           name: string
           owner: string
           updated_at: string | null
@@ -83,7 +173,8 @@ export type Database = {
           created_at?: string | null
           default_branch?: string | null
           full_name: string
-          id?: string
+          id: string
+          last_refreshed?: string | null
           name: string
           owner: string
           updated_at?: string | null
@@ -94,6 +185,7 @@ export type Database = {
           default_branch?: string | null
           full_name?: string
           id?: string
+          last_refreshed?: string | null
           name?: string
           owner?: string
           updated_at?: string | null
@@ -106,6 +198,7 @@ export type Database = {
           auto_include_in_coding: boolean | null
           created_at: string | null
           enabled: boolean | null
+          max_context_tokens: number | null
           updated_at: string | null
           user_id: string
         }
@@ -113,6 +206,7 @@ export type Database = {
           auto_include_in_coding?: boolean | null
           created_at?: string | null
           enabled?: boolean | null
+          max_context_tokens?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -120,6 +214,7 @@ export type Database = {
           auto_include_in_coding?: boolean | null
           created_at?: string | null
           enabled?: boolean | null
+          max_context_tokens?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -137,7 +232,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          id?: string
+          id: string
           input: string
           result_data: Json
           task_mode: string
@@ -167,7 +262,7 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string | null
-          id?: string
+          id: string
           name: string
           updated_at?: string | null
           user_id: string
@@ -195,7 +290,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           elapsed_time?: number | null
-          id?: string
+          id: string
           input: string
           output: string
           timestamp?: string | null
@@ -241,7 +336,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "saved_contexts"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       user_preferences: {
@@ -307,12 +402,67 @@ export type Database = {
         }
         Relationships: []
       }
+      user_usage_limits: {
+        Row: {
+          created_at: string | null
+          daily_token_limit: number
+          is_unlimited: boolean
+          max_tokens_per_request: number
+          monthly_token_limit: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          daily_token_limit?: number
+          is_unlimited?: boolean
+          max_tokens_per_request?: number
+          monthly_token_limit?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          daily_token_limit?: number
+          is_unlimited?: boolean
+          max_tokens_per_request?: number
+          monthly_token_limit?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_user_rate_limit: {
+        Args: { p_requested_tokens?: number; p_user_id: string }
+        Returns: {
+          can_proceed: boolean
+          daily_remaining: number
+          error_message: string
+          is_unlimited: boolean
+          monthly_remaining: number
+        }[]
+      }
+      cleanup_old_anonymous_usage: { Args: never; Returns: number }
+      get_user_daily_usage: { Args: { p_user_id: string }; Returns: number }
+      get_user_monthly_usage: { Args: { p_user_id: string }; Returns: number }
+      get_user_usage: {
+        Args: { p_end_date?: string; p_start_date?: string; p_user_id: string }
+        Returns: {
+          avg_tokens_per_request: number
+          total_requests: number
+          total_tokens: number
+        }[]
+      }
+      grant_unlimited_access: { Args: { p_email: string }; Returns: boolean }
+      upsert_anonymous_usage: {
+        Args: { p_date: string; p_session_id: string; p_tokens: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -445,3 +595,5 @@ export const Constants = {
     Enums: {},
   },
 } as const
+A new version of Supabase CLI is available: v2.67.1 (currently installed v2.62.10)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
