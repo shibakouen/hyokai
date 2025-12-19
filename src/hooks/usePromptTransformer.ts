@@ -201,12 +201,13 @@ export function usePromptTransformer() {
         };
       }
 
-      // Add 90 second timeout to prevent hanging forever (thinking models can be slow)
+      // Add 180 second timeout as fallback (Supabase client has 150s timeout for Edge Functions)
+      // AI models can take 30-120+ seconds, especially "thinking" variants
       // Use anonSupabase to bypass auth session handling that can hang
       const { data, error } = await withTimeout(
         anonSupabase.functions.invoke("transform-prompt", requestOptions),
-        90000,
-        "Request timed out. Please try again or select a faster model."
+        180000,
+        "Request timed out. The AI model is taking too long. Please try again or select a faster model."
       );
 
       if (error) {
