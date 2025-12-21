@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Check, ArrowLeft, Sparkles, Zap, Building2, Rocket, Loader2, Mail } from 'lucide-react';
+import { Check, ArrowLeft, MessageSquare, Zap, Star, Loader2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -18,13 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, PlanId, BillingInterval, PLAN_LIMITS } from '@/contexts/SubscriptionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const PLAN_ICONS: Record<PlanId, React.ReactNode> = {
-  starter: <Sparkles className="h-6 w-6" />,
-  pro: <Zap className="h-6 w-6" />,
-  business: <Building2 className="h-6 w-6" />,
-  max: <Rocket className="h-6 w-6" />,
-};
-
+// Plan features matching landing page
 const PLAN_FEATURES: Record<PlanId, string[]> = {
   starter: [
     '150 transformations/month',
@@ -62,8 +54,16 @@ const PLAN_FEATURES: Record<PlanId, string[]> = {
   ],
 };
 
+// Plan descriptions matching landing page
+const PLAN_DESCRIPTIONS: Record<PlanId, { en: string; jp: string }> = {
+  starter: { en: 'For Getting Started', jp: '入門プラン' },
+  pro: { en: 'For Power Users', jp: 'パワーユーザー向け' },
+  business: { en: 'For Teams', jp: 'チーム向け' },
+  max: { en: 'For Heavy Users', jp: 'ヘビーユーザー向け' },
+};
+
 export default function Pricing() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const { subscription, hasSubscription, openCheckout, openGuestCheckout, isLoading } = useSubscription();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
@@ -74,6 +74,8 @@ export default function Pricing() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
+
+  const popularBadge = language === 'en' ? 'Most Popular' : '人気No.1';
 
   const handleEmailDialogClose = (open: boolean) => {
     setShowEmailDialog(open);
@@ -88,7 +90,6 @@ export default function Pricing() {
     e.preventDefault();
     setEmailError(null);
 
-    // Validate email
     if (!email || !email.includes('@') || !email.includes('.')) {
       setEmailError(t('pricing.invalidEmail') || 'Please enter a valid email address');
       return;
@@ -100,14 +101,11 @@ export default function Pricing() {
 
     try {
       await openGuestCheckout(email, pendingPlan, billingInterval);
-      // Will redirect to Stripe, no need to close dialog
     } catch (err) {
       setEmailError(t('pricing.checkoutError') || 'Failed to start checkout. Please try again.');
       setIsSubmitting(false);
     }
   };
-
-  const plans: PlanId[] = ['starter', 'pro', 'business', 'max'];
 
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -143,7 +141,6 @@ export default function Pricing() {
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (!isAuthenticated) {
-      // Show email dialog for guest checkout
       setPendingPlan(planId);
       setShowEmailDialog(true);
       return;
@@ -151,162 +148,301 @@ export default function Pricing() {
     await openCheckout(planId, billingInterval);
   };
 
+  const getButtonText = (planId: PlanId) => {
+    if (isCurrentPlan(planId)) {
+      return t('pricing.currentPlan') || 'Current Plan';
+    }
+    if (hasSubscription) {
+      return t('pricing.switchPlan') || 'Switch Plan';
+    }
+    return t('pricing.startTrial') || 'Start Free Trial';
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-blue-50/50 to-sky-100">
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b border-white/50 bg-white/30 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <a href="https://hyokai.ai" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <a href="https://hyokai.ai" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors">
             <ArrowLeft className="h-4 w-4" />
             <span>{t('pricing.backToWebsite') || 'Back to website'}</span>
           </a>
-          <div className="font-semibold text-xl">Hyokai</div>
+          <div className="font-semibold text-xl text-slate-900">Hyokai</div>
         </div>
       </header>
 
       {/* Main content */}
       <main className="container mx-auto px-4 py-12">
         {/* Title section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">{t('pricing.title') || 'Simple, transparent pricing'}</h1>
-          <p className="text-xl text-muted-foreground mb-8">
+        <div className="text-center mb-16">
+          <h1 className="text-4xl md:text-5xl font-light text-slate-900 mb-6">
+            {t('pricing.title') || 'Simple, transparent pricing'}
+          </h1>
+          <p className="text-lg text-slate-600 mb-10 max-w-2xl mx-auto">
             {t('pricing.subtitle') || 'Start with a 3-day free trial. Cancel anytime.'}
           </p>
 
           {/* Billing toggle */}
           <div className="flex items-center justify-center gap-4">
-            <span className={billingInterval === 'monthly' ? 'font-medium' : 'text-muted-foreground'}>
+            <span className={`text-sm ${billingInterval === 'monthly' ? 'font-medium text-slate-900' : 'text-slate-500'}`}>
               {t('pricing.monthly') || 'Monthly'}
             </span>
             <Switch
               checked={billingInterval === 'annual'}
               onCheckedChange={(checked) => setBillingInterval(checked ? 'annual' : 'monthly')}
             />
-            <span className={billingInterval === 'annual' ? 'font-medium' : 'text-muted-foreground'}>
+            <span className={`text-sm ${billingInterval === 'annual' ? 'font-medium text-slate-900' : 'text-slate-500'}`}>
               {t('pricing.annual') || 'Annual'}
             </span>
             {billingInterval === 'annual' && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 border-green-200">
                 {t('pricing.save') || 'Save'} ~17%
               </Badge>
             )}
           </div>
         </div>
 
-        {/* Pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-          {plans.map((planId) => {
-            const isCurrent = isCurrentPlan(planId);
-            const isPopular = planId === 'pro';
+        {/* Pricing cards - matching landing page exactly */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-[1240px] mx-auto items-stretch">
 
-            return (
-              <Card
-                key={planId}
-                className={`relative flex flex-col ${isPopular ? 'border-primary shadow-lg scale-105' : ''} ${isCurrent ? 'ring-2 ring-primary' : ''}`}
-              >
-                {isPopular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground">
-                      {t('pricing.mostPopular') || 'Most Popular'}
-                    </Badge>
+          {/* TIER 1: STARTER */}
+          <div className={`ice-block rounded-[2rem] p-6 md:p-8 flex flex-col items-center hover:bg-blue-50/50 transition-all duration-300 transform hover:-translate-y-2 relative group h-full border border-blue-100/50 ${isCurrentPlan('starter') ? 'ring-2 ring-cb-blue' : ''}`}>
+            {isCurrentPlan('starter') && (
+              <div className="absolute -top-3 right-4">
+                <Badge variant="outline" className="bg-white text-cb-blue border-cb-blue">
+                  {t('pricing.currentPlan') || 'Current Plan'}
+                </Badge>
+              </div>
+            )}
+            <h3 className="text-xl font-medium text-slate-800 mb-2 capitalize">Starter</h3>
+            <p className="text-xs text-cb-blue mb-4 font-medium uppercase tracking-wider">
+              {PLAN_DESCRIPTIONS.starter[language === 'jp' ? 'jp' : 'en']}
+            </p>
+            <div className="h-1 w-12 bg-cb-blue-light rounded-full mb-6"></div>
+
+            <div className="text-4xl font-light text-slate-900 mb-2 tracking-tighter">
+              {formatPrice(getMonthlyEquivalent('starter'))}
+            </div>
+            <div className="text-sm text-slate-500 mb-2">{t('pricing.perMonth') || '/month'}</div>
+            {billingInterval === 'annual' && (
+              <div className="text-xs text-green-600 mb-6">
+                {t('pricing.youSave') || 'You save'} {getSavings('starter')}%
+              </div>
+            )}
+            {billingInterval === 'monthly' && <div className="mb-6"></div>}
+
+            <ul className="space-y-4 mb-8 text-left w-full text-sm flex-grow">
+              <li className="flex items-center gap-3 text-slate-900 font-semibold">
+                <MessageSquare className="w-4 h-4 text-cb-blue flex-shrink-0" />
+                {PLAN_FEATURES.starter[0]}
+              </li>
+              {PLAN_FEATURES.starter.slice(1).map((item, i) => (
+                <li key={i} className="flex items-center gap-3 text-slate-600">
+                  <Check className="w-4 h-4 text-cb-blue-light flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => handleSelectPlan('starter')}
+              disabled={isCurrentPlan('starter') || isLoading}
+              className="w-full py-3 rounded-xl border border-cb-blue-light text-cb-blue-dark font-semibold hover:bg-cb-blue hover:text-white transition-colors bg-white/80 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {getButtonText('starter')}
+            </button>
+          </div>
+
+          {/* TIER 2: PRO (Featured - Most Popular) */}
+          <div className={`rounded-[2.5rem] px-8 pb-8 pt-14 flex flex-col items-center bg-gradient-to-br from-slate-900 via-cb-blue-dark to-slate-900 text-white relative overflow-hidden shadow-2xl border border-white/10 transform md:scale-105 z-10 h-full ${isCurrentPlan('pro') ? 'ring-2 ring-cyan-400' : ''}`}>
+            <div className="absolute top-4 right-4 text-[9px] font-bold tracking-widest text-cyan-400 border border-cyan-400/30 px-2 py-1 rounded-full uppercase bg-cyan-900/30 backdrop-blur-sm">
+              {popularBadge}
+            </div>
+            {isCurrentPlan('pro') && (
+              <div className="absolute top-4 left-4">
+                <Badge variant="outline" className="bg-cyan-900/50 text-cyan-300 border-cyan-400/50 text-[9px]">
+                  {t('pricing.currentPlan') || 'Current'}
+                </Badge>
+              </div>
+            )}
+
+            {/* Glow effect */}
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl"></div>
+
+            <h3 className="text-2xl font-semibold mb-2 relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-200 capitalize">Pro</h3>
+            <p className="text-xs text-cyan-200/70 mb-4 font-medium uppercase tracking-wider relative z-10">
+              {PLAN_DESCRIPTIONS.pro[language === 'jp' ? 'jp' : 'en']}
+            </p>
+            <div className="h-1 w-12 bg-cyan-500 rounded-full mb-6 relative z-10 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
+
+            <div className="text-5xl font-light mb-2 relative z-10 tracking-tighter text-white">
+              {formatPrice(getMonthlyEquivalent('pro')).split('.')[0]}
+              <span className="text-lg text-cyan-200/50 font-normal">.{formatPrice(getMonthlyEquivalent('pro')).split('.')[1]}</span>
+            </div>
+            <div className="text-sm text-cyan-200/50 mb-2 relative z-10">{t('pricing.perMonth') || '/month'}</div>
+            {billingInterval === 'annual' && (
+              <div className="text-xs text-cyan-300 mb-6 relative z-10">
+                {t('pricing.youSave') || 'You save'} {getSavings('pro')}%
+              </div>
+            )}
+            {billingInterval === 'monthly' && <div className="mb-6"></div>}
+
+            <ul className="space-y-4 mb-8 text-left w-full relative z-10 pl-2 text-sm flex-grow">
+              <li className="flex items-center gap-3 text-white font-bold text-base">
+                <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                {PLAN_FEATURES.pro[0]}
+              </li>
+              {PLAN_FEATURES.pro.slice(1).map((item, i) => (
+                <li key={i} className="flex items-center gap-3 text-cyan-50/90">
+                  <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-white text-[10px] shadow-lg shadow-cyan-500/50 flex-shrink-0">
+                    <Check className="w-3 h-3" />
                   </div>
-                )}
-                {isCurrent && (
-                  <div className="absolute -top-3 right-4">
-                    <Badge variant="outline" className="bg-background">
-                      {t('pricing.currentPlan') || 'Current Plan'}
-                    </Badge>
-                  </div>
-                )}
+                  {item}
+                </li>
+              ))}
+            </ul>
 
-                <CardHeader className="text-center pb-2">
-                  <div className="mx-auto mb-2 p-2 rounded-full bg-primary/10 text-primary w-fit">
-                    {PLAN_ICONS[planId]}
-                  </div>
-                  <CardTitle className="capitalize">{planId}</CardTitle>
-                  <CardDescription>
-                    {t(`pricing.${planId}Description`) || `Perfect for ${planId === 'starter' ? 'getting started' : planId === 'pro' ? 'power users' : planId === 'business' ? 'teams' : 'heavy users'}`}
-                  </CardDescription>
-                </CardHeader>
+            <button
+              onClick={() => handleSelectPlan('pro')}
+              disabled={isCurrentPlan('pro') || isLoading}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 to-cb-blue text-white font-bold hover:shadow-[0_0_20px_rgba(34,211,238,0.5)] transition-all duration-300 relative z-10 border border-white/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {getButtonText('pro')}
+            </button>
+          </div>
 
-                <CardContent className="flex-grow">
-                  <div className="text-center mb-6">
-                    <div className="text-4xl font-bold">
-                      {formatPrice(getMonthlyEquivalent(planId))}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {t('pricing.perMonth') || '/month'}
-                      {billingInterval === 'annual' && (
-                        <span className="block text-xs">
-                          {t('pricing.billedAnnually') || 'billed annually'} ({formatPrice(getPrice(planId))})
-                        </span>
-                      )}
-                    </div>
-                    {billingInterval === 'annual' && (
-                      <div className="text-sm text-green-600 mt-1">
-                        {t('pricing.youSave') || 'You save'} {getSavings(planId)}%
-                      </div>
-                    )}
-                  </div>
+          {/* TIER 3: BUSINESS */}
+          <div className={`ice-block rounded-[2rem] p-6 md:p-8 flex flex-col items-center hover:bg-emerald-50/50 transition-all duration-300 transform hover:-translate-y-2 relative group h-full border-2 border-emerald-100 ${isCurrentPlan('business') ? 'ring-2 ring-emerald-500' : ''}`}>
+            {isCurrentPlan('business') && (
+              <div className="absolute -top-3 right-4">
+                <Badge variant="outline" className="bg-white text-emerald-600 border-emerald-500">
+                  {t('pricing.currentPlan') || 'Current Plan'}
+                </Badge>
+              </div>
+            )}
+            <h3 className="text-xl font-medium text-slate-800 mb-2 capitalize">Business</h3>
+            <p className="text-xs text-emerald-600 mb-4 font-medium uppercase tracking-wider">
+              {PLAN_DESCRIPTIONS.business[language === 'jp' ? 'jp' : 'en']}
+            </p>
+            <div className="h-1 w-12 bg-emerald-400 rounded-full mb-6"></div>
 
-                  <ul className="space-y-3">
-                    {PLAN_FEATURES[planId].map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
+            <div className="text-4xl font-light text-slate-900 mb-2 tracking-tighter">
+              {formatPrice(getMonthlyEquivalent('business'))}
+            </div>
+            <div className="text-sm text-slate-500 mb-2">{t('pricing.perMonth') || '/month'}</div>
+            {billingInterval === 'annual' && (
+              <div className="text-xs text-green-600 mb-6">
+                {t('pricing.youSave') || 'You save'} {getSavings('business')}%
+              </div>
+            )}
+            {billingInterval === 'monthly' && <div className="mb-6"></div>}
 
-                <CardFooter>
-                  <Button
-                    className="w-full"
-                    variant={isPopular ? 'default' : 'outline'}
-                    disabled={isCurrent || isLoading}
-                    onClick={() => handleSelectPlan(planId)}
-                  >
-                    {isCurrent
-                      ? (t('pricing.currentPlan') || 'Current Plan')
-                      : hasSubscription
-                        ? (t('pricing.switchPlan') || 'Switch Plan')
-                        : (t('pricing.startTrial') || 'Start Free Trial')}
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
+            <ul className="space-y-4 mb-8 text-left w-full text-sm flex-grow">
+              <li className="flex items-center gap-3 text-slate-900 font-semibold">
+                <MessageSquare className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                {PLAN_FEATURES.business[0]}
+              </li>
+              {PLAN_FEATURES.business.slice(1).map((item, i) => (
+                <li key={i} className="flex items-center gap-3 text-slate-600">
+                  <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => handleSelectPlan('business')}
+              disabled={isCurrentPlan('business') || isLoading}
+              className="w-full py-3 rounded-xl border border-emerald-400 text-emerald-700 font-semibold hover:bg-emerald-500 hover:text-white transition-colors bg-white/80 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {getButtonText('business')}
+            </button>
+          </div>
+
+          {/* TIER 4: MAX */}
+          <div className={`rounded-[2rem] p-6 md:p-8 flex flex-col items-center bg-gradient-to-b from-slate-950 to-deep-water text-white relative overflow-hidden shadow-xl border border-slate-700 group h-full ${isCurrentPlan('max') ? 'ring-2 ring-purple-500' : ''}`}>
+            {/* Subtle shine animation */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+
+            {isCurrentPlan('max') && (
+              <div className="absolute top-4 right-4">
+                <Badge variant="outline" className="bg-purple-900/50 text-purple-300 border-purple-400/50 text-[9px]">
+                  {t('pricing.currentPlan') || 'Current'}
+                </Badge>
+              </div>
+            )}
+
+            <h3 className="text-xl font-medium text-slate-200 mb-2 capitalize">Max</h3>
+            <p className="text-xs text-purple-300 mb-4 font-medium uppercase tracking-wider">
+              {PLAN_DESCRIPTIONS.max[language === 'jp' ? 'jp' : 'en']}
+            </p>
+            <div className="h-1 w-12 bg-purple-500 rounded-full mb-6"></div>
+
+            <div className="text-4xl font-light text-white mb-2 tracking-tighter">
+              {formatPrice(getMonthlyEquivalent('max'))}
+            </div>
+            <div className="text-sm text-slate-400 mb-2">{t('pricing.perMonth') || '/month'}</div>
+            {billingInterval === 'annual' && (
+              <div className="text-xs text-purple-300 mb-6">
+                {t('pricing.youSave') || 'You save'} {getSavings('max')}%
+              </div>
+            )}
+            {billingInterval === 'monthly' && <div className="mb-6"></div>}
+
+            <ul className="space-y-4 mb-8 text-left w-full text-sm flex-grow">
+              <li className="flex items-center gap-3 text-white font-bold text-base">
+                <Zap className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                {PLAN_FEATURES.max[0]}
+              </li>
+              {PLAN_FEATURES.max.slice(1).map((item, i) => (
+                <li key={i} className="flex items-center gap-3 text-slate-300">
+                  <Star className="w-3 h-3 text-purple-400 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => handleSelectPlan('max')}
+              disabled={isCurrentPlan('max') || isLoading}
+              className="w-full py-3 rounded-xl border border-purple-500/50 text-purple-200 font-semibold hover:bg-purple-900/50 hover:text-white transition-colors bg-purple-900/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {getButtonText('max')}
+            </button>
+          </div>
         </div>
 
         {/* FAQ section */}
-        <div className="mt-16 max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-8">{t('pricing.faq') || 'Frequently Asked Questions'}</h2>
+        <div className="mt-20 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-light text-slate-900 text-center mb-10">
+            {t('pricing.faq') || 'Frequently Asked Questions'}
+          </h2>
 
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-medium mb-2">{t('pricing.faq.trial') || 'How does the free trial work?'}</h3>
-              <p className="text-muted-foreground">
+          <div className="space-y-8">
+            <div className="ice-block rounded-2xl p-6">
+              <h3 className="font-medium text-slate-800 mb-2">{t('pricing.faq.trial') || 'How does the free trial work?'}</h3>
+              <p className="text-slate-600 text-sm">
                 {t('pricing.faq.trialAnswer') || 'You get full access to your chosen plan for 3 days. Your card is required upfront but won\'t be charged until the trial ends. Cancel anytime before to avoid charges.'}
               </p>
             </div>
 
-            <div>
-              <h3 className="font-medium mb-2">{t('pricing.faq.overage') || 'What happens if I exceed my monthly limit?'}</h3>
-              <p className="text-muted-foreground">
+            <div className="ice-block rounded-2xl p-6">
+              <h3 className="font-medium text-slate-800 mb-2">{t('pricing.faq.overage') || 'What happens if I exceed my monthly limit?'}</h3>
+              <p className="text-slate-600 text-sm">
                 {t('pricing.faq.overageAnswer') || 'You can continue using Hyokai beyond your limit. Overage transformations are charged at a per-use rate based on your plan. Upgrade anytime for a higher limit.'}
               </p>
             </div>
 
-            <div>
-              <h3 className="font-medium mb-2">{t('pricing.faq.cancel') || 'Can I cancel anytime?'}</h3>
-              <p className="text-muted-foreground">
+            <div className="ice-block rounded-2xl p-6">
+              <h3 className="font-medium text-slate-800 mb-2">{t('pricing.faq.cancel') || 'Can I cancel anytime?'}</h3>
+              <p className="text-slate-600 text-sm">
                 {t('pricing.faq.cancelAnswer') || 'Yes! You can cancel your subscription at any time. You\'ll continue to have access until the end of your billing period.'}
               </p>
             </div>
 
-            <div>
-              <h3 className="font-medium mb-2">{t('pricing.faq.switch') || 'Can I switch plans?'}</h3>
-              <p className="text-muted-foreground">
+            <div className="ice-block rounded-2xl p-6">
+              <h3 className="font-medium text-slate-800 mb-2">{t('pricing.faq.switch') || 'Can I switch plans?'}</h3>
+              <p className="text-slate-600 text-sm">
                 {t('pricing.faq.switchAnswer') || 'Absolutely! You can upgrade or downgrade at any time. When upgrading, you\'ll be charged the prorated difference. When downgrading, your new rate starts at the next billing cycle.'}
               </p>
             </div>
@@ -315,10 +451,10 @@ export default function Pricing() {
 
         {/* CTA section */}
         <div className="mt-16 text-center">
-          <p className="text-muted-foreground mb-4">
+          <p className="text-slate-600 mb-4">
             {t('pricing.questions') || 'Have questions? We\'re here to help.'}
           </p>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="border-cb-blue text-cb-blue hover:bg-cb-blue hover:text-white">
             <a href="mailto:support@hyokai.app">
               {t('pricing.contactUs') || 'Contact Us'}
             </a>
@@ -366,7 +502,7 @@ export default function Pricing() {
             )}
             <Button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              className="w-full bg-cb-blue hover:bg-cb-blue-dark text-white font-medium"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

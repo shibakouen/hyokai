@@ -121,7 +121,8 @@
 }
 
 @layer utilities {
-  .frost-glass {
+  .frost-glass,
+  .ice-block {
     background: rgba(255, 255, 255, 0.25);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
