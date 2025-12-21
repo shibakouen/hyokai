@@ -11,6 +11,7 @@ import { useUsage } from "@/contexts/UsageContext";
 const STORAGE_KEY = "hyokai-selected-model-index";
 const ANON_TRANSFORM_COUNT_KEY = "hyokai-anon-transform-count";
 const ANON_TRANSFORM_LIMIT = 2;
+const PENDING_REQUEST_KEY = "hyokai-pending-transformation";
 
 // Helper to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
@@ -132,6 +133,47 @@ export function usePromptTransformer() {
     };
   }, []);
 
+  // Warn user if they try to leave during transformation
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const message = "A transformation is in progress. If you leave now, your request may be lost.";
+      e.preventDefault();
+      e.returnValue = message;
+      return message;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isLoading]);
+
+  // Check for interrupted transformation on mount
+  useEffect(() => {
+    const pendingData = localStorage.getItem(PENDING_REQUEST_KEY);
+    if (pendingData) {
+      try {
+        const pending = JSON.parse(pendingData);
+        const startedAt = new Date(pending.startedAt).getTime();
+        const now = Date.now();
+        const ageMinutes = (now - startedAt) / 1000 / 60;
+
+        // If pending request is less than 5 minutes old, warn user
+        if (ageMinutes < 5) {
+          toast({
+            title: "Transformation was interrupted",
+            description: `Your last transformation using ${pending.model} was interrupted. The API credits may have been used. Consider waiting before retrying.`,
+            variant: "destructive",
+          });
+        }
+        // Clear stale pending request
+        localStorage.removeItem(PENDING_REQUEST_KEY);
+      } catch {
+        localStorage.removeItem(PENDING_REQUEST_KEY);
+      }
+    }
+  }, []);
+
   const startTimer = useCallback(() => {
     // Clear any existing timer
     if (timerRef.current) {
@@ -194,6 +236,13 @@ export function usePromptTransformer() {
     setOutput("");
     startTimer();
 
+    // Store pending request state for recovery
+    localStorage.setItem(PENDING_REQUEST_KEY, JSON.stringify({
+      startedAt: new Date().toISOString(),
+      model: selectedModel.name,
+      inputPreview: currentInput.substring(0, 100),
+    }));
+
     try {
       // Get session ID for anonymous tracking
       const sessionId = !isAuthenticated ? getSessionId() : undefined;
@@ -249,6 +298,27 @@ export function usePromptTransformer() {
         return;
       }
 
+      // Handle premium model access errors
+      if (data?.code === "PLAN_UPGRADE_REQUIRED") {
+        toast({
+          title: "Plan upgrade required",
+          description: data.premiumAccess?.message || `This model requires a ${data.premiumAccess?.requiredPlan || 'higher'} plan.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.code === "PREMIUM_LIMIT_REACHED") {
+        const remaining = data.premiumAccess?.remaining ?? 0;
+        const limit = data.premiumAccess?.monthlyLimit ?? 0;
+        toast({
+          title: "Model limit reached",
+          description: data.premiumAccess?.message || `You've used all ${limit} monthly uses of this premium model.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (data?.error) {
         throw new Error(data.error);
       }
@@ -278,6 +348,8 @@ export function usePromptTransformer() {
         variant: "destructive",
       });
     } finally {
+      // Clear pending request state - transformation completed (success or failure)
+      localStorage.removeItem(PENDING_REQUEST_KEY);
       stopTimer();
       setIsLoading(false);
     }

@@ -10,6 +10,7 @@ import { useUsage } from "@/contexts/UsageContext";
 const STORAGE_KEY = "hyokai-compare-model-indices";
 const ANON_TRANSFORM_COUNT_KEY = "hyokai-anon-transform-count";
 const ANON_TRANSFORM_LIMIT = 2;
+const PENDING_COMPARE_KEY = "hyokai-pending-comparison";
 
 // Helper to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
@@ -158,6 +159,47 @@ export function useModelComparison() {
   useEffect(() => {
     inputValueRef.current = input;
   }, [input]);
+
+  // Warn user if they try to leave during comparison
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const message = "A model comparison is in progress. If you leave now, your requests may be lost.";
+      e.preventDefault();
+      e.returnValue = message;
+      return message;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isLoading]);
+
+  // Check for interrupted comparison on mount
+  useEffect(() => {
+    const pendingData = localStorage.getItem(PENDING_COMPARE_KEY);
+    if (pendingData) {
+      try {
+        const pending = JSON.parse(pendingData);
+        const startedAt = new Date(pending.startedAt).getTime();
+        const now = Date.now();
+        const ageMinutes = (now - startedAt) / 1000 / 60;
+
+        // If pending comparison is less than 5 minutes old, warn user
+        if (ageMinutes < 5) {
+          toast({
+            title: "Comparison was interrupted",
+            description: `Your last comparison with ${pending.modelCount} models was interrupted. Some API credits may have been used.`,
+            variant: "destructive",
+          });
+        }
+        // Clear stale pending request
+        localStorage.removeItem(PENDING_COMPARE_KEY);
+      } catch {
+        localStorage.removeItem(PENDING_COMPARE_KEY);
+      }
+    }
+  }, []);
 
   // Persist selected indices to localStorage (always)
   const updateSelectedIndices = useCallback((indices: number[]) => {
@@ -371,6 +413,13 @@ export function useModelComparison() {
     clearAllTimers();
     setIsLoading(true);
 
+    // Store pending comparison state for recovery
+    localStorage.setItem(PENDING_COMPARE_KEY, JSON.stringify({
+      startedAt: new Date().toISOString(),
+      modelCount: selectedIndices.length,
+      models: selectedIndices.map(i => AVAILABLE_MODELS[i].name),
+    }));
+
     // Initialize results with loading state
     const initialResults: ComparisonResult[] = selectedIndices.map(index => ({
       modelIndex: index,
@@ -445,6 +494,8 @@ export function useModelComparison() {
       localStorage.setItem(ANON_TRANSFORM_COUNT_KEY, (count + 1).toString());
     }
 
+    // Clear pending comparison state - all requests completed
+    localStorage.removeItem(PENDING_COMPARE_KEY);
     setIsLoading(false);
   }, [selectedIndices, mode, userContext, transformWithModel, clearAllTimers, isAuthenticated]);
 
