@@ -93,57 +93,10 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
     // Track which user we've loaded from database (null = not loaded, string = loaded for that user)
     const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
 
-    // Refs to track current state (for cleanup functions that need latest values)
-    const stateRef = useRef({
-        userContext,
-        activeContextId,
-        savedContexts,
-        loadedForUserId,
-        isAuthenticated,
-        userId: user?.id ?? null,
-    });
-
-    // Keep refs in sync with state, and save on logout BEFORE updating ref
-    useEffect(() => {
-        const prev = stateRef.current;
-        const nowAuth = isAuthenticated;
-        const nowUserId = user?.id ?? null;
-
-        // Detect logout: was authenticated, now not authenticated
-        // Save BEFORE updating the ref so we have access to old state
-        if (prev.isAuthenticated && !nowAuth && prev.userId && prev.loadedForUserId === prev.userId) {
-            // Validate context_id exists to avoid foreign key issues
-            let contextIdToSave: string | null = null;
-            if (prev.activeContextId) {
-                const contextExists = prev.savedContexts.some(c => c.id === prev.activeContextId);
-                contextIdToSave = contextExists ? prev.activeContextId : null;
-            }
-
-            // Save using the PREVIOUS state before updating
-            supabase
-                .from('user_active_context')
-                .upsert({
-                    user_id: prev.userId,
-                    context_id: contextIdToSave,
-                    current_content: prev.userContext,
-                })
-                .then(({ error }) => {
-                    if (error) {
-                        console.error('Failed to save context on logout:', error);
-                    }
-                });
-        }
-
-        // Now update the ref with new state
-        stateRef.current = {
-            userContext,
-            activeContextId,
-            savedContexts,
-            loadedForUserId,
-            isAuthenticated,
-            userId: nowUserId,
-        };
-    }, [userContext, activeContextId, savedContexts, loadedForUserId, isAuthenticated, user?.id]);
+    // Note: We don't attempt to save on logout because by the time we detect
+    // the auth state change, the Supabase session is already invalidated.
+    // Instead, we rely on the debounced sync (below) which saves every 500ms,
+    // ensuring data is preserved before any logout occurs.
 
     // Load from database when authenticated - uses user.id to detect user changes
     useEffect(() => {
@@ -276,6 +229,14 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
         if (!isAuthenticated || !user || loadedForUserId !== user.id) return;
 
         const syncActiveContext = async () => {
+            // Check if session is still valid before attempting database operations
+            // This prevents RLS errors when cleanup runs during logout with stale closure values
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (!currentSession) {
+                // Session is invalid - skip sync (data is in localStorage as fallback)
+                return;
+            }
+
             // Validate context_id exists in savedContexts to avoid foreign key issues
             // If activeContextId doesn't exist in our saved contexts, use null
             let contextIdToSave: string | null = null;
