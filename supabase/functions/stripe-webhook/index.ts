@@ -31,6 +31,64 @@ const PLAN_LIMITS: Record<string, number> = {
   'max': 5000,
 };
 
+// Update user_usage_limits to grant/revoke unlimited access for subscribers
+async function updateUserUsageLimits(
+  userId: string,
+  isUnlimited: boolean,
+  supabase: ReturnType<typeof createClient>
+) {
+  console.log(`Updating user_usage_limits for ${userId}: is_unlimited=${isUnlimited}`);
+
+  // Check if user has existing usage limits record
+  const { data: existingLimits } = await supabase
+    .from("user_usage_limits")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingLimits) {
+    // Update existing record
+    const { error } = await supabase
+      .from("user_usage_limits")
+      .update({
+        is_unlimited: isUnlimited,
+        // For paid subscribers, set generous limits as fallback
+        daily_token_limit: isUnlimited ? 1000000 : 10000,
+        monthly_token_limit: isUnlimited ? 10000000 : 50000,
+        max_tokens_per_request: isUnlimited ? 50000 : 2000,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Failed to update user_usage_limits:", error);
+      // Don't throw - this is not critical for subscription flow
+    } else {
+      console.log("Updated user_usage_limits successfully");
+    }
+  } else {
+    // Create new record for subscriber
+    const { error } = await supabase
+      .from("user_usage_limits")
+      .insert({
+        user_id: userId,
+        is_unlimited: isUnlimited,
+        daily_token_limit: isUnlimited ? 1000000 : 10000,
+        monthly_token_limit: isUnlimited ? 10000000 : 50000,
+        max_tokens_per_request: isUnlimited ? 50000 : 2000,
+        daily_tokens_used: 0,
+        monthly_tokens_used: 0,
+      });
+
+    if (error) {
+      console.error("Failed to create user_usage_limits:", error);
+      // Don't throw - this is not critical for subscription flow
+    } else {
+      console.log("Created user_usage_limits successfully");
+    }
+  }
+}
+
 // Create Supabase admin client
 function createAdminClient() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -229,6 +287,9 @@ async function handleCheckoutCompleted(
     metadata: { supabase_user_id: userId },
   });
 
+  // Grant unlimited access in user_usage_limits for the subscriber
+  await updateUserUsageLimits(userId, true, supabase);
+
   console.log("=== CHECKOUT COMPLETED SUCCESSFULLY ===");
 }
 
@@ -281,6 +342,13 @@ async function handleSubscriptionDeleted(
   console.log("=== SUBSCRIPTION DELETED ===");
   console.log("Subscription ID:", subscription.id);
 
+  // First, get the user_id from the subscription record
+  const { data: subRecord } = await supabase
+    .from("user_subscriptions")
+    .select("user_id")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("user_subscriptions")
     .update({
@@ -293,6 +361,11 @@ async function handleSubscriptionDeleted(
   if (error) {
     console.error("Failed to mark subscription as canceled:", error);
     throw new Error(`Failed to mark subscription as canceled: ${error.message}`);
+  }
+
+  // Revoke unlimited access for the canceled subscriber
+  if (subRecord?.user_id) {
+    await updateUserUsageLimits(subRecord.user_id, false, supabase);
   }
 
   console.log("=== SUBSCRIPTION DELETED SUCCESSFULLY ===");
