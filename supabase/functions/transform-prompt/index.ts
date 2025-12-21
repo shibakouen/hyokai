@@ -143,6 +143,44 @@ const RATE_LIMITS = {
 };
 
 // ============================================================================
+// PREMIUM MODEL CONFIGURATION
+// ============================================================================
+type ModelTier = 'ultra_premium' | 'premium' | 'standard';
+type RequiredPlan = 'starter' | 'pro' | 'business' | 'max' | null;
+
+interface ModelConfig {
+  tier: ModelTier;
+  requiredPlan: RequiredPlan;
+  monthlyLimit: number; // -1 = no limit
+}
+
+// Model tier configuration - must match frontend src/lib/models.ts
+const MODEL_TIERS: Record<string, ModelConfig> = {
+  // Ultra Premium - Opus ($0.085/req), Business+ only, 15/month
+  "anthropic/claude-opus-4.5": { tier: "ultra_premium", requiredPlan: "business", monthlyLimit: 15 },
+
+  // Premium - Sonnet, GPT-5 ($0.014-0.02/req), 50/month
+  "anthropic/claude-sonnet-4.5": { tier: "premium", requiredPlan: null, monthlyLimit: 50 },
+  "openai/gpt-5": { tier: "premium", requiredPlan: null, monthlyLimit: 50 },
+
+  // Standard - All others, plan limit applies
+  "google/gemini-3-pro-preview": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "google/gemini-2.5-flash": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "x-ai/grok-4-fast": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "x-ai/grok-4.1-fast": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "x-ai/grok-code-fast-1": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "openai/gpt-5-mini": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "qwen/qwen3-coder": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "deepseek/deepseek-v3.2": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+  "z-ai/glm-4.6": { tier: "standard", requiredPlan: null, monthlyLimit: -1 },
+};
+
+// Get model config (defaults to standard if not found)
+function getModelConfig(modelId: string): ModelConfig {
+  return MODEL_TIERS[modelId] || { tier: "standard", requiredPlan: null, monthlyLimit: -1 };
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -342,6 +380,93 @@ async function checkAnonymousLimits(
     allowed: true,
     dailyRemaining: RATE_LIMITS.anonymous.daily - tokensToday - estimatedTokens,
   };
+}
+
+// ============================================================================
+// PREMIUM MODEL ACCESS CONTROL
+// ============================================================================
+
+interface PremiumAccessResult {
+  allowed: boolean;
+  reason?: string;
+  message?: string;
+  currentUsage?: number;
+  monthlyLimit?: number;
+  remaining?: number;
+  requiredPlan?: string;
+  currentPlan?: string;
+}
+
+// Check if user can access a premium model
+async function checkPremiumModelAccess(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  modelId: string
+): Promise<PremiumAccessResult> {
+  const modelConfig = getModelConfig(modelId);
+
+  // Standard tier - always allowed
+  if (modelConfig.tier === "standard") {
+    return { allowed: true };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc("check_premium_model_access", {
+      p_user_id: userId,
+      p_model_id: modelId,
+      p_model_tier: modelConfig.tier,
+      p_required_plan: modelConfig.requiredPlan,
+      p_monthly_limit: modelConfig.monthlyLimit,
+    });
+
+    if (error) {
+      console.error("Error checking premium model access:", error);
+      // Fail open for standard models, fail closed for premium
+      return { allowed: false, reason: "error", message: "Unable to verify model access" };
+    }
+
+    return data as PremiumAccessResult;
+  } catch (err) {
+    console.error("Exception checking premium model access:", err);
+    return { allowed: false, reason: "error", message: "Unable to verify model access" };
+  }
+}
+
+// Increment premium model usage after successful transformation
+async function incrementPremiumModelUsage(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  modelId: string
+): Promise<{ success: boolean; currentUsage: number; limitReached: boolean }> {
+  const modelConfig = getModelConfig(modelId);
+
+  // Standard tier - no tracking needed
+  if (modelConfig.tier === "standard" || modelConfig.monthlyLimit === -1) {
+    return { success: true, currentUsage: 0, limitReached: false };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc("increment_premium_model_usage", {
+      p_user_id: userId,
+      p_model_tier: modelConfig.tier,
+      p_model_id: modelId,
+      p_monthly_limit: modelConfig.monthlyLimit,
+    });
+
+    if (error) {
+      console.error("Error incrementing premium model usage:", error);
+      return { success: false, currentUsage: 0, limitReached: false };
+    }
+
+    return {
+      success: data.success,
+      currentUsage: data.current_usage,
+      limitReached: data.limit_reached,
+    };
+  } catch (err) {
+    console.error("Exception incrementing premium model usage:", err);
+    return { success: false, currentUsage: 0, limitReached: false };
+  }
 }
 
 // Log usage to database
@@ -897,6 +1022,33 @@ serve(async (req) => {
     console.log("Auth: " + (userId ? "user:" + userId.slice(0, 8) + "..." : sessionId ? "session:" + sessionId.slice(0, 8) + "..." : "anonymous") + ", unlimited: " + isUnlimited);
 
     // ========================================================================
+    // PREMIUM MODEL ACCESS CHECK (for authenticated users)
+    // ========================================================================
+    const selectedModel = model || "google/gemini-3-pro-preview";
+    const modelConfig = getModelConfig(selectedModel);
+    let premiumAccessResult: PremiumAccessResult | null = null;
+
+    if (serviceClient && userId && modelConfig.tier !== "standard") {
+      premiumAccessResult = await checkPremiumModelAccess(serviceClient, userId, selectedModel);
+      console.log("Premium access check:", selectedModel, premiumAccessResult);
+
+      if (!premiumAccessResult.allowed) {
+        // Access denied - return 403 with detailed message
+        return new Response(
+          JSON.stringify({
+            error: premiumAccessResult.message,
+            code: premiumAccessResult.reason === "plan_upgrade_required" ? "PLAN_UPGRADE_REQUIRED" : "PREMIUM_LIMIT_REACHED",
+            premiumAccess: premiumAccessResult,
+          }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
+
+    // ========================================================================
     // SUBSCRIPTION CHECK (for authenticated users)
     // ========================================================================
     let subscriptionStatus: SubscriptionStatus | null = null;
@@ -1153,6 +1305,17 @@ serve(async (req) => {
         // Update subscription status with new usage
         subscriptionStatus.transformationsUsed = usageIncrement.newUsage;
         subscriptionStatus.transformationsRemaining = Math.max(0, subscriptionStatus.transformationsLimit - usageIncrement.newUsage);
+      }
+    }
+
+    // ========================================================================
+    // INCREMENT PREMIUM MODEL USAGE (for premium/ultra-premium models)
+    // ========================================================================
+    // Note: Premium usage info is NOT returned to client - users only see limits when they hit them
+    if (serviceClient && userId && modelConfig.tier !== "standard") {
+      const premiumUsageResult = await incrementPremiumModelUsage(serviceClient, userId, selectedModel);
+      if (premiumUsageResult.success) {
+        console.log(`Premium model usage: ${selectedModel} - ${premiumUsageResult.currentUsage}/${modelConfig.monthlyLimit}${premiumUsageResult.limitReached ? " (LIMIT REACHED)" : ""}`);
       }
     }
 
