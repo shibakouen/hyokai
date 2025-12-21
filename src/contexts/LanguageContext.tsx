@@ -32,7 +32,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
         const loadFromDatabase = async () => {
             // Add timeout to prevent infinite loading
-            const DB_TIMEOUT_MS = 5000;
+            const DB_TIMEOUT_MS = 30000;
             const timeoutId = setTimeout(() => {
                 console.warn('LanguageContext database load timed out');
                 setHasLoadedFromDb(true);

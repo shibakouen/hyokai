@@ -13,6 +13,7 @@ import { GitRepoProvider } from "@/contexts/GitRepoContext";
 import { MigrationDialog } from "@/components/MigrationDialog";
 import Index from "./pages/Index";
 import Pricing from "./pages/Pricing";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/settings" element={<Settings />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUsage } from "@/contexts/UsageContext";
 
 const STORAGE_KEY = "hyokai-selected-model-index";
+const ANON_TRANSFORM_COUNT_KEY = "hyokai-anon-transform-count";
+const ANON_TRANSFORM_LIMIT = 2;
 
 // Helper to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
@@ -54,7 +56,7 @@ export function usePromptTransformer() {
 
     const loadFromDatabase = async () => {
       // Add timeout to prevent infinite loading
-      const DB_TIMEOUT_MS = 5000;
+      const DB_TIMEOUT_MS = 30000;
       const timeoutId = setTimeout(() => {
         console.warn('PromptTransformer database load timed out');
         setHasLoadedFromDb(true);
@@ -173,6 +175,21 @@ export function usePromptTransformer() {
       return;
     }
 
+    // Check anonymous user rate limit (2 free transformations)
+    if (!isAuthenticated) {
+      const storedCount = localStorage.getItem(ANON_TRANSFORM_COUNT_KEY);
+      const count = storedCount ? parseInt(storedCount, 10) : 0;
+
+      if (count >= ANON_TRANSFORM_LIMIT) {
+        toast({
+          title: "Free limit reached",
+          description: "Sign up to continue transforming prompts. It's free!",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsLoading(true);
     setOutput("");
     startTimer();
@@ -237,6 +254,13 @@ export function usePromptTransformer() {
       }
 
       setOutput(data?.result || "No output received");
+
+      // Increment anonymous user transform count after successful transformation
+      if (!isAuthenticated) {
+        const storedCount = localStorage.getItem(ANON_TRANSFORM_COUNT_KEY);
+        const count = storedCount ? parseInt(storedCount, 10) : 0;
+        localStorage.setItem(ANON_TRANSFORM_COUNT_KEY, (count + 1).toString());
+      }
 
       // Update usage stats from response
       if (data?.usage) {

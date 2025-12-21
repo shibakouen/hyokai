@@ -1,3 +1,36 @@
+# MANDATORY: Every Single Response
+
+I am not technical. I describe things loosely. Before doing ANYTHING:
+
+## 1. TRANSFORM (Never Skip)
+Rewrite my request into a structured prompt with:
+- Clear requirements
+- Acceptance criteria
+- Edge cases
+- Specific file references from the codebase
+
+Show it like this:
+> **What I understood:**
+> [your transformed version]
+
+Do not proceed until I confirm.
+
+## 2. SCAN
+Check the codebase for relevant files and existing patterns before coding.
+
+## 3. EXECUTE
+Implement following existing code style exactly.
+
+## 4. VERIFY
+- Run build (must pass)
+- Use Playwright for visual checks
+- Take screenshots as proof
+- For persistence bugs: test page refresh
+
+Never say "done" without evidence.
+
+---
+
 # Hyokai Development Notes
 
 ## Project Overview
@@ -348,3 +381,246 @@ const USER_DATA_KEYS = [
 3. **Order of operations matters** - In signOut, invalidate server session BEFORE clearing local state
 4. **Redundant cleanup is good** - Multiple code paths clearing data prevents edge cases
 5. **Supabase has background operations** - Token refresh runs independently and can write to localStorage
+
+---
+
+## IN PROGRESS: Stripe Payment Integration (Dec 2024)
+
+### Current Status
+**Phase:** Setting up Stripe MCP, then creating products/prices
+
+### Todo List
+| # | Task | Status |
+|---|------|--------|
+| 1 | Apply database migration for subscriptions | ✅ DONE |
+| 2 | Create Stripe products and prices | 🔄 IN PROGRESS |
+| 3 | Create stripe-checkout edge function | ⏳ Pending |
+| 4 | Create stripe-webhooks edge function | ⏳ Pending |
+| 5 | Create stripe-portal edge function | ⏳ Pending |
+| 6 | Modify transform-prompt for subscription checks | ⏳ Pending |
+| 7 | Create SubscriptionContext | ⏳ Pending |
+| 8 | Build Pricing page | ⏳ Pending |
+| 9 | Build Billing settings tab | ⏳ Pending |
+| 10 | Add upgrade modals and usage meters | ⏳ Pending |
+| 11 | Add translations (EN/JP) | ⏳ Pending |
+| 12 | Test with Playwright and verify | ⏳ Pending |
+
+### Business Requirements
+- **Free Trial:** 3 days with credit card upfront
+- **Overage Billing:** Charge per extra transformation beyond plan limit
+- **Annual Billing:** Yes, with ~17% discount (2 months free)
+
+### Pricing Tiers
+
+| Tier | Monthly | Annual | Transforms/Mo | Cost/Transform | Overage |
+|------|---------|--------|---------------|----------------|---------|
+| **Starter** | $9.99 | $99.99/yr | 150 | 6.7¢ | 10¢ each |
+| **Pro** | $24.99 | $249.99/yr | 500 | 5.0¢ | 8¢ each |
+| **Business** | $49.99 | $499.99/yr | 1,500 | 3.3¢ | 6¢ each |
+| **Max** | $99.99 | $999.99/yr | 5,000 | 2.0¢ | 4¢ each |
+
+### Database Migration Applied
+Migration `004_stripe_subscriptions` created these tables:
+- `subscription_plans` - Static plan definitions (starter, pro, business, max)
+- `user_subscriptions` - User's active subscription, usage tracking
+- `transformation_events` - Per-transformation billing events
+- `invoices` - Mirror of Stripe invoices
+
+Key functions:
+- `get_user_subscription(user_id)` - Returns plan details, usage, remaining
+- `increment_transformation_usage(user_id)` - Increments usage, returns overage status
+- `reset_subscription_usage(stripe_sub_id, period_start, period_end)` - Resets at billing cycle
+
+### Stripe Configuration
+**MCP Server:** Connected with API key authentication
+```bash
+claude mcp add --transport http stripe https://mcp.stripe.com/ \
+  --header "Authorization: Bearer sk_live_..."
+```
+
+**Environment Variables Needed (Vercel):**
+```
+STRIPE_SECRET_KEY=sk_live_51Raz20Cs88k2DV32...
+STRIPE_PUBLISHABLE_KEY=pk_live_51Raz20Cs88k...
+STRIPE_WEBHOOK_SECRET=whsec_... (after webhook setup)
+STRIPE_METER_ID=mtr_... (after meter creation)
+```
+
+### Edge Functions to Create
+
+#### 1. `stripe-checkout/index.ts`
+Creates Stripe Checkout session with 3-day trial:
+```typescript
+const session = await stripe.checkout.sessions.create({
+  customer: customerId,
+  mode: 'subscription',
+  line_items: [{ price: priceId, quantity: 1 }],
+  subscription_data: {
+    trial_end: Math.floor(Date.now() / 1000) + (3 * 24 * 60 * 60),
+  },
+  success_url: `${origin}/settings?session_id={CHECKOUT_SESSION_ID}`,
+  cancel_url: `${origin}/pricing`,
+});
+```
+
+#### 2. `stripe-webhooks/index.ts`
+Handles events:
+- `customer.subscription.created` - Create user_subscription record
+- `customer.subscription.updated` - Update status, plan changes
+- `customer.subscription.deleted` - Mark canceled
+- `invoice.paid` - Reset monthly usage counter
+- `invoice.payment_failed` - Mark past_due
+
+#### 3. `stripe-portal/index.ts`
+Creates customer portal session for billing management
+
+### Files to Create
+```
+supabase/functions/stripe-checkout/index.ts
+supabase/functions/stripe-webhooks/index.ts
+supabase/functions/stripe-portal/index.ts
+src/contexts/SubscriptionContext.tsx
+src/hooks/useSubscription.ts
+src/pages/Pricing.tsx
+src/pages/Settings/BillingTab.tsx
+src/components/UpgradeModal.tsx
+src/components/UsageMeter.tsx
+src/components/TrialBanner.tsx
+```
+
+### Files to Modify
+```
+supabase/functions/transform-prompt/index.ts  # Add subscription check
+src/contexts/AuthContext.tsx                   # Add subscription to context
+src/contexts/UsageContext.tsx                  # Switch to transformation-based
+src/hooks/usePromptTransformer.ts              # Check before transform
+src/pages/Index.tsx                            # Upgrade prompts, usage display
+src/components/BeginnerView.tsx                # Usage meter, trial banner
+src/App.tsx                                    # /pricing route
+src/lib/translations.ts                        # ~60 new keys
+```
+
+### Architecture Flow
+```
+User Signs Up → Stripe Checkout (card + 3-day trial)
+                     ↓
+              Webhook: subscription.created
+                     ↓
+              Create user_subscriptions record
+                     ↓
+User Transforms → Edge function checks subscription
+                     ↓
+              increment_transformation_usage()
+                     ↓
+              If overage → Report to Stripe Meter
+                     ↓
+Billing Cycle End → Webhook: invoice.paid
+                     ↓
+              reset_subscription_usage()
+```
+
+### Resume Instructions
+After restarting conversation:
+1. Say "continue Stripe payment integration"
+2. Stripe MCP should now be available
+3. Next step: Create products/prices in Stripe via MCP
+4. Then: Deploy edge functions
+
+---
+
+## COMPLETED: Landing Page Update (Dec 2024)
+
+### What Was Done
+Updated landing page at `~/hyokai-landing` to match actual app pricing:
+
+**Files Modified:**
+- `~/hyokai-landing/contexts/LanguageContext.tsx` - Updated EN/JP pricing
+- `~/hyokai-landing/components/Pricing.tsx` - Pro is now "Most Popular", Business has emerald styling
+
+**New Pricing (matches app):**
+| Tier | Price | Transforms | Features |
+|------|-------|------------|----------|
+| Starter | $9.99/mo | 150 | All AI models, Coding & General modes |
+| Pro | $24.99/mo | 500 | GitHub context, Priority support (MOST POPULAR) |
+| Business | $49.99/mo | 1,500 | Custom instructions, Teams |
+| Max | $99.99/mo | 5,000 | Dedicated support, Early access |
+
+**Japanese translations updated:**
+- スターター, プロ, ビジネス, マックス
+- "人気No.1" badge for Pro tier
+- 3日間の無料トライアル messaging
+
+**Deployed to:** `https://hyokai-landing.vercel.app`
+
+---
+
+## IN PROGRESS: Domain Setup (Dec 2024)
+
+### Current Status
+**Phase:** Fix hyokai.ai root domain 404 error using Vercel MCP
+
+### Domain Architecture
+| Domain | Points To | Project | Status |
+|--------|-----------|---------|--------|
+| hyokai.ai | Landing page | hyokai-landing | ❌ 404 ERROR |
+| www.hyokai.ai | Landing page | hyokai-landing | ✅ Working |
+| app.hyokai.ai | Main app | hyokai-vercel | ✅ Working |
+
+### DNS Configuration (Namecheap) - COMPLETED ✅
+Domain is registered on **Namecheap** (not Hostinger).
+DNS records configured in Namecheap Advanced DNS:
+
+| Type | Host | Value | Status |
+|------|------|-------|--------|
+| A | @ | 76.76.21.21 | ✅ Propagated |
+| CNAME | www | cname.vercel-dns.com | ✅ Propagated |
+| CNAME | app | cname.vercel-dns.com | ✅ Propagated |
+| TXT | @ | v=spf1 include:spf.efwd... | ✅ Kept for email |
+
+### Vercel Project Assignments
+| Project | Domains Assigned |
+|---------|------------------|
+| hyokai-landing | hyokai.ai, www.hyokai.ai |
+| hyokai-vercel | app.hyokai.ai ✅, hyokai-vercel.vercel.app |
+
+### Current Issue
+- `www.hyokai.ai` → ✅ HTTP 200, SSL working
+- `app.hyokai.ai` → ✅ HTTP 200, SSL working
+- `hyokai.ai` (root) → ❌ HTTP 404 "page can't be found"
+
+The root domain DNS is correct (76.76.21.21) but Vercel isn't serving content.
+Likely cause: SSL certificate or domain configuration issue on hyokai-landing project.
+
+### Vercel MCP Setup - COMPLETED ✅
+Added to `~/.claude.json`:
+```json
+{
+  "vercel": {
+    "type": "http",
+    "url": "https://mcp.vercel.com"
+  }
+}
+```
+
+### Resume Instructions
+After restarting Claude Code:
+1. Say **"Fix hyokai.ai root domain 404 using Vercel MCP"**
+2. Vercel MCP tools will be available
+3. Use Vercel MCP to:
+   - Check hyokai-landing project domain configuration
+   - Verify SSL certificate status for hyokai.ai
+   - Re-add hyokai.ai to hyokai-landing if needed
+   - Force SSL certificate regeneration if stuck
+4. Test: `curl -sI https://hyokai.ai` should return HTTP 200
+
+### Debugging Commands
+```bash
+# Check DNS propagation
+dig hyokai.ai A +short  # Should be 76.76.21.21
+
+# Check SSL/response
+curl -sI https://hyokai.ai | head -5
+
+# Vercel domain inspection
+vercel domains inspect hyokai.ai
+```

@@ -1,0 +1,169 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Stripe price IDs for each plan
+const STRIPE_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
+  starter: {
+    monthly: 'price_1SgZHyCs88k2DV32g2UFt1Vr',
+    annual: 'price_1SgZHzCs88k2DV32suTd3OoL',
+  },
+  pro: {
+    monthly: 'price_1SgZHzCs88k2DV32K1H4Q5CB',
+    annual: 'price_1SgZHzCs88k2DV32TPog3GYb',
+  },
+  business: {
+    monthly: 'price_1SgZI0Cs88k2DV32Wsx1etw7',
+    annual: 'price_1SgZI0Cs88k2DV32oekBtFHN',
+  },
+  max: {
+    monthly: 'price_1SgZI0Cs88k2DV32AhdBxJSJ',
+    annual: 'price_1SgZI1Cs88k2DV32YfEG9JBB',
+  },
+};
+
+serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json();
+    const { planId, interval, email, successUrl, cancelUrl } = body;
+
+    // Validate plan and interval
+    if (!planId || !STRIPE_PRICE_IDS[planId]) {
+      return new Response(
+        JSON.stringify({ error: "Invalid plan" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const billingInterval = interval === 'annual' ? 'annual' : 'monthly';
+    const priceId = STRIPE_PRICE_IDS[planId][billingInterval];
+
+    // Create Stripe client
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) {
+      throw new Error("Missing STRIPE_SECRET_KEY");
+    }
+
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
+    const siteUrl = Deno.env.get("SITE_URL") || "https://app.hyokai.ai";
+
+    // Check if this is an authenticated request or guest checkout
+    const authHeader = req.headers.get("Authorization");
+    let customerId: string | undefined;
+    let customerEmail: string | undefined;
+
+    if (authHeader) {
+      // Authenticated user - get or create Stripe customer
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      customerEmail = user.email;
+
+      // Check if user already has a Stripe customer ID
+      const { data: subscription } = await supabase
+        .from("user_subscriptions")
+        .select("stripe_customer_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (subscription?.stripe_customer_id) {
+        customerId = subscription.stripe_customer_id;
+      } else {
+        // Check if customer exists in Stripe by email
+        const existingCustomers = await stripe.customers.list({
+          email: user.email!,
+          limit: 1,
+        });
+
+        if (existingCustomers.data.length > 0) {
+          customerId = existingCustomers.data[0].id;
+        } else {
+          // Create new customer
+          const newCustomer = await stripe.customers.create({
+            email: user.email!,
+            metadata: {
+              supabase_user_id: user.id,
+            },
+          });
+          customerId = newCustomer.id;
+        }
+      }
+    } else if (email) {
+      // Guest checkout - use provided email
+      customerEmail = email;
+
+      // Check if customer exists in Stripe
+      const existingCustomers = await stripe.customers.list({
+        email: email,
+        limit: 1,
+      });
+
+      if (existingCustomers.data.length > 0) {
+        customerId = existingCustomers.data[0].id;
+      }
+      // If no customer exists, Stripe Checkout will create one
+    } else {
+      return new Response(
+        JSON.stringify({ error: "Email required for guest checkout" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create Checkout session with 3-day trial
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: {
+        trial_period_days: 3,
+      },
+      success_url: successUrl || `${siteUrl}/settings?checkout=success`,
+      cancel_url: cancelUrl || `${siteUrl}/pricing`,
+      allow_promotion_codes: true,
+    };
+
+    if (customerId) {
+      sessionParams.customer = customerId;
+    } else if (customerEmail) {
+      sessionParams.customer_email = customerEmail;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    return new Response(
+      JSON.stringify({ url: session.url }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Checkout error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

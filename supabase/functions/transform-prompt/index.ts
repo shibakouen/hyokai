@@ -7,6 +7,123 @@ const corsHeaders = {
 };
 
 // ============================================================================
+// SUBSCRIPTION CHECKING
+// ============================================================================
+
+interface SubscriptionStatus {
+  hasSubscription: boolean;
+  planId: string | null;
+  planName: string | null;
+  transformationsUsed: number;
+  transformationsLimit: number;
+  transformationsRemaining: number;
+  status: string | null;
+  isTrialing: boolean;
+  trialEndsAt: string | null;
+  canTransform: boolean;
+  overageAllowed: boolean;
+}
+
+async function getSubscriptionStatus(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<SubscriptionStatus> {
+  const noSubscription: SubscriptionStatus = {
+    hasSubscription: false,
+    planId: null,
+    planName: null,
+    transformationsUsed: 0,
+    transformationsLimit: 0,
+    transformationsRemaining: 0,
+    status: null,
+    isTrialing: false,
+    trialEndsAt: null,
+    canTransform: false,
+    overageAllowed: false,
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select("*, subscription_plans(*)")
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) {
+      return noSubscription;
+    }
+
+    const isActive = data.status === "active" || data.status === "trialing";
+    const isTrialing = data.status === "trialing";
+    const remaining = Math.max(0, data.transformations_limit - data.transformations_used);
+
+    // Allow transformation if: active/trialing AND (has remaining OR overage is allowed)
+    const canTransform = isActive && (remaining > 0 || true); // Always allow overage for now
+
+    return {
+      hasSubscription: true,
+      planId: data.plan_id,
+      planName: data.subscription_plans?.name || null,
+      transformationsUsed: data.transformations_used || 0,
+      transformationsLimit: data.transformations_limit || 0,
+      transformationsRemaining: remaining,
+      status: data.status,
+      isTrialing,
+      trialEndsAt: data.trial_ends_at,
+      canTransform,
+      overageAllowed: true, // Will implement metered billing later
+    };
+  } catch (err) {
+    console.error("Error checking subscription:", err);
+    return noSubscription;
+  }
+}
+
+async function incrementTransformationUsage(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<{ success: boolean; isOverage: boolean; newUsage: number }> {
+  try {
+    // Get current subscription
+    const { data: sub, error: fetchError } = await supabase
+      .from("user_subscriptions")
+      .select("id, transformations_used, transformations_limit")
+      .eq("user_id", userId)
+      .single();
+
+    if (fetchError || !sub) {
+      return { success: false, isOverage: false, newUsage: 0 };
+    }
+
+    const newUsage = (sub.transformations_used || 0) + 1;
+    const isOverage = newUsage > sub.transformations_limit;
+
+    // Increment usage
+    const { error: updateError } = await supabase
+      .from("user_subscriptions")
+      .update({ transformations_used: newUsage })
+      .eq("id", sub.id);
+
+    if (updateError) {
+      console.error("Error incrementing usage:", updateError);
+      return { success: false, isOverage, newUsage };
+    }
+
+    // Log transformation event
+    await supabase.from("transformation_events").insert({
+      user_id: userId,
+      subscription_id: sub.id,
+      is_overage: isOverage,
+    });
+
+    return { success: true, isOverage, newUsage };
+  } catch (err) {
+    console.error("Error incrementing transformation usage:", err);
+    return { success: false, isOverage: false, newUsage: 0 };
+  }
+}
+
+// ============================================================================
 // RATE LIMITING CONFIGURATION
 // ============================================================================
 const RATE_LIMITS = {
@@ -777,7 +894,35 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Auth: ${userId ? `user:${userId.slice(0, 8)}...` : sessionId ? `session:${sessionId.slice(0, 8)}...` : "anonymous"}, unlimited: ${isUnlimited}`);
+    console.log("Auth: " + (userId ? "user:" + userId.slice(0, 8) + "..." : sessionId ? "session:" + sessionId.slice(0, 8) + "..." : "anonymous") + ", unlimited: " + isUnlimited);
+
+    // ========================================================================
+    // SUBSCRIPTION CHECK (for authenticated users)
+    // ========================================================================
+    let subscriptionStatus: SubscriptionStatus | null = null;
+
+    if (serviceClient && userId) {
+      subscriptionStatus = await getSubscriptionStatus(serviceClient, userId);
+      console.log("Subscription: " + (subscriptionStatus.hasSubscription ? subscriptionStatus.planName + " (" + subscriptionStatus.status + ")" : "none"));
+
+      // For now, allow all authenticated users (free tier during development)
+      // When ready to enforce, uncomment:
+      // if (!subscriptionStatus.canTransform && !isUnlimited) {
+      //   return new Response(
+      //     JSON.stringify({
+      //       error: subscriptionStatus.hasSubscription
+      //         ? "Monthly limit reached. Upgrade your plan for more transformations."
+      //         : "Subscription required. Please subscribe to continue.",
+      //       code: subscriptionStatus.hasSubscription ? "LIMIT_REACHED" : "NO_SUBSCRIPTION",
+      //       subscription: subscriptionStatus,
+      //     }),
+      //     {
+      //       status: 403,
+      //       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      //     }
+      //   );
+      // }
+    }
 
     // Select system prompt based on mode
     let systemPrompt = mode === 'prompting'
@@ -992,17 +1137,42 @@ serve(async (req) => {
         responseChars: result.length,
       }).catch(err => console.error("Usage logging failed:", err));
 
-      console.log(`Tokens: ${inputTokens} in + ${outputTokens} out = ${inputTokens + outputTokens} total (${tokensEstimated ? "estimated" : "actual"})`);
+      console.log("Tokens: " + inputTokens + " in + " + outputTokens + " out = " + (inputTokens + outputTokens) + " total (" + (tokensEstimated ? "estimated" : "actual") + ")");
     }
 
-    // Include remaining tokens in response for UI display
+    // ========================================================================
+    // INCREMENT SUBSCRIPTION USAGE (for subscribed users)
+    // ========================================================================
+    let usageIncrement: { success: boolean; isOverage: boolean; newUsage: number } | null = null;
+
+    if (serviceClient && userId && subscriptionStatus?.hasSubscription) {
+      usageIncrement = await incrementTransformationUsage(serviceClient, userId);
+      if (usageIncrement.success) {
+        console.log("Usage incremented: " + usageIncrement.newUsage + "/" + subscriptionStatus.transformationsLimit + (usageIncrement.isOverage ? " (OVERAGE)" : ""));
+
+        // Update subscription status with new usage
+        subscriptionStatus.transformationsUsed = usageIncrement.newUsage;
+        subscriptionStatus.transformationsRemaining = Math.max(0, subscriptionStatus.transformationsLimit - usageIncrement.newUsage);
+      }
+    }
+
+    // Include remaining tokens and subscription info in response for UI display
     return new Response(JSON.stringify({
       result,
       usage: {
         dailyRemaining: rateLimitResult.dailyRemaining,
         monthlyRemaining: rateLimitResult.monthlyRemaining,
         isUnlimited,
-      }
+      },
+      subscription: subscriptionStatus ? {
+        planName: subscriptionStatus.planName,
+        transformationsUsed: subscriptionStatus.transformationsUsed,
+        transformationsLimit: subscriptionStatus.transformationsLimit,
+        transformationsRemaining: subscriptionStatus.transformationsRemaining,
+        isTrialing: subscriptionStatus.isTrialing,
+        trialEndsAt: subscriptionStatus.trialEndsAt,
+        isOverage: usageIncrement?.isOverage || false,
+      } : null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

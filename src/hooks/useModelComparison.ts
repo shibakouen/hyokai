@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUsage } from "@/contexts/UsageContext";
 
 const STORAGE_KEY = "hyokai-compare-model-indices";
+const ANON_TRANSFORM_COUNT_KEY = "hyokai-anon-transform-count";
+const ANON_TRANSFORM_LIMIT = 2;
 
 // Helper to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
@@ -92,7 +94,7 @@ export function useModelComparison() {
 
     const loadFromDatabase = async () => {
       // Add timeout to prevent infinite loading
-      const DB_TIMEOUT_MS = 5000;
+      const DB_TIMEOUT_MS = 30000;
       const timeoutId = setTimeout(() => {
         console.warn('ModelComparison database load timed out');
         setHasLoadedFromDb(true);
@@ -350,6 +352,21 @@ export function useModelComparison() {
       return;
     }
 
+    // Check anonymous user rate limit (2 free transformations)
+    if (!isAuthenticated) {
+      const storedCount = localStorage.getItem(ANON_TRANSFORM_COUNT_KEY);
+      const count = storedCount ? parseInt(storedCount, 10) : 0;
+
+      if (count >= ANON_TRANSFORM_LIMIT) {
+        toast({
+          title: "Free limit reached",
+          description: "Sign up to continue transforming prompts. It's free!",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     // Clear previous timers
     clearAllTimers();
     setIsLoading(true);
@@ -418,9 +435,18 @@ export function useModelComparison() {
       return { index, ...result, elapsedTime: finalTime };
     });
 
-    await Promise.all(promises);
+    const results = await Promise.all(promises);
+
+    // Increment anonymous user transform count if any transformation succeeded
+    const anySuccess = results.some(r => r.output !== null);
+    if (!isAuthenticated && anySuccess) {
+      const storedCount = localStorage.getItem(ANON_TRANSFORM_COUNT_KEY);
+      const count = storedCount ? parseInt(storedCount, 10) : 0;
+      localStorage.setItem(ANON_TRANSFORM_COUNT_KEY, (count + 1).toString());
+    }
+
     setIsLoading(false);
-  }, [selectedIndices, mode, userContext, transformWithModel, clearAllTimers]);
+  }, [selectedIndices, mode, userContext, transformWithModel, clearAllTimers, isAuthenticated]);
 
   // Reset comparison
   const resetComparison = useCallback(() => {

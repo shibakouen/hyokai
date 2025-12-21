@@ -116,97 +116,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     let loadingComplete = false;
 
-    // Guaranteed fallback - ensure loading completes within 10 seconds no matter what
+    // Guaranteed fallback - ensure loading completes within 45 seconds no matter what
     const fallbackTimeout = setTimeout(() => {
       if (mounted && !loadingComplete) {
-        console.warn('Auth fallback timeout triggered - forcing loading complete');
+        console.warn('[Auth] Fallback timeout triggered - forcing loading complete');
         setIsLoading(false);
         loadingComplete = true;
       }
-    }, 10000);
+    }, 45000);
 
     const initAuth = async () => {
+      console.log('[Auth] initAuth started');
+      const startTime = Date.now();
+
       try {
         // Check if any Supabase auth tokens exist in localStorage
-        // If not, we can skip the network check and show guest state immediately
         const hasStoredSession = Object.keys(localStorage).some(
           key => key.startsWith('sb-') && key.includes('-auth-')
         );
 
+        console.log('[Auth] hasStoredSession:', hasStoredSession);
+
         if (!hasStoredSession) {
-          // No stored session - immediately show guest state (no spinner)
-          console.log('[Auth] No stored session found - showing guest state');
+          console.log('[Auth] No stored session - showing guest state immediately');
           setIsLoading(false);
           loadingComplete = true;
           return;
         }
 
-        // Add timeout to prevent infinite loading - max 8 seconds
-        const AUTH_TIMEOUT_MS = 8000;
+        // Start session fetch - DON'T wait for it with a timeout race
+        // The onAuthStateChange listener will handle state updates
+        console.log('[Auth] Calling getSession()...');
 
-        // Start session fetch immediately
-        const sessionPromise = supabase.auth.getSession();
+        try {
+          const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+          const elapsed = Date.now() - startTime;
+          console.log(`[Auth] getSession() completed in ${elapsed}ms`);
 
-        // Handle session result whenever it arrives (even after timeout)
-        sessionPromise.then(async ({ data: { session: initialSession }, error }) => {
           if (error) {
-            console.error('Error getting session:', error);
-            return;
-          }
+            console.error('[Auth] getSession error:', error);
+          } else if (initialSession?.user) {
+            console.log('[Auth] Session found for user:', initialSession.user.id);
+            wasEverAuthenticatedRef.current = true;
+            setSession(initialSession);
+            setUser(initialSession.user);
 
-          if (mounted) {
-            // If we found a session, update state
-            if (initialSession?.user) {
-              console.log('Session restored:', initialSession.user.id);
-              // Set ref synchronously BEFORE state updates - prevents race conditions
-              wasEverAuthenticatedRef.current = true;
-              setSession(initialSession);
-              setUser(initialSession.user);
-
-              // Profile fetch with its own timeout (5 seconds)
-              try {
-                const profilePromise = fetchProfile(initialSession.user.id);
-                const profileTimeoutPromise = new Promise<null>((resolve) => {
-                  setTimeout(() => resolve(null), 5000);
-                });
-                const profile = await Promise.race([profilePromise, profileTimeoutPromise]);
+            // Profile fetch in background (non-blocking to prevent deadlock)
+            fetchProfile(initialSession.user.id)
+              .then(profile => {
                 if (mounted) {
                   setUserProfile(profile);
                   setNeedsMigration(checkMigrationNeeded(profile));
                 }
-              } catch (profileError) {
-                console.error('Error fetching profile:', profileError);
-              }
-            }
-            
-            // Ensure loading is complete
-            if (!loadingComplete) {
-              setIsLoading(false);
-              loadingComplete = true;
-            }
+              })
+              .catch(profileError => {
+                console.error('[Auth] Error fetching profile:', profileError);
+              });
+          } else {
+            console.log('[Auth] No session found');
           }
-        }).catch(err => {
-          console.error('Session promise error:', err);
-        });
-
-        // Wait for session OR timeout to unblock UI
-        const timeoutPromise = new Promise<void>((_, reject) => {
-          setTimeout(() => reject(new Error('Auth initialization timed out')), AUTH_TIMEOUT_MS);
-        });
-
-        // We only wait for the RACE. If session wins, great. If timeout wins, we catch it.
-        // The sessionPromise.then() above handles the data setting in both cases.
-        await Promise.race([sessionPromise, timeoutPromise]);
-
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-
-        // On timeout, we let the UI render (likely as Guest initially).
-        // If the sessionPromise resolves later, it will upgrade the user.
-        if (error instanceof Error && error.message.includes('timed out')) {
-          console.warn('Auth initialization timed out - allowing app to render while session checks continue');
+        } catch (sessionError) {
+          console.error('[Auth] getSession() threw:', sessionError);
         }
 
+        if (mounted && !loadingComplete) {
+          console.log('[Auth] Setting loading complete');
+          setIsLoading(false);
+          loadingComplete = true;
+        }
+      } catch (error) {
+        console.error('[Auth] Error in initAuth:', error);
         if (mounted && !loadingComplete) {
           setIsLoading(false);
           loadingComplete = true;
@@ -218,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log(`[Auth] onAuthStateChange: event=${event}, hasSession=${!!newSession?.user}`);
       if (!mounted) return;
 
       // IMPORTANT: Only clear session on explicit SIGNED_OUT event
@@ -262,29 +242,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(newSession);
         setUser(newSession.user);
 
-        try {
-          const profile = await fetchProfile(newSession.user.id);
-          if (mounted) {
-            setUserProfile(profile);
+        // CRITICAL: Set loading complete IMMEDIATELY - don't wait for profile fetch
+        // This prevents deadlock where profile fetch waits for auth which waits for profile
+        console.log('[Auth] Session established, setting loading complete');
+        setIsLoading(false);
+        loadingComplete = true;
 
-            const migrationNeeded = checkMigrationNeeded(profile);
-            setNeedsMigration(migrationNeeded);
+        // Fetch profile in background (non-blocking)
+        fetchProfile(newSession.user.id)
+          .then(profile => {
+            if (mounted) {
+              setUserProfile(profile);
+              const migrationNeeded = checkMigrationNeeded(profile);
+              setNeedsMigration(migrationNeeded);
 
-            // Dispatch first login event if migration is needed
-            if (event === 'SIGNED_IN' && migrationNeeded) {
-              window.dispatchEvent(new CustomEvent(AUTH_FIRST_LOGIN_EVENT, {
-                detail: { userId: newSession.user.id, profile }
-              }));
+              // Dispatch first login event if migration is needed
+              if (event === 'SIGNED_IN' && migrationNeeded) {
+                window.dispatchEvent(new CustomEvent(AUTH_FIRST_LOGIN_EVENT, {
+                  detail: { userId: newSession.user.id, profile }
+                }));
+              }
             }
-          }
-        } catch (profileError) {
-          console.error('Error fetching profile on auth change:', profileError);
-        }
-
-        if (mounted) {
-          setIsLoading(false);
-          loadingComplete = true;
-        }
+          })
+          .catch(profileError => {
+            console.error('[Auth] Error fetching profile:', profileError);
+          });
       } else if (event === 'INITIAL_SESSION') {
         // INITIAL_SESSION with null session means no stored session exists
         // This is a valid state (new user or cleared storage), so complete loading

@@ -156,10 +156,10 @@ export default function Pricing() {
       {/* Header */}
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <a href="https://hyokai.ai" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-4 w-4" />
-            <span>{t('pricing.backToApp') || 'Back to app'}</span>
-          </Link>
+            <span>{t('pricing.backToWebsite') || 'Back to website'}</span>
+          </a>
           <div className="font-semibold text-xl">Hyokai</div>
         </div>
       </header>

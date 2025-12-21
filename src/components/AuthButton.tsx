@@ -18,14 +18,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Cloud, CloudOff, Loader2, Mail, CheckCircle } from 'lucide-react';
+import { LogOut, Cloud, CloudOff, Loader2, Mail, CheckCircle, CreditCard, Sparkles, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type AuthMode = 'signIn' | 'signUp' | 'confirmation';
 
 export function AuthButton() {
   const { user, userProfile, isAuthenticated, isLoading, signUp, signIn, signOut, resendConfirmation } = useAuth();
+  const { subscription, hasSubscription, isTrialing, openPortal, isLoading: isSubLoading } = useSubscription();
   const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('signIn');
@@ -141,20 +144,34 @@ export function AuthButton() {
     );
   }
 
-  // Guest state - show sign in button
+  // Guest state - show upgrade button and sign in
   if (!isAuthenticated) {
     return (
-      <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-        <DialogTrigger asChild>
+      <div className="flex items-center gap-1.5">
+        {/* Upgrade button for guests */}
+        <Link to="/pricing">
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
-            className="h-8 px-3 text-xs gap-1.5 border-cb-blue/50 text-cb-blue hover:bg-cb-blue/10"
+            className="h-8 px-3 text-xs gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
           >
-            <Cloud className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t('auth.signIn')}</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t('billing.upgrade')}</span>
           </Button>
-        </DialogTrigger>
+        </Link>
+
+        {/* Sign in button */}
+        <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-xs gap-1.5 border-cb-blue/50 text-cb-blue hover:bg-cb-blue/10"
+            >
+              <Cloud className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{t('auth.signIn')}</span>
+            </Button>
+          </DialogTrigger>
         <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl">
           {authMode === 'confirmation' ? (
             <>
@@ -290,6 +307,7 @@ export function AuthButton() {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     );
   }
 
@@ -323,6 +341,55 @@ export function AuthButton() {
             {user?.email}
           </p>
         </div>
+        <DropdownMenuSeparator />
+
+        {/* Subscription Status */}
+        {hasSubscription ? (
+          <div className="px-2 py-1.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-sm font-medium capitalize">{subscription?.planId}</span>
+              {isTrialing && (
+                <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                  {t('billing.trial')}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {subscription?.transformationsRemaining} {t('billing.transformsLeft')}
+            </p>
+          </div>
+        ) : (
+          <Link to="/pricing" className="block">
+            <DropdownMenuItem className="cursor-pointer">
+              <Sparkles className="w-4 h-4 mr-2 text-amber-500" />
+              {t('billing.upgrade')}
+            </DropdownMenuItem>
+          </Link>
+        )}
+
+        {hasSubscription && (
+          <>
+            <DropdownMenuItem onClick={() => openPortal()} disabled={isSubLoading} className="cursor-pointer">
+              <CreditCard className="w-4 h-4 mr-2" />
+              {t('billing.manageBilling')}
+            </DropdownMenuItem>
+            <Link to="/pricing" className="block">
+              <DropdownMenuItem className="cursor-pointer">
+                <Sparkles className="w-4 h-4 mr-2 text-amber-500" />
+                {t('billing.changePlan')}
+              </DropdownMenuItem>
+            </Link>
+          </>
+        )}
+
+        <DropdownMenuSeparator />
+        <Link to="/settings" className="block">
+          <DropdownMenuItem className="cursor-pointer">
+            <Settings className="w-4 h-4 mr-2" />
+            {t('settings.accountSettings')}
+          </DropdownMenuItem>
+        </Link>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-xs text-muted-foreground cursor-default">
           <Cloud className="w-3.5 h-3.5 mr-2 text-green-500" />
