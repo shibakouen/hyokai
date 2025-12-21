@@ -1,20 +1,12 @@
 import { useState } from 'react';
-import { Check, ArrowLeft, MessageSquare, Zap, Star, Loader2, Mail } from 'lucide-react';
+import { Check, ArrowLeft, MessageSquare, Zap, Star, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, PlanId, BillingInterval, PLAN_LIMITS } from '@/contexts/SubscriptionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
 
 // Plan features matching landing page
 const PLAN_FEATURES: Record<PlanId, string[]> = {
@@ -67,45 +59,9 @@ export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const { subscription, hasSubscription, openCheckout, openGuestCheckout, isLoading } = useSubscription();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
-
-  // Email dialog state for guest checkout
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const popularBadge = language === 'en' ? 'Most Popular' : '人気No.1';
-
-  const handleEmailDialogClose = (open: boolean) => {
-    setShowEmailDialog(open);
-    if (!open) {
-      setEmail('');
-      setEmailError(null);
-      setPendingPlan(null);
-    }
-  };
-
-  const handleGuestCheckout = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEmailError(null);
-
-    if (!email || !email.includes('@') || !email.includes('.')) {
-      setEmailError(t('pricing.invalidEmail') || 'Please enter a valid email address');
-      return;
-    }
-
-    if (!pendingPlan) return;
-
-    setIsSubmitting(true);
-
-    try {
-      await openGuestCheckout(email, pendingPlan, billingInterval);
-    } catch (err) {
-      setEmailError(t('pricing.checkoutError') || 'Failed to start checkout. Please try again.');
-      setIsSubmitting(false);
-    }
-  };
 
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -140,12 +96,23 @@ export default function Pricing() {
   };
 
   const handleSelectPlan = async (planId: PlanId) => {
-    if (!isAuthenticated) {
-      setPendingPlan(planId);
-      setShowEmailDialog(true);
-      return;
+    setIsRedirecting(true);
+    try {
+      if (!isAuthenticated) {
+        // Guest checkout - Stripe will collect email, account created via webhook
+        await openGuestCheckout(planId, billingInterval);
+      } else {
+        // Authenticated user checkout
+        await openCheckout(planId, billingInterval);
+      }
+    } catch (err) {
+      toast({
+        title: t('pricing.checkoutError') || 'Checkout failed',
+        description: err instanceof Error ? err.message : 'Failed to start checkout. Please try again.',
+        variant: 'destructive',
+      });
+      setIsRedirecting(false);
     }
-    await openCheckout(planId, billingInterval);
   };
 
   const getButtonText = (planId: PlanId) => {
@@ -246,9 +213,10 @@ export default function Pricing() {
 
             <button
               onClick={() => handleSelectPlan('starter')}
-              disabled={isCurrentPlan('starter') || isLoading}
-              className="w-full py-3 rounded-xl border border-cb-blue-light text-cb-blue-dark font-semibold hover:bg-cb-blue hover:text-white transition-colors bg-white/80 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isCurrentPlan('starter') || isLoading || isRedirecting}
+              className="w-full py-3 rounded-xl border border-cb-blue-light text-cb-blue-dark font-semibold hover:bg-cb-blue hover:text-white transition-colors bg-white/80 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
+              {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
               {getButtonText('starter')}
             </button>
           </div>
@@ -304,9 +272,10 @@ export default function Pricing() {
 
             <button
               onClick={() => handleSelectPlan('pro')}
-              disabled={isCurrentPlan('pro') || isLoading}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 to-cb-blue text-white font-bold hover:shadow-[0_0_20px_rgba(34,211,238,0.5)] transition-all duration-300 relative z-10 border border-white/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isCurrentPlan('pro') || isLoading || isRedirecting}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 to-cb-blue text-white font-bold hover:shadow-[0_0_20px_rgba(34,211,238,0.5)] transition-all duration-300 relative z-10 border border-white/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
+              {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
               {getButtonText('pro')}
             </button>
           </div>
@@ -352,9 +321,10 @@ export default function Pricing() {
 
             <button
               onClick={() => handleSelectPlan('business')}
-              disabled={isCurrentPlan('business') || isLoading}
-              className="w-full py-3 rounded-xl border border-emerald-400 text-emerald-700 font-semibold hover:bg-emerald-500 hover:text-white transition-colors bg-white/80 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isCurrentPlan('business') || isLoading || isRedirecting}
+              className="w-full py-3 rounded-xl border border-emerald-400 text-emerald-700 font-semibold hover:bg-emerald-500 hover:text-white transition-colors bg-white/80 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
+              {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
               {getButtonText('business')}
             </button>
           </div>
@@ -404,9 +374,10 @@ export default function Pricing() {
 
             <button
               onClick={() => handleSelectPlan('max')}
-              disabled={isCurrentPlan('max') || isLoading}
-              className="w-full py-3 rounded-xl border border-purple-500/50 text-purple-200 font-semibold hover:bg-purple-900/50 hover:text-white transition-colors bg-purple-900/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isCurrentPlan('max') || isLoading || isRedirecting}
+              className="w-full py-3 rounded-xl border border-purple-500/50 text-purple-200 font-semibold hover:bg-purple-900/50 hover:text-white transition-colors bg-purple-900/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
+              {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
               {getButtonText('max')}
             </button>
           </div>
@@ -461,63 +432,6 @@ export default function Pricing() {
           </Button>
         </div>
       </main>
-
-      {/* Email Dialog for guest checkout */}
-      <Dialog open={showEmailDialog} onOpenChange={handleEmailDialogClose}>
-        <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900">
-              {t('pricing.enterEmail') || 'Enter your email'}
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              {pendingPlan && (
-                <span className="block">
-                  {t('pricing.startTrialFor') || 'Start your 3-day free trial for'}{' '}
-                  <span className="font-medium capitalize">{pendingPlan}</span>
-                </span>
-              )}
-              <span className="block mt-1 text-sm">
-                {t('pricing.emailForAccount') || 'Your account will be created after payment.'}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleGuestCheckout} className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="guest-email" className="text-gray-900 font-medium">
-                {t('auth.email') || 'Email'}
-              </Label>
-              <Input
-                id="guest-email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
-              />
-            </div>
-            {emailError && (
-              <p className="text-sm text-red-600">{emailError}</p>
-            )}
-            <Button
-              type="submit"
-              className="w-full bg-cb-blue hover:bg-cb-blue-dark text-white font-medium"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Mail className="w-4 h-4 mr-2" />
-              )}
-              {t('pricing.continueToPayment') || 'Continue to Payment'}
-            </Button>
-            <p className="text-xs text-center text-gray-500">
-              {t('pricing.secureCheckout') || 'Secure checkout powered by Stripe'}
-            </p>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

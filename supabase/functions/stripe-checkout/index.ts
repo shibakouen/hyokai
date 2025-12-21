@@ -115,7 +115,7 @@ serve(async (req) => {
         }
       }
     } else if (email) {
-      // Guest checkout - use provided email
+      // Guest checkout with provided email - use it as customer_email
       customerEmail = email;
 
       // Check if customer exists in Stripe
@@ -128,12 +128,8 @@ serve(async (req) => {
         customerId = existingCustomers.data[0].id;
       }
       // If no customer exists, Stripe Checkout will create one
-    } else {
-      return new Response(
-        JSON.stringify({ error: "Email required for guest checkout" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
+    // No email? That's fine - Stripe Checkout will collect it
 
     // Create Checkout session with 3-day trial
     const sessionParams: Stripe.Checkout.SessionCreateParams = {

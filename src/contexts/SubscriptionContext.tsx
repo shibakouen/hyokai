@@ -66,7 +66,7 @@ interface SubscriptionContextType {
   usagePercentage: number;
   refreshSubscription: () => Promise<void>;
   openCheckout: (planId: PlanId, interval: BillingInterval) => Promise<void>;
-  openGuestCheckout: (email: string, planId: PlanId, interval: BillingInterval) => Promise<void>;
+  openGuestCheckout: (planId: PlanId, interval: BillingInterval) => Promise<void>;
   openPortal: () => Promise<void>;
 }
 
@@ -191,7 +191,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [session]);
 
   // Open Stripe Checkout for guests (no auth required)
-  const openGuestCheckout = useCallback(async (email: string, planId: PlanId, interval: BillingInterval) => {
+  // Email is collected by Stripe Checkout, account created via webhook
+  const openGuestCheckout = useCallback(async (planId: PlanId, interval: BillingInterval) => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
@@ -202,8 +203,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             // No Authorization header - guest checkout
           },
           body: JSON.stringify({
-            email,
-            plan: planId,
+            planId,
             interval,
             successUrl: `${window.location.origin}/settings?checkout=success`,
             cancelUrl: `${window.location.origin}/pricing`,
@@ -224,6 +224,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     } catch (err) {
       console.error('Error opening guest checkout:', err);
       setError(err instanceof Error ? err.message : 'Failed to open checkout');
+      throw err;
     }
   }, []);
 
