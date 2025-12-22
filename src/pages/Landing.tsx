@@ -115,7 +115,7 @@ const Landing = () => {
             <Link to="/app" className="c-button c-button--ghost">
               <span className="c-button_span">{t.nav.logIn}</span>
             </Link>
-            <Link to="/pricing" className="c-button c-button--brand">
+            <Link to="/app" className="c-button c-button--brand">
               <div className="c-button_bg"></div>
               <span className="c-button_span">{t.nav.getStarted}</span>
             </Link>
@@ -144,7 +144,7 @@ const Landing = () => {
               </p>
 
               <div className="g_btn_group">
-                <Link to="/pricing" className="c-button c-button--brand c-button--lg">
+                <Link to="/app" className="c-button c-button--brand c-button--lg">
                   <div className="c-button_bg"></div>
                   <span className="c-button_span">{t.hero.ctaPrimary}</span>
                 </Link>
@@ -445,7 +445,7 @@ const Landing = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/pricing" className="c-button c-button--ghost pricing_cta">
+              <Link to="/pro" className="c-button c-button--ghost pricing_cta">
                 <span className="c-button_span">{t.pricing.getStarted}</span>
               </Link>
             </div>
@@ -468,7 +468,7 @@ const Landing = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/pricing" className="c-button c-button--brand pricing_cta">
+              <Link to="/pro" className="c-button c-button--brand pricing_cta">
                 <div className="c-button_bg"></div>
                 <span className="c-button_span">{t.pricing.startTrial}</span>
               </Link>
@@ -491,7 +491,7 @@ const Landing = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/pricing" className="c-button c-button--ghost pricing_cta">
+              <Link to="/pro" className="c-button c-button--ghost pricing_cta">
                 <span className="c-button_span">{t.pricing.getStarted}</span>
               </Link>
             </div>
@@ -513,7 +513,7 @@ const Landing = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/pricing" className="c-button c-button--ghost pricing_cta" style={{ borderColor: 'rgba(139, 92, 246, 0.3)', color: 'white' }}>
+              <Link to="/pro" className="c-button c-button--ghost pricing_cta" style={{ borderColor: 'rgba(139, 92, 246, 0.3)', color: 'white' }}>
                 <span className="c-button_span">{t.pricing.getStarted}</span>
               </Link>
             </div>
@@ -547,6 +547,29 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Pro Promo Section — Purple Theme */}
+      <section className="pro_promo_section">
+        <div className="c-container">
+          <div className="pro_promo_content">
+            <div className="pro_promo_badge">{t.proPromo.badge}</div>
+            <h2 className="c-title-1 pro_promo_title">{t.proPromo.title}</h2>
+            <p className="c-text-2 pro_promo_subtitle">{t.proPromo.subtitle}</p>
+            <div className="pro_promo_features">
+              {t.proPromo.features.map((feature, idx) => (
+                <span key={idx} className="pro_promo_feature">
+                  <span className="pro_promo_feature_check">✓</span>
+                  {feature}
+                </span>
+              ))}
+            </div>
+            <Link to="/pro" className="c-button c-button--purple c-button--lg">
+              <div className="c-button_bg"></div>
+              <span className="c-button_span">{t.proPromo.cta}</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Banner */}
       <section className="cta_section">
         <div className="c-container">
@@ -554,7 +577,7 @@ const Landing = () => {
             <h2 className="c-title-1 cta_title c-max-5-col mx-auto">{t.cta.title}</h2>
             <p className="c-text-1 cta_desc c-max-4-col mx-auto">{t.cta.subtitle}</p>
             <div className="cta_buttons">
-              <Link to="/pricing" className="c-button c-button--white c-button--lg">
+              <Link to="/pro" className="c-button c-button--white c-button--lg">
                 <div className="c-button_bg"></div>
                 <span className="c-button_span">{t.cta.primaryBtn}</span>
               </Link>
@@ -578,7 +601,7 @@ const Landing = () => {
                 {t.footer.ctaDescription}
               </p>
               <div className="g_btn_group">
-                <Link to="/pricing" className="c-button c-button--brand">
+                <Link to="/pro" className="c-button c-button--brand">
                   <div className="c-button_bg"></div>
                   <span className="c-button_span">{t.footer.ctaBtn}</span>
                 </Link>

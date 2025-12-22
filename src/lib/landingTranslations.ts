@@ -249,6 +249,13 @@ export const landingTranslations = {
         },
       ],
     },
+    proPromo: {
+      badge: 'For Power Users',
+      title: 'Need GitHub integration & model comparison?',
+      subtitle: 'Connect your repos, compare AI models side-by-side, and save custom contexts. Built for developers, engineers, and power users.',
+      features: ['GitHub Context', 'Model Comparison', 'Custom Instructions', 'Team Workspaces'],
+      cta: 'Explore Pro Features →',
+    },
     cta: {
       title: 'Ready to unlock the full power of AI?',
       subtitle: 'Join thousands of users who are getting better AI results with less effort.',
@@ -534,6 +541,13 @@ export const landingTranslations = {
           answer: 'もちろんです。いつでも理由を問わずサブスクリプションをキャンセルできます。請求期間の終わりまでアクセスは継続し、再度請求されることはありません。',
         },
       ],
+    },
+    proPromo: {
+      badge: 'パワーユーザー向け',
+      title: 'GitHub連携やモデル比較が必要ですか？',
+      subtitle: 'リポジトリを接続し、AIモデルを並べて比較し、カスタムコンテキストを保存。開発者、エンジニア、パワーユーザーのために設計されています。',
+      features: ['GitHubコンテキスト', 'モデル比較', 'カスタム指示', 'チームワークスペース'],
+      cta: 'Pro機能を見る →',
     },
     cta: {
       title: 'AIの全力を引き出す準備はできましたか？',
