@@ -9,6 +9,11 @@ const corsHeaders = {
 
 // Stripe price IDs for each plan
 const STRIPE_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
+  // Free tier ($0 - no payment method required)
+  free: {
+    monthly: 'price_1ShB7xCs88k2DV32u5SZTKze',
+    annual: 'price_1ShB7xCs88k2DV32u5SZTKze',
+  },
   // Standard tiers (homepage)
   starter: {
     monthly: 'price_1SgZHyCs88k2DV32g2UFt1Vr',
@@ -149,17 +154,28 @@ serve(async (req) => {
     }
     // No email? That's fine - Stripe Checkout will collect it
 
-    // Create Checkout session with 3-day trial
+    // Check if this is the free plan
+    const isFreePlan = planId === 'free';
+
+    // Create Checkout session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: {
-        trial_period_days: 3,
-      },
       success_url: successUrl || `${siteUrl}/settings?checkout=success`,
       cancel_url: cancelUrl || `${siteUrl}/pricing`,
-      allow_promotion_codes: true,
+      allow_promotion_codes: !isFreePlan, // No promo codes for free plan
     };
+
+    if (isFreePlan) {
+      // Free plan: Skip payment method collection (Stripe auto-skips for $0)
+      // No trial needed - it's free forever
+      sessionParams.payment_method_collection = 'if_required';
+    } else {
+      // Paid plans: 3-day trial
+      sessionParams.subscription_data = {
+        trial_period_days: 3,
+      };
+    }
 
     if (customerId) {
       sessionParams.customer = customerId;

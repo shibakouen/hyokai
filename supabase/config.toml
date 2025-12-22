@@ -32,6 +32,9 @@ content_path = "./supabase/templates/invite.html"
 [functions.transform-prompt]
 verify_jwt = false
 
+[functions.stripe-checkout]
+verify_jwt = false
+
 [functions.user-data]
 verify_jwt = true
 
@@ -39,6 +42,9 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.forward-email]
+verify_jwt = false
+
+[functions.send-welcome-email]
 verify_jwt = false
 
 [functions.notify-signup]
