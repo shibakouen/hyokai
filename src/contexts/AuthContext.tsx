@@ -21,15 +21,11 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resendConfirmation: (email: string) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
-  needsMigration: boolean;
   // Track if user was ever authenticated in this session (to distinguish logout from initial load)
   wasEverAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Custom event for first login (triggers migration)
-export const AUTH_FIRST_LOGIN_EVENT = 'hyokai-auth-first-login';
 
 // Keys to clear on logout (all account-level data)
 const USER_DATA_KEYS = [
@@ -58,7 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [needsMigration, setNeedsMigration] = useState(false);
   // Track if user was ever authenticated (to distinguish logout from initial load)
   // Using ref instead of state for synchronous updates - prevents race conditions
   const wasEverAuthenticatedRef = useRef(false);
@@ -85,31 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Check if user needs migration (has localStorage data and hasn't migrated)
-  const checkMigrationNeeded = useCallback((profile: UserProfile | null): boolean => {
-    if (!profile) return false;
-    if (profile.migrated_at) return false;
-
-    // Check if there's any localStorage data to migrate
-    const keysToCheck = [
-      'hyokai-user-context',
-      'hyokai-saved-contexts',
-      'hyokai-github-pat',
-      'hyokai-github-repos',
-      'hyokai-history',
-      'hyokai-simple-history',
-    ];
-
-    return keysToCheck.some(key => localStorage.getItem(key));
-  }, []);
-
   // Refresh profile
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     const profile = await fetchProfile(user.id);
     setUserProfile(profile);
-    setNeedsMigration(checkMigrationNeeded(profile));
-  }, [user, fetchProfile, checkMigrationNeeded]);
+  }, [user, fetchProfile]);
 
   // Initialize auth state
   useEffect(() => {
@@ -166,7 +142,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .then(profile => {
                 if (mounted) {
                   setUserProfile(profile);
-                  setNeedsMigration(checkMigrationNeeded(profile));
                 }
               })
               .catch(profileError => {
@@ -228,7 +203,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
         setUser(null);
         setUserProfile(null);
-        setNeedsMigration(false);
         setIsLoading(false);
         loadingComplete = true;
         return;
@@ -253,15 +227,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then(profile => {
             if (mounted) {
               setUserProfile(profile);
-              const migrationNeeded = checkMigrationNeeded(profile);
-              setNeedsMigration(migrationNeeded);
-
-              // Dispatch first login event if migration is needed
-              if (event === 'SIGNED_IN' && migrationNeeded) {
-                window.dispatchEvent(new CustomEvent(AUTH_FIRST_LOGIN_EVENT, {
-                  detail: { userId: newSession.user.id, profile }
-                }));
-              }
             }
           })
           .catch(profileError => {
@@ -282,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
-  }, [fetchProfile, checkMigrationNeeded]);
+  }, [fetchProfile]);
 
   // Sign up with email/password
   const signUp = useCallback(async (email: string, password: string): Promise<{ error: Error | null; needsConfirmation: boolean }> => {
@@ -413,7 +378,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setUser(null);
     setUserProfile(null);
-    setNeedsMigration(false);
     setIsLoading(false);
   }, [clearUserData, clearSupabaseStorage]);
 
@@ -431,7 +395,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       resendConfirmation,
       refreshProfile,
-      needsMigration,
       wasEverAuthenticated: wasEverAuthenticatedRef.current,
     }}>
       {children}
