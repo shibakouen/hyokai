@@ -9,6 +9,7 @@ const corsHeaders = {
 
 // Stripe price IDs for each plan
 const STRIPE_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
+  // Standard tiers (homepage)
   starter: {
     monthly: 'price_1SgZHyCs88k2DV32g2UFt1Vr',
     annual: 'price_1SgZHzCs88k2DV32suTd3OoL',
@@ -24,6 +25,23 @@ const STRIPE_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
   max: {
     monthly: 'price_1SgZI0Cs88k2DV32AhdBxJSJ',
     annual: 'price_1SgZI1Cs88k2DV32YfEG9JBB',
+  },
+  // Pro tiers (/pro page)
+  pro_tier: {
+    monthly: 'price_1Sh19MCs88k2DV32GixXalxE',
+    annual: 'price_1Sh19MCs88k2DV32V7tRZ1rc',
+  },
+  pro_plus: {
+    monthly: 'price_1Sh19MCs88k2DV32KhAzBhvQ',
+    annual: 'price_1Sh19PCs88k2DV32lG1bKgko',
+  },
+  pro_team: {
+    monthly: 'price_1Sh19RCs88k2DV32f195233o',
+    annual: 'price_1Sh19UCs88k2DV32THLkiYS8',
+  },
+  pro_max: {
+    monthly: 'price_1Sh19XCs88k2DV32a86vru35',
+    annual: 'price_1Sh19ZCs88k2DV326KASstSP',
   },
 };
 

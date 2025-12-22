@@ -146,7 +146,7 @@ const RATE_LIMITS = {
 // PREMIUM MODEL CONFIGURATION
 // ============================================================================
 type ModelTier = 'ultra_premium' | 'premium' | 'standard';
-type RequiredPlan = 'starter' | 'pro' | 'business' | 'max' | null;
+type RequiredPlan = 'free' | 'starter' | 'pro' | 'business' | 'max' | null;
 
 interface ModelConfig {
   tier: ModelTier;
@@ -1057,23 +1057,26 @@ serve(async (req) => {
       subscriptionStatus = await getSubscriptionStatus(serviceClient, userId);
       console.log("Subscription: " + (subscriptionStatus.hasSubscription ? subscriptionStatus.planName + " (" + subscriptionStatus.status + ")" : "none"));
 
-      // For now, allow all authenticated users (free tier during development)
-      // When ready to enforce, uncomment:
-      // if (!subscriptionStatus.canTransform && !isUnlimited) {
-      //   return new Response(
-      //     JSON.stringify({
-      //       error: subscriptionStatus.hasSubscription
-      //         ? "Monthly limit reached. Upgrade your plan for more transformations."
-      //         : "Subscription required. Please subscribe to continue.",
-      //       code: subscriptionStatus.hasSubscription ? "LIMIT_REACHED" : "NO_SUBSCRIPTION",
-      //       subscription: subscriptionStatus,
-      //     }),
-      //     {
-      //       status: 403,
-      //       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      //     }
-      //   );
-      // }
+      // Enforce transformation limits
+      if (!subscriptionStatus.canTransform && !isUnlimited) {
+        const isFree = subscriptionStatus.planId === 'free';
+        return new Response(
+          JSON.stringify({
+            error: isFree
+              ? "You've used all 20 free transformations this month. Upgrade to continue transforming prompts!"
+              : subscriptionStatus.hasSubscription
+                ? "Monthly limit reached. Upgrade your plan for more transformations."
+                : "Please sign up to continue using Hyokai.",
+            code: isFree ? "FREE_LIMIT_REACHED" : subscriptionStatus.hasSubscription ? "LIMIT_REACHED" : "NO_SUBSCRIPTION",
+            subscription: subscriptionStatus,
+            upgradeRequired: isFree,
+          }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
     }
 
     // Select system prompt based on mode

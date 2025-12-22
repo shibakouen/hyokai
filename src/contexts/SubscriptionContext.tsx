@@ -3,7 +3,7 @@ import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 // Subscription plan types
-export type PlanId = 'starter' | 'pro' | 'business' | 'max' | 'pro_tier' | 'pro_plus' | 'pro_team' | 'pro_max';
+export type PlanId = 'free' | 'starter' | 'pro' | 'business' | 'max' | 'pro_tier' | 'pro_plus' | 'pro_team' | 'pro_max';
 export type BillingInterval = 'monthly' | 'annual';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete';
 
@@ -18,7 +18,10 @@ export const PLAN_LIMITS: Record<PlanId, {
   compareSlots?: number;
   teamSeats?: number;
   isPro?: boolean;
+  isFree?: boolean;
 }> = {
+  // Free tier - 20 transformations/month, no credit card required
+  free: { transformations: 20, monthlyPrice: 0, annualPrice: 0, overageRate: 0, isFree: true },
   // Standard tiers
   starter: { transformations: 150, monthlyPrice: 999, annualPrice: 9999, overageRate: 10 },
   pro: { transformations: 500, monthlyPrice: 2499, annualPrice: 24999, overageRate: 8 },
@@ -73,6 +76,11 @@ export const PLAN_LIMITS: Record<PlanId, {
 
 // Stripe price IDs (from our created prices)
 export const STRIPE_PRICE_IDS: Record<PlanId, { monthly: string; annual: string }> = {
+  // Free tier - $0/month, same price for both intervals
+  free: {
+    monthly: 'price_1ShB7xCs88k2DV32u5SZTKze',
+    annual: 'price_1ShB7xCs88k2DV32u5SZTKze',
+  },
   // Standard tiers
   starter: {
     monthly: 'price_1SgZHyCs88k2DV32g2UFt1Vr',
@@ -123,6 +131,7 @@ export interface Subscription {
   trialEndsAt: string | null;
   cancelAtPeriodEnd: boolean;
   billingInterval: BillingInterval;
+  isFree: boolean;
 }
 
 interface SubscriptionContextType {
@@ -131,6 +140,7 @@ interface SubscriptionContextType {
   error: string | null;
   hasSubscription: boolean;
   isTrialing: boolean;
+  isFree: boolean;
   canTransform: boolean;
   usagePercentage: number;
   refreshSubscription: () => Promise<void>;
@@ -191,6 +201,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         trialEndsAt: data.trial_ends_at,
         cancelAtPeriodEnd: data.cancel_at_period_end || false,
         billingInterval: data.billing_interval as BillingInterval || 'monthly',
+        isFree: data.plan_id === 'free',
       };
 
       setSubscription(sub);
@@ -335,6 +346,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   // Computed values
   const hasSubscription = !!subscription && (subscription.status === 'active' || subscription.status === 'trialing');
   const isTrialing = subscription?.isTrialing || false;
+  const isFree = subscription?.isFree || false;
   const canTransform = hasSubscription || !isAuthenticated; // Allow anonymous users and subscribers
   const usagePercentage = subscription
     ? Math.min(100, (subscription.transformationsUsed / subscription.transformationsLimit) * 100)
@@ -347,6 +359,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       error,
       hasSubscription,
       isTrialing,
+      isFree,
       canTransform,
       usagePercentage,
       refreshSubscription,
