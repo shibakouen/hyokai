@@ -7,6 +7,41 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
+// Plan hierarchy for upgrade/downgrade detection
+const PLAN_HIERARCHY: Record<string, number> = {
+  'starter': 1,
+  'pro': 2,
+  'business': 3,
+  'max': 4,
+};
+
+// Send admin notification (non-blocking)
+async function sendAdminNotification(payload: Record<string, unknown>) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  if (!supabaseUrl) {
+    console.error("SUPABASE_URL not set, skipping admin notification");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/notify-admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("Failed to send admin notification:", error);
+    } else {
+      console.log("Admin notification sent:", payload.type);
+    }
+  } catch (error) {
+    console.error("Error sending admin notification:", error);
+    // Don't throw - notifications are non-critical
+  }
+}
+
 // Price ID to Plan ID mapping (reverse lookup)
 const PRICE_TO_PLAN: Record<string, { planId: string; interval: 'month' | 'year' }> = {
   // Starter
@@ -290,13 +325,23 @@ async function handleCheckoutCompleted(
   // Grant unlimited access in user_usage_limits for the subscriber
   await updateUserUsageLimits(userId, true, supabase);
 
+  // Send admin notification for new subscription
+  await sendAdminNotification({
+    type: 'new_subscription',
+    email: customerEmail,
+    plan: planInfo.planId,
+    amount: subscription.items.data[0]?.price.unit_amount || 0,
+    interval: planInfo.interval,
+  });
+
   console.log("=== CHECKOUT COMPLETED SUCCESSFULLY ===");
 }
 
 // Handle subscription updated
 async function handleSubscriptionUpdated(
   subscription: Stripe.Subscription,
-  supabase: ReturnType<typeof createClient>
+  supabase: ReturnType<typeof createClient>,
+  _stripe: Stripe
 ) {
   console.log("=== SUBSCRIPTION UPDATED ===");
   console.log("Subscription ID:", subscription.id);
@@ -304,6 +349,15 @@ async function handleSubscriptionUpdated(
 
   const priceId = subscription.items.data[0]?.price.id;
   const planInfo = priceId ? PRICE_TO_PLAN[priceId] : null;
+
+  // Get current subscription record to detect plan changes
+  const { data: currentSub } = await supabase
+    .from("user_subscriptions")
+    .select("plan_id, user_id")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+
+  const previousPlan = currentSub?.plan_id;
 
   const updateData: Record<string, unknown> = {
     status: subscription.status,
@@ -331,6 +385,39 @@ async function handleSubscriptionUpdated(
     throw new Error(`Failed to update subscription: ${error.message}`);
   }
 
+  // Detect plan upgrade/downgrade and send notification
+  if (planInfo && previousPlan && previousPlan !== planInfo.planId && currentSub?.user_id) {
+    const previousRank = PLAN_HIERARCHY[previousPlan] || 0;
+    const newRank = PLAN_HIERARCHY[planInfo.planId] || 0;
+
+    // Get user email for notification
+    const { data: userProfile } = await supabase
+      .from("user_profiles")
+      .select("email")
+      .eq("id", currentSub.user_id)
+      .maybeSingle();
+
+    if (userProfile?.email) {
+      if (newRank > previousRank) {
+        // Upgrade
+        await sendAdminNotification({
+          type: 'plan_upgraded',
+          email: userProfile.email,
+          previousPlan,
+          plan: planInfo.planId,
+        });
+      } else if (newRank < previousRank) {
+        // Downgrade
+        await sendAdminNotification({
+          type: 'plan_downgraded',
+          email: userProfile.email,
+          previousPlan,
+          plan: planInfo.planId,
+        });
+      }
+    }
+  }
+
   console.log("=== SUBSCRIPTION UPDATED SUCCESSFULLY ===");
 }
 
@@ -342,10 +429,10 @@ async function handleSubscriptionDeleted(
   console.log("=== SUBSCRIPTION DELETED ===");
   console.log("Subscription ID:", subscription.id);
 
-  // First, get the user_id from the subscription record
+  // First, get the subscription record with user info
   const { data: subRecord } = await supabase
     .from("user_subscriptions")
-    .select("user_id")
+    .select("user_id, plan_id, created_at")
     .eq("stripe_subscription_id", subscription.id)
     .maybeSingle();
 
@@ -366,6 +453,36 @@ async function handleSubscriptionDeleted(
   // Revoke unlimited access for the canceled subscriber
   if (subRecord?.user_id) {
     await updateUserUsageLimits(subRecord.user_id, false, supabase);
+
+    // Get user email and send cancellation notification
+    const { data: userProfile } = await supabase
+      .from("user_profiles")
+      .select("email")
+      .eq("id", subRecord.user_id)
+      .maybeSingle();
+
+    if (userProfile?.email) {
+      // Calculate subscription duration
+      let subscriptionDuration: string | undefined;
+      if (subRecord.created_at) {
+        const startDate = new Date(subRecord.created_at);
+        const now = new Date();
+        const days = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (days < 30) {
+          subscriptionDuration = `${days} days`;
+        } else {
+          const months = Math.floor(days / 30);
+          subscriptionDuration = `${months} month${months > 1 ? 's' : ''}`;
+        }
+      }
+
+      await sendAdminNotification({
+        type: 'subscription_canceled',
+        email: userProfile.email,
+        plan: subRecord.plan_id,
+        subscriptionDuration,
+      });
+    }
   }
 
   console.log("=== SUBSCRIPTION DELETED SUCCESSFULLY ===");
@@ -449,6 +566,13 @@ async function handleInvoicePaymentFailed(
     ? invoice.subscription
     : invoice.subscription.id;
 
+  // Get subscription record for user info
+  const { data: subRecord } = await supabase
+    .from("user_subscriptions")
+    .select("user_id, plan_id")
+    .eq("stripe_subscription_id", subscriptionId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("user_subscriptions")
     .update({
@@ -459,6 +583,25 @@ async function handleInvoicePaymentFailed(
 
   if (error) {
     console.error("Failed to mark subscription as past_due:", error);
+  }
+
+  // Send payment failed notification
+  if (subRecord?.user_id) {
+    const { data: userProfile } = await supabase
+      .from("user_profiles")
+      .select("email")
+      .eq("id", subRecord.user_id)
+      .maybeSingle();
+
+    if (userProfile?.email) {
+      await sendAdminNotification({
+        type: 'payment_failed',
+        email: userProfile.email,
+        plan: subRecord.plan_id,
+        amount: invoice.amount_due,
+        invoiceUrl: invoice.hosted_invoice_url || undefined,
+      });
+    }
   }
 
   console.log("=== INVOICE PAYMENT FAILED HANDLED ===");
@@ -495,7 +638,7 @@ serve(async (req) => {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionUpdated(subscription, supabase);
+        await handleSubscriptionUpdated(subscription, supabase, stripe);
         break;
       }
 

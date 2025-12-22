@@ -10,22 +10,22 @@ export interface AdvancedPrompt {
   colorClass: string;         // Tailwind background color
 }
 
-// Pastel colors for coding mode (blues, greens, teals)
+// Ice-design colors for coding mode (ice blue palette)
 const CODING_COLORS = [
-  'bg-blue-100', 'bg-cyan-100', 'bg-teal-100', 'bg-emerald-100', 'bg-green-100',
-  'bg-sky-100', 'bg-indigo-100', 'bg-blue-200/70', 'bg-cyan-200/70', 'bg-teal-200/70',
-  'bg-emerald-200/70', 'bg-green-200/70', 'bg-sky-200/70', 'bg-indigo-200/70', 'bg-blue-50',
-  'bg-cyan-50', 'bg-teal-50', 'bg-emerald-50', 'bg-green-50', 'bg-sky-50',
-  'bg-slate-100', 'bg-zinc-100', 'bg-stone-100', 'bg-neutral-100', 'bg-gray-100',
+  'bg-[#f0f9ff]', 'bg-[#e0f2fe]', 'bg-[#bae6fd]/80', 'bg-[#7dd3fc]/60', 'bg-[#f0f9ff]',
+  'bg-[#e0f2fe]', 'bg-[#bae6fd]/70', 'bg-[#e0f2fe]/90', 'bg-[#f0f9ff]', 'bg-[#bae6fd]/60',
+  'bg-[#e0f2fe]/80', 'bg-[#f0f9ff]', 'bg-[#7dd3fc]/50', 'bg-[#e0f2fe]', 'bg-[#bae6fd]/70',
+  'bg-[#f0f9ff]', 'bg-[#e0f2fe]/90', 'bg-[#bae6fd]/80', 'bg-[#f0f9ff]', 'bg-[#e0f2fe]',
+  'bg-[#f8fafc]', 'bg-[#f1f5f9]', 'bg-[#e2e8f0]/80', 'bg-[#f8fafc]', 'bg-[#f1f5f9]',
 ];
 
-// Pastel colors for prompting mode (purples, pinks, oranges)
+// Ice-design colors for prompting mode (ice blue with subtle warm tints)
 const PROMPTING_COLORS = [
-  'bg-purple-100', 'bg-pink-100', 'bg-rose-100', 'bg-fuchsia-100', 'bg-violet-100',
-  'bg-amber-100', 'bg-orange-100', 'bg-yellow-100', 'bg-lime-100', 'bg-red-100/70',
-  'bg-purple-200/70', 'bg-pink-200/70', 'bg-rose-200/70', 'bg-fuchsia-200/70', 'bg-violet-200/70',
-  'bg-amber-200/70', 'bg-orange-200/70', 'bg-yellow-200/70', 'bg-lime-200/70', 'bg-red-50',
-  'bg-purple-50', 'bg-pink-50', 'bg-rose-50', 'bg-fuchsia-50', 'bg-violet-50',
+  'bg-[#f0f9ff]', 'bg-[#e0f2fe]', 'bg-[#bae6fd]/70', 'bg-[#e0f2fe]/90', 'bg-[#f0f9ff]',
+  'bg-[#7dd3fc]/50', 'bg-[#e0f2fe]', 'bg-[#f0f9ff]', 'bg-[#bae6fd]/60', 'bg-[#e0f2fe]/80',
+  'bg-[#f0f9ff]', 'bg-[#e0f2fe]', 'bg-[#bae6fd]/80', 'bg-[#7dd3fc]/60', 'bg-[#f0f9ff]',
+  'bg-[#e0f2fe]/90', 'bg-[#bae6fd]/70', 'bg-[#f0f9ff]', 'bg-[#e0f2fe]', 'bg-[#bae6fd]/60',
+  'bg-[#f8fafc]', 'bg-[#f1f5f9]', 'bg-[#e2e8f0]/70', 'bg-[#f8fafc]', 'bg-[#f1f5f9]',
 ];
 
 // ==========================================

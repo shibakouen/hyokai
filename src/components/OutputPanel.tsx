@@ -70,13 +70,13 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
   return (
     <div className="relative" data-testid="output-panel">
       {isLoading ? (
-        <div className="frost-glass rounded-2xl p-5 transition-all duration-300" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
+        <div className="premium-frost-panel rounded-2xl p-5 transition-all duration-300" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
           <div className="flex items-center justify-center h-[168px]">
             <div className="flex items-center gap-3 text-muted-foreground">
-              <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse" />
-              <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse [animation-delay:200ms]" />
-              <div className="w-2 h-2 rounded-full bg-primary animate-frost-pulse [animation-delay:400ms]" />
-              <span className="ml-2 text-sm">{t('button.generating')}</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9] animate-frost-pulse shadow-sm shadow-[#0ea5e9]/40" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9] animate-frost-pulse shadow-sm shadow-[#0ea5e9]/40 [animation-delay:200ms]" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9] animate-frost-pulse shadow-sm shadow-[#0ea5e9]/40 [animation-delay:400ms]" />
+              <span className="ml-2 text-sm font-medium">{t('button.generating')}</span>
             </div>
           </div>
         </div>
@@ -84,33 +84,29 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
         <div className="space-y-3">
           {/* Action toolbar - outside textarea for cleaner layout */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
-            {/* Left side: Reset button (only when edited) */}
+            {/* Left side: Reset button (only when edited) - ice-design styling */}
             <div className="flex items-center gap-2">
               {isEdited && (
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={handleReset}
-                  className="h-9 px-3 text-muted-foreground hover:text-foreground gap-1.5"
+                  className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-white/50 transition-all duration-200"
                   title={t('output.resetToOriginal')}
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span className="hidden sm:inline">{t('output.resetToOriginal')}</span>
-                </Button>
+                </button>
               )}
             </div>
 
-            {/* Right side: Action buttons */}
+            {/* Right side: Action buttons - ice-design styling */}
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={handleCopy}
-                className="h-9 gap-1.5"
+                className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-white/70 backdrop-blur-sm border border-white/50 text-sm font-medium text-gray-700 hover:bg-white hover:border-[#0ea5e9]/30 hover:shadow-sm transition-all duration-200"
               >
                 {copied ? (
                   <>
-                    <Check className="w-4 h-4 text-green-500" />
+                    <Check className="w-4 h-4 text-emerald-500" />
                     {t('output.copied')}
                   </>
                 ) : (
@@ -119,42 +115,40 @@ export function OutputPanel({ content, isLoading = false, onChange, onNewPrompt 
                     {t('output.copy')}
                   </>
                 )}
-              </Button>
+              </button>
               <TooltipProvider>
                 <ChatGPTButton prompt={editedContent} />
               </TooltipProvider>
               {onNewPrompt && (
-                <Button
-                  variant="frost"
-                  size="sm"
+                <button
                   onClick={onNewPrompt}
-                  className="h-9 gap-1.5"
+                  className="btn-reveal btn-reveal--brand h-9 text-sm"
                 >
                   <Sparkles className="w-4 h-4" />
-                  {t('output.newPrompt')}
-                </Button>
+                  <span className="font-medium">{t('output.newPrompt')}</span>
+                </button>
               )}
             </div>
           </div>
 
-          {/* Textarea - clean, no overlapping buttons */}
+          {/* Textarea - ice-design premium styling */}
           <Textarea
             ref={textareaRef}
             value={editedContent}
             onChange={(e) => handleChange(e.target.value)}
             style={{ minHeight: `${DEFAULT_HEIGHT}px` }}
-            className="resize-y sm:resize frost-glass rounded-2xl text-sm text-foreground font-mono leading-relaxed focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
+            className="resize-y sm:resize ice-textarea rounded-2xl text-sm text-foreground font-mono leading-relaxed"
           />
-          {/* Stats footer - outside textarea */}
-          <div className="flex justify-end text-xs text-muted-foreground/70 gap-3 mt-2">
-            <span>{wordCount} {t('output.words')}</span>
-            <span>{charCount} {t('output.chars')}</span>
-            {isEdited && <span className="text-cb-blue">{t('output.edited')}</span>}
+          {/* Stats footer - ice-design styling */}
+          <div className="flex justify-end text-xs gap-3 mt-2">
+            <span className="px-2 py-0.5 rounded-full bg-white/50 backdrop-blur-sm text-muted-foreground/70">{wordCount} {t('output.words')}</span>
+            <span className="px-2 py-0.5 rounded-full bg-white/50 backdrop-blur-sm text-muted-foreground/70">{charCount} {t('output.chars')}</span>
+            {isEdited && <span className="px-2 py-0.5 rounded-full bg-[#0ea5e9]/10 text-[#0ea5e9] font-medium">{t('output.edited')}</span>}
           </div>
         </div>
       ) : (
-        <div className="frost-glass rounded-2xl p-5 transition-all duration-300" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
-          <div className="flex items-center justify-center h-[168px] text-muted-foreground text-sm">
+        <div className="premium-frost-panel rounded-2xl p-5 transition-all duration-300" style={{ minHeight: `${DEFAULT_HEIGHT}px` }}>
+          <div className="flex items-center justify-center h-[168px] text-muted-foreground/60 text-sm">
             {t('output.placeholder')}
           </div>
         </div>

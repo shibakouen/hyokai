@@ -45,10 +45,10 @@ export function AdvancedPromptLibrary({ onSelectPrompt }: AdvancedPromptLibraryP
 
   return (
     <div className="space-y-4">
-      {/* Section Header with Navigation */}
+      {/* Section Header with Navigation - ice-design styling */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-medium text-muted-foreground">
+          <h3 className="text-sm font-semibold gradient-text">
             {t('advPrompts.sectionTitle' as TranslationKey)}
           </h3>
           <p className="text-xs text-muted-foreground/70">
@@ -56,39 +56,41 @@ export function AdvancedPromptLibrary({ onSelectPrompt }: AdvancedPromptLibraryP
           </p>
         </div>
 
-        {/* Pagination Controls */}
+        {/* Pagination Controls - ice-design styling */}
         {totalPages > 1 && (
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 0}
-              className="p-1.5 rounded-lg hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg bg-white/60 backdrop-blur-sm border border-white/40 hover:bg-white/80 hover:border-[#0ea5e9]/30 hover:shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
               aria-label="Previous page"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums px-2 py-1 bg-white/40 rounded-md backdrop-blur-sm">
               {t('advPrompts.page' as TranslationKey)} {currentPage + 1} {t('advPrompts.of' as TranslationKey)} {totalPages}
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages - 1}
-              className="p-1.5 rounded-lg hover:bg-white/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg bg-white/60 backdrop-blur-sm border border-white/40 hover:bg-white/80 hover:border-[#0ea5e9]/30 hover:shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
               aria-label="Next page"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         )}
       </div>
 
-      {/* Selected Prompt Suggestion Preview - matches beginner mode behavior */}
+      {/* Selected Prompt Suggestion Preview - ice-design premium panel */}
       {selectedPrompt && (
-        <div className="frost-glass rounded-xl p-4 border border-cb-blue/30 bg-cb-blue/5 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-start gap-3">
-            <Sparkles className="w-4 h-4 text-cb-blue mt-0.5 flex-shrink-0" />
-            <div className="space-y-2 min-w-0 flex-1">
-              <p className="text-xs font-medium text-cb-blue">
+        <div className="premium-frost-panel rounded-2xl p-5 border border-[#0ea5e9]/20 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-[#0ea5e9]/20 to-[#0284c7]/10 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-[#0ea5e9]" />
+            </div>
+            <div className="space-y-3 min-w-0 flex-1">
+              <p className="text-xs font-semibold text-[#0ea5e9] uppercase tracking-wide">
                 {t('advPrompts.tryThis' as TranslationKey)}
               </p>
               {/* Show full prompt text as preview */}
@@ -96,11 +98,14 @@ export function AdvancedPromptLibrary({ onSelectPrompt }: AdvancedPromptLibraryP
                 {t(selectedPrompt.promptKey as TranslationKey)}
               </p>
               {/* Explanation as additional context */}
-              <p className="text-xs text-muted-foreground/80 border-t border-cb-blue/10 pt-2 mt-2">
-                {t(selectedPrompt.explanationKey as TranslationKey)}
-              </p>
+              <div className="border-t border-[#0ea5e9]/10 pt-3">
+                <p className="text-xs text-muted-foreground/80">
+                  {t(selectedPrompt.explanationKey as TranslationKey)}
+                </p>
+              </div>
               {/* Edit hint */}
-              <p className="text-xs text-muted-foreground/70 italic">
+              <p className="text-xs text-muted-foreground/60 italic flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-[#0ea5e9]/50" />
                 {t('advPrompts.editHint' as TranslationKey)}
               </p>
             </div>
@@ -108,8 +113,8 @@ export function AdvancedPromptLibrary({ onSelectPrompt }: AdvancedPromptLibraryP
         </div>
       )}
 
-      {/* Prompt Grid - 5 columns on desktop, responsive */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+      {/* Prompt Grid - 5 columns on desktop, responsive - ice-design template cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
         {pagePrompts.map((prompt) => {
           const isSelected = selectedPromptId === prompt.id;
           return (
@@ -117,16 +122,21 @@ export function AdvancedPromptLibrary({ onSelectPrompt }: AdvancedPromptLibraryP
               key={prompt.id}
               onClick={() => handleSelectPrompt(prompt)}
               className={`
-                ${prompt.colorClass}
-                p-3 rounded-xl text-left transition-all duration-200
-                hover:scale-[1.02] hover:shadow-md
+                template-card group
+                p-3 rounded-xl text-left
                 ${isSelected
-                  ? 'ring-2 ring-cb-blue ring-offset-1 scale-[1.02] shadow-md'
-                  : 'hover:ring-1 hover:ring-gray-300'
+                  ? 'ring-2 ring-[#0ea5e9] ring-offset-2 ring-offset-white/50 template-card-active'
+                  : ''
                 }
               `}
             >
-              <span className="text-xs sm:text-sm font-medium text-gray-700 line-clamp-2">
+              {/* Card shimmer effect on hover */}
+              <div className="template-card-shimmer" />
+
+              {/* Card sphere decoration */}
+              <div className="card-sphere-decoration opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+              <span className="relative z-10 text-xs sm:text-sm font-medium text-gray-700 line-clamp-2 group-hover:text-[#0284c7] transition-colors duration-300">
                 {t(prompt.titleKey as TranslationKey)}
               </span>
             </button>

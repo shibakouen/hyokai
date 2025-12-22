@@ -49,7 +49,7 @@ export function PromptInput({
   }, [handleResize]);
 
   return (
-    <div className="relative">
+    <div className="relative group">
       <Textarea
         ref={textareaRef}
         data-testid="prompt-input"
@@ -58,9 +58,10 @@ export function PromptInput({
         placeholder={placeholder || t('input.placeholder')}
         disabled={disabled}
         style={{ minHeight: `${DEFAULT_HEIGHT}px` }}
-        className="resize-y sm:resize frost-glass rounded-2xl text-foreground placeholder:text-muted-foreground/60 focus:border-white/60 focus:ring-cb-blue/20 transition-colors duration-300"
+        className="ice-textarea resize-y sm:resize rounded-2xl text-foreground placeholder:text-muted-foreground/50 transition-all duration-300"
       />
-      <div className="absolute bottom-3 right-3 text-xs text-muted-foreground pointer-events-none">
+      {/* Character count badge - ice-design styling */}
+      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-white/60 backdrop-blur-sm border border-white/40 text-xs text-muted-foreground/70 pointer-events-none transition-all duration-200 group-focus-within:border-[#0ea5e9]/30 group-focus-within:bg-white/80">
         {value.length} chars
       </div>
     </div>

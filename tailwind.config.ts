@@ -20,9 +20,9 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         'cb-blue': {
-          DEFAULT: '#0ca2e7',
-          light: '#38bdf8',
-          dark: '#0284c7',
+          DEFAULT: '#0ea5e9',  // Ice-design primary brand
+          light: '#38bdf8',    // Ice-design blue-400
+          dark: '#0284c7',     // Ice-design blue-600
         },
         'deep-water': '#0f172a',
         'ice-white': '#f8fafc',
@@ -77,8 +77,8 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["'Poppins'", "sans-serif"],
-        mono: ["'Geist Mono'", "ui-monospace", "monospace"],
+        sans: ["'Inter'", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        mono: ["'JetBrains Mono'", "ui-monospace", "monospace"],
       },
       keyframes: {
         "accordion-down": {

@@ -9,8 +9,43 @@ pass = "env(RESEND_API_KEY)"
 admin_email = "team@hyokai.ai"
 sender_name = "Hyokai"
 
+[auth.email.template.confirmation]
+subject = "Confirm your Hyokai account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Hyokai password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.magic_link]
+subject = "Your Hyokai login link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email address"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.invite]
+subject = "You're invited to join Hyokai"
+content_path = "./supabase/templates/invite.html"
+
 [functions.transform-prompt]
 verify_jwt = false
 
 [functions.user-data]
 verify_jwt = true
+
+[functions.send-auth-email]
+verify_jwt = false
+
+[functions.forward-email]
+verify_jwt = false
+
+[functions.notify-signup]
+verify_jwt = false
+
+# Auth Hook for sending branded emails via Resend
+[auth.hook.send_email]
+enabled = true
+uri = "https://znjqpxlijraodmjrhqaz.supabase.co/functions/v1/send-auth-email"
+secrets = "env(SEND_EMAIL_HOOK_SECRET)"

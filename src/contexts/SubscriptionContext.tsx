@@ -3,25 +3,77 @@ import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 // Subscription plan types
-export type PlanId = 'starter' | 'pro' | 'business' | 'max';
+export type PlanId = 'starter' | 'pro' | 'business' | 'max' | 'pro_tier' | 'pro_plus' | 'pro_team' | 'pro_max';
 export type BillingInterval = 'monthly' | 'annual';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete';
 
-// Plan limits and pricing
+// Plan limits and pricing (prices in cents)
 export const PLAN_LIMITS: Record<PlanId, {
   transformations: number;
   monthlyPrice: number;
   annualPrice: number;
   overageRate: number;
+  githubRepos?: number;
+  contexts?: number;
+  compareSlots?: number;
+  teamSeats?: number;
+  isPro?: boolean;
 }> = {
+  // Standard tiers
   starter: { transformations: 150, monthlyPrice: 999, annualPrice: 9999, overageRate: 10 },
   pro: { transformations: 500, monthlyPrice: 2499, annualPrice: 24999, overageRate: 8 },
   business: { transformations: 1500, monthlyPrice: 4999, annualPrice: 49999, overageRate: 6 },
   max: { transformations: 5000, monthlyPrice: 9999, annualPrice: 99999, overageRate: 4 },
+  // Pro tiers
+  pro_tier: {
+    transformations: 150,
+    monthlyPrice: 1999,
+    annualPrice: 19999,
+    overageRate: 12,
+    githubRepos: 3,
+    contexts: 5,
+    compareSlots: 2,
+    teamSeats: 1,
+    isPro: true,
+  },
+  pro_plus: {
+    transformations: 500,
+    monthlyPrice: 4999,
+    annualPrice: 49999,
+    overageRate: 8,
+    githubRepos: 10,
+    contexts: 20,
+    compareSlots: 3,
+    teamSeats: 1,
+    isPro: true,
+  },
+  pro_team: {
+    transformations: 1500,
+    monthlyPrice: 7999,
+    annualPrice: 79999,
+    overageRate: 5,
+    githubRepos: -1, // unlimited
+    contexts: -1,
+    compareSlots: 4,
+    teamSeats: 5,
+    isPro: true,
+  },
+  pro_max: {
+    transformations: 5000,
+    monthlyPrice: 19999,
+    annualPrice: 199999,
+    overageRate: 3,
+    githubRepos: -1,
+    contexts: -1,
+    compareSlots: 4,
+    teamSeats: -1,
+    isPro: true,
+  },
 };
 
 // Stripe price IDs (from our created prices)
 export const STRIPE_PRICE_IDS: Record<PlanId, { monthly: string; annual: string }> = {
+  // Standard tiers
   starter: {
     monthly: 'price_1SgZHyCs88k2DV32g2UFt1Vr',
     annual: 'price_1SgZHzCs88k2DV32suTd3OoL',
@@ -37,6 +89,23 @@ export const STRIPE_PRICE_IDS: Record<PlanId, { monthly: string; annual: string 
   max: {
     monthly: 'price_1SgZI0Cs88k2DV32AhdBxJSJ',
     annual: 'price_1SgZI1Cs88k2DV32YfEG9JBB',
+  },
+  // Pro tiers
+  pro_tier: {
+    monthly: 'price_1Sh19MCs88k2DV32GixXalxE',
+    annual: 'price_1Sh19MCs88k2DV32V7tRZ1rc',
+  },
+  pro_plus: {
+    monthly: 'price_1Sh19MCs88k2DV32KhAzBhvQ',
+    annual: 'price_1Sh19PCs88k2DV32lG1bKgko',
+  },
+  pro_team: {
+    monthly: 'price_1Sh19RCs88k2DV32f195233o',
+    annual: 'price_1Sh19UCs88k2DV32THLkiYS8',
+  },
+  pro_max: {
+    monthly: 'price_1Sh19XCs88k2DV32a86vru35',
+    annual: 'price_1Sh19ZCs88k2DV326KASstSP',
   },
 };
 

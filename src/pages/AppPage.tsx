@@ -314,42 +314,56 @@ const Index = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Layered background - matching lander */}
-      <div className="fixed inset-0 bg-[#f0f9ff]" />
-      <div className="fixed inset-0 bg-gradient-to-b from-sky-50 to-blue-100/50" />
+      {/* Animated gradient background - ice-design */}
+      <div className="fixed inset-0 ice-gradient-bg" />
 
-      {/* Animated blobs - hidden on mobile to prevent overflow */}
-      <div className="hidden md:block fixed top-20 left-10 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl animate-blob mix-blend-multiply" />
-      <div className="hidden md:block fixed top-40 right-20 w-72 h-72 bg-cyan-200/30 rounded-full blur-3xl animate-blob animation-delay-2000 mix-blend-multiply" />
-      <div className="hidden md:block fixed bottom-20 left-1/3 w-72 h-72 bg-blue-200/30 rounded-full blur-3xl animate-blob animation-delay-4000 mix-blend-multiply" />
+      {/* Dashed vertical lines - Meridian motif */}
+      <div className="ice-bg-lines">
+        <div className="ice-bg-line" />
+        <div className="ice-bg-line" />
+        <div className="ice-bg-line" />
+        <div className="ice-bg-line" />
+        <div className="ice-bg-line" />
+      </div>
+
+      {/* Animated ice blobs with glow */}
+      <div className="hidden md:block fixed top-20 left-10 w-80 h-80 rounded-full blur-3xl animate-blob mix-blend-multiply"
+           style={{ background: 'radial-gradient(circle, rgba(186,230,253,0.5) 0%, rgba(125,211,252,0.3) 50%, transparent 70%)' }} />
+      <div className="hidden md:block fixed top-40 right-20 w-96 h-96 rounded-full blur-3xl animate-blob animation-delay-2000 mix-blend-multiply"
+           style={{ background: 'radial-gradient(circle, rgba(125,211,252,0.4) 0%, rgba(56,189,248,0.2) 50%, transparent 70%)' }} />
+      <div className="hidden md:block fixed bottom-20 left-1/3 w-72 h-72 rounded-full blur-3xl animate-blob animation-delay-4000 mix-blend-multiply"
+           style={{ background: 'radial-gradient(circle, rgba(14,165,233,0.25) 0%, rgba(2,132,199,0.1) 50%, transparent 70%)' }} />
+
+      {/* Floating ice particles */}
+      <div className="hidden md:block ice-particle" style={{ top: '15%', left: '20%', animationDelay: '0s' }} />
+      <div className="hidden md:block ice-particle" style={{ top: '25%', right: '15%', animationDelay: '1s' }} />
+      <div className="hidden md:block ice-particle" style={{ top: '60%', left: '10%', animationDelay: '2s' }} />
+      <div className="hidden md:block ice-particle" style={{ top: '70%', right: '25%', animationDelay: '3s' }} />
+      <div className="hidden md:block ice-particle" style={{ top: '40%', left: '5%', animationDelay: '4s' }} />
 
       {/* Noise texture overlay */}
       <div className="noise-overlay" />
 
       {/* Mobile Full-Screen Output View - only visible on mobile after successful generation */}
       {showMobileOutput && !isBeginnerMode && (output || results.some(r => r.output && !r.error)) && (
-        <div className="md:hidden fixed inset-0 z-[100] flex flex-col bg-gradient-to-b from-sky-50 to-blue-100">
-          {/* Mobile output header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/30">
-            <Button
-              variant="ghost"
-              size="sm"
+        <div className="md:hidden fixed inset-0 z-[100] flex flex-col ice-gradient-bg">
+          {/* Mobile output header - ice-design styling */}
+          <div className="flex items-center justify-between p-4 border-b border-[#0ea5e9]/10 backdrop-blur-sm bg-white/40">
+            <button
               onClick={handleMobileBack}
-              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-white/60 transition-all duration-200"
               aria-label={t('output.backToInput')}
             >
               <ArrowLeft className="w-4 h-4" />
               <span>{t('output.backToInput')}</span>
-            </Button>
-            <Button
-              variant="frost"
-              size="sm"
+            </button>
+            <button
               onClick={handleNewPrompt}
-              className="gap-1.5"
+              className="btn-reveal btn-reveal--brand text-sm"
             >
               <Sparkles className="w-4 h-4" />
-              <span>{t('output.newPrompt')}</span>
-            </Button>
+              <span className="font-medium">{t('output.newPrompt')}</span>
+            </button>
           </div>
 
           {/* Mobile output content */}
@@ -466,33 +480,32 @@ const Index = () => {
                     />
                   </div>
 
-                  {/* Generate Button */}
-                  <div className="flex flex-col items-center gap-2">
-                    <Button
-                      size="lg"
+                  {/* Generate Button - ice-design circular reveal style */}
+                  <div className="flex flex-col items-center gap-3">
+                    <button
                       onClick={isCompareMode ? compare : transform}
                       disabled={isLoading || !input.trim() || (isCompareMode && selectedIndices.length < 2)}
-                      className="min-w-[200px] touch-manipulation"
+                      className="btn-reveal btn-reveal--brand min-w-[220px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                       {isLoading ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          {t('button.generating')}
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span className="font-semibold">{t('button.generating')}</span>
                         </>
                       ) : isCompareMode ? (
                         <>
-                          <GitCompare className="w-4 h-4" />
-                          {t('compare.generate')}
+                          <GitCompare className="w-5 h-5" />
+                          <span className="font-semibold">{t('compare.generate')}</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4" />
-                          {t('button.generate')}
+                          <Sparkles className="w-5 h-5" />
+                          <span className="font-semibold">{t('button.generate')}</span>
                         </>
                       )}
-                    </Button>
+                    </button>
                     {!isCompareMode && elapsedTime !== null && (
-                      <span className={`text-sm tabular-nums ${isLoading ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground/70'}`}>
+                      <span className={`text-sm tabular-nums ${isLoading ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground/60'}`}>
                         {formatTime(elapsedTime)}
                       </span>
                     )}
@@ -518,27 +531,24 @@ const Index = () => {
               ) : (
                 /* OUTPUT VIEW - Show output with prominent back/new prompt buttons */
                 <>
-                  {/* Output Header with actions */}
+                  {/* Output Header with actions - ice-design styling */}
                   <div className="space-y-4">
                     {/* Action buttons - prominent placement */}
                     <div className="flex items-center justify-between">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      <button
                         onClick={handleBackToInput}
-                        className="gap-1.5 text-muted-foreground hover:text-foreground"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-white/50 transition-all duration-200"
                       >
                         <ArrowLeft className="w-4 h-4" />
                         {t('output.backToInput')}
-                      </Button>
-                      <Button
-                        size="lg"
+                      </button>
+                      <button
                         onClick={handleNewPrompt}
-                        className="gap-2 min-w-[180px] bg-cb-blue hover:bg-cb-blue-dark text-white shadow-lg shadow-cb-blue/25 rounded-2xl"
+                        className="btn-reveal btn-reveal--brand min-w-[180px]"
                       >
                         <Sparkles className="w-5 h-5" />
-                        {t('output.newPrompt')}
-                      </Button>
+                        <span className="font-semibold">{t('output.newPrompt')}</span>
+                      </button>
                     </div>
 
                     {/* Original input preview (collapsed) */}
@@ -564,24 +574,24 @@ const Index = () => {
                     )}
                   </div>
 
-                  {/* Floating New Prompt button (fixed on mobile for easy access) */}
+                  {/* Floating New Prompt button (fixed on mobile for easy access) - ice-design */}
                   <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-                    <Button
-                      size="lg"
+                    <button
                       onClick={handleNewPrompt}
-                      className="gap-2 px-8 bg-cb-blue hover:bg-cb-blue-dark text-white shadow-xl shadow-cb-blue/30 rounded-2xl"
+                      className="btn-reveal btn-reveal--brand px-8 shadow-xl shadow-[#0ea5e9]/40"
                     >
                       <Sparkles className="w-5 h-5" />
-                      {t('output.newPrompt')}
-                    </Button>
+                      <span className="font-semibold">{t('output.newPrompt')}</span>
+                    </button>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Footer */}
-            <footer className="mt-12 text-center text-xs text-muted-foreground">
-              <p>
+            {/* Footer - ice-design styling */}
+            <footer className="mt-12 text-center">
+              <div className="section-divider mx-auto max-w-xs mb-6" />
+              <p className="text-xs text-gray-400">
                 {t('footer.text')}
               </p>
             </footer>
