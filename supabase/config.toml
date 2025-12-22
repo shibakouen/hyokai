@@ -1,5 +1,14 @@
 project_id = "znjqpxlijraodmjrhqaz"
 
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "team@hyokai.ai"
+sender_name = "Hyokai"
+
 [functions.transform-prompt]
 verify_jwt = false
 
