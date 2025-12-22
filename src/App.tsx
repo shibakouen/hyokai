@@ -10,7 +10,6 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ModeProvider } from "@/contexts/ModeContext";
 import { UserContextProvider } from "@/contexts/UserContextContext";
 import { GitRepoProvider } from "@/contexts/GitRepoContext";
-import Landing from "./pages/Landing";
 import AppPage from "./pages/AppPage";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
@@ -32,9 +31,7 @@ const App = () => (
                 <Sonner />
                 <BrowserRouter>
                   <Routes>
-                    <Route path="/" element={<Landing />} />
-                    <Route path="/ja" element={<Landing />} />
-                    <Route path="/app" element={<AppPage />} />
+                    <Route path="/" element={<AppPage />} />
                     <Route path="/pro" element={<Pricing />} />
                     <Route path="/pro/ja" element={<Pricing />} />
                     <Route path="/settings" element={<Settings />} />
