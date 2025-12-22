@@ -166,10 +166,10 @@ export function AuthButton() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs gap-1.5 border-cb-blue/50 text-cb-blue hover:bg-cb-blue/10"
+              className="h-8 px-2 sm:px-3 text-xs gap-1 sm:gap-1.5 border-cb-blue/50 text-cb-blue hover:bg-cb-blue/10"
             >
               <Cloud className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t('auth.signIn')}</span>
+              <span>{t('auth.signIn')}</span>
             </Button>
           </DialogTrigger>
         <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl">
