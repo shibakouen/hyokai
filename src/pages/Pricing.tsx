@@ -820,7 +820,7 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Pricing Section — Pro Tiers Only */}
+      {/* Pricing Section */}
       <section id="pricing" className="pricing_section c-section-padding">
         <div className="c-container">
           <div className="text-center" style={{ marginBottom: '2rem' }}>
@@ -847,8 +847,139 @@ export default function Pricing() {
             </div>
           </div>
 
-          {/* Pro Tiers Grid — Main pricing for /pro page */}
           <div className="pricing_grid">
+            {/* Starter */}
+            <div className={`pricing_card ${isCurrentPlan('starter') ? 'pricing_card--current' : ''}`}>
+              <div className="pricing_name">{t.pricing.tiers.starter.name}</div>
+              <div className="pricing_tier">{t.pricing.tiers.starter.tier}</div>
+              <div className="pricing_price">
+                <span className="pricing_amount">{formatPrice(getMonthlyEquivalent('starter'))}</span>
+                <span className="pricing_period">{t.pricing.perMonth}</span>
+              </div>
+              {billingInterval === 'annual' && (
+                <p className="pricing_savings">{t.pricing.youSave} {getSavings('starter')}%</p>
+              )}
+              <p className="pricing_desc">{t.pricing.tiers.starter.description}</p>
+              <ul className="pricing_features">
+                {t.pricing.tiers.starter.features.map((feature, idx) => (
+                  <li key={idx} className="pricing_feature">
+                    <span className="pricing_feature_check">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handleSelectPlan('starter')}
+                disabled={isCurrentPlan('starter') || isLoading || isRedirecting}
+                className="c-button c-button--ghost pricing_cta"
+              >
+                {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span className="c-button_span">{getButtonText('starter')}</span>
+              </button>
+            </div>
+
+            {/* Pro (Featured) */}
+            <div className={`pricing_card pricing_card--featured ${isCurrentPlan('pro') ? 'pricing_card--current' : ''}`}>
+              <div className="pricing_badge">{t.pricing.mostPopular}</div>
+              <div className="pricing_name">{t.pricing.tiers.pro.name}</div>
+              <div className="pricing_tier">{t.pricing.tiers.pro.tier}</div>
+              <div className="pricing_price">
+                <span className="pricing_amount">{formatPrice(getMonthlyEquivalent('pro'))}</span>
+                <span className="pricing_period">{t.pricing.perMonth}</span>
+              </div>
+              {billingInterval === 'annual' && (
+                <p className="pricing_savings">{t.pricing.youSave} {getSavings('pro')}%</p>
+              )}
+              <p className="pricing_desc">{t.pricing.tiers.pro.description}</p>
+              <ul className="pricing_features">
+                {t.pricing.tiers.pro.features.map((feature, idx) => (
+                  <li key={idx} className="pricing_feature">
+                    <span className="pricing_feature_check">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handleSelectPlan('pro')}
+                disabled={isCurrentPlan('pro') || isLoading || isRedirecting}
+                className="c-button c-button--brand pricing_cta"
+              >
+                {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <div className="c-button_bg"></div>
+                <span className="c-button_span">{getButtonText('pro')}</span>
+              </button>
+            </div>
+
+            {/* Business */}
+            <div className={`pricing_card pricing_card--business ${isCurrentPlan('business') ? 'pricing_card--current' : ''}`}>
+              <div className="pricing_name">{t.pricing.tiers.business.name}</div>
+              <div className="pricing_tier">{t.pricing.tiers.business.tier}</div>
+              <div className="pricing_price">
+                <span className="pricing_amount">{formatPrice(getMonthlyEquivalent('business'))}</span>
+                <span className="pricing_period">{t.pricing.perMonth}</span>
+              </div>
+              {billingInterval === 'annual' && (
+                <p className="pricing_savings">{t.pricing.youSave} {getSavings('business')}%</p>
+              )}
+              <p className="pricing_desc">{t.pricing.tiers.business.description}</p>
+              <ul className="pricing_features">
+                {t.pricing.tiers.business.features.map((feature, idx) => (
+                  <li key={idx} className="pricing_feature">
+                    <span className="pricing_feature_check">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handleSelectPlan('business')}
+                disabled={isCurrentPlan('business') || isLoading || isRedirecting}
+                className="c-button c-button--ghost pricing_cta"
+              >
+                {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span className="c-button_span">{getButtonText('business')}</span>
+              </button>
+            </div>
+
+            {/* Max */}
+            <div className={`pricing_card pricing_card--max ${isCurrentPlan('max') ? 'pricing_card--current' : ''}`}>
+              <div className="pricing_name">{t.pricing.tiers.max.name}</div>
+              <div className="pricing_tier">{t.pricing.tiers.max.tier}</div>
+              <div className="pricing_price">
+                <span className="pricing_amount">{formatPrice(getMonthlyEquivalent('max'))}</span>
+                <span className="pricing_period">{t.pricing.perMonth}</span>
+              </div>
+              {billingInterval === 'annual' && (
+                <p className="pricing_savings">{t.pricing.youSave} {getSavings('max')}%</p>
+              )}
+              <p className="pricing_desc">{t.pricing.tiers.max.description}</p>
+              <ul className="pricing_features">
+                {t.pricing.tiers.max.features.map((feature, idx) => (
+                  <li key={idx} className="pricing_feature">
+                    <span className="pricing_feature_check">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handleSelectPlan('max')}
+                disabled={isCurrentPlan('max') || isLoading || isRedirecting}
+                className="c-button c-button--ghost pricing_cta"
+                style={{ borderColor: 'rgba(139, 92, 246, 0.3)', color: 'white' }}
+              >
+                {isRedirecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span className="c-button_span">{getButtonText('max')}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Pro Tiers Section */}
+          <div style={{ marginTop: '4rem', paddingTop: '4rem', borderTop: '1px solid rgba(139, 92, 246, 0.2)' }}>
+            <div className="text-center" style={{ marginBottom: '2rem' }}>
+              <h3 className="c-title-3" style={{ marginBottom: '0.5rem', color: '#c93bc1' }}>{t.pricing.proTiers.sectionTitle}</h3>
+              <p className="c-text-3 cc-onsurface-weak">{t.pricing.proTiers.sectionSubtitle}</p>
+            </div>
+
+            <div className="pricing_grid">
               {/* Pro Tier */}
               <div className={`pricing_card pricing_card--pro-tier ${isCurrentPlan('pro_tier') ? 'pricing_card--current' : ''}`}>
                 <div className="pricing_name">{t.pricing.proTiers.pro_tier.name}</div>
@@ -975,6 +1106,7 @@ export default function Pricing() {
                 </button>
               </div>
             </div>
+          </div>
         </div>
       </section>
 
@@ -1012,7 +1144,7 @@ export default function Pricing() {
             <p className="c-text-1 cta_desc c-max-4-col mx-auto">{t.cta.subtitle}</p>
             <div className="cta_buttons">
               <button
-                onClick={() => handleSelectPlan('pro_plus')}
+                onClick={() => handleSelectPlan('pro')}
                 disabled={isLoading || isRedirecting}
                 className="c-button c-button--white c-button--lg"
               >
@@ -1041,7 +1173,7 @@ export default function Pricing() {
               </p>
               <div className="g_btn_group">
                 <button
-                  onClick={() => handleSelectPlan('pro_plus')}
+                  onClick={() => handleSelectPlan('pro')}
                   disabled={isLoading || isRedirecting}
                   className="c-button c-button--brand"
                 >

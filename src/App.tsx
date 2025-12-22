@@ -11,9 +11,8 @@ import { ModeProvider } from "@/contexts/ModeContext";
 import { UserContextProvider } from "@/contexts/UserContextContext";
 import { GitRepoProvider } from "@/contexts/GitRepoContext";
 import AppPage from "./pages/AppPage";
-import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
-import Landing from "./pages/Landing";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,15 +31,10 @@ const App = () => (
                 <Sonner />
                 <BrowserRouter>
                   <Routes>
-                    {/* Landing page at root and /ja for Japanese */}
-                    <Route path="/" element={<Landing />} />
-                    <Route path="/ja" element={<Landing />} />
-                    {/* Main app at /app */}
-                    <Route path="/app" element={<AppPage />} />
-                    <Route path="/settings" element={<Settings />} />
-                    {/* Pro/Pricing page with Stripe checkout */}
+                    <Route path="/" element={<AppPage />} />
                     <Route path="/pro" element={<Pricing />} />
                     <Route path="/pro/ja" element={<Pricing />} />
+                    <Route path="/settings" element={<Settings />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
