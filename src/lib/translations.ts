@@ -664,6 +664,16 @@ export const translations = {
         'settings.checkoutSuccess': 'Welcome to Hyokai!',
         'settings.checkoutSuccessMessage': 'Your subscription is now active. Enjoy!',
 
+        // Setup Password Page
+        'setupPassword.title': 'Set Your Password',
+        'setupPassword.description': "Create a password for your Hyokai account. You'll use this to sign in.",
+        'setupPassword.accountFor': 'Account for',
+        'setupPassword.setPassword': 'Set Password & Continue',
+        'setupPassword.success': 'Password Set!',
+        'setupPassword.successMessage': 'Your account is ready. Redirecting to the app...',
+        'setupPassword.linkExpired': 'Link Expired',
+        'setupPassword.linkExpiredMessage': 'This password setup link has expired or is invalid. Please request a new one.',
+
         // Pricing Page
         'pricing.backToWebsite': 'Back to website',
         'pricing.title': 'Simple, transparent pricing',
@@ -1301,6 +1311,16 @@ export const translations = {
         'settings.signInRequiredMessage': 'アカウント設定にアクセスするにはログインしてください。',
         'settings.checkoutSuccess': 'Hyokaiへようこそ！',
         'settings.checkoutSuccessMessage': 'サブスクリプションが有効になりました。お楽しみください！',
+
+        // Setup Password Page
+        'setupPassword.title': 'パスワードを設定',
+        'setupPassword.description': 'Hyokaiアカウントのパスワードを作成してください。ログインに使用します。',
+        'setupPassword.accountFor': 'アカウント',
+        'setupPassword.setPassword': 'パスワードを設定して続行',
+        'setupPassword.success': 'パスワード設定完了！',
+        'setupPassword.successMessage': 'アカウントの準備ができました。アプリにリダイレクトしています...',
+        'setupPassword.linkExpired': 'リンクの有効期限切れ',
+        'setupPassword.linkExpiredMessage': 'このパスワード設定リンクは有効期限が切れているか無効です。新しいリンクをリクエストしてください。',
 
         // Pricing Page
         'pricing.backToWebsite': 'ウェブサイトに戻る',
