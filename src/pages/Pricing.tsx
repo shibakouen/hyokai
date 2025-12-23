@@ -1209,7 +1209,6 @@ export default function Pricing() {
                   <li><span className="footer_sitemap_link footer_sitemap_link--disabled">{t.footer.legal.privacy}</span></li>
                   <li><span className="footer_sitemap_link footer_sitemap_link--disabled">{t.footer.legal.terms}</span></li>
                   <li><span className="footer_sitemap_link footer_sitemap_link--disabled">{t.footer.legal.security}</span></li>
-                  <li><Link to="/tokushoho" className="footer_sitemap_link">特定商取引法</Link></li>
                 </ul>
               </div>
             </div>

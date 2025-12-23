@@ -13,7 +13,6 @@ import { GitRepoProvider } from "@/contexts/GitRepoContext";
 import AppPage from "./pages/AppPage";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
-import Tokushoho from "./pages/Tokushoho";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,7 +35,6 @@ const App = () => (
                     <Route path="/pro" element={<Pricing />} />
                     <Route path="/pro/ja" element={<Pricing />} />
                     <Route path="/settings" element={<Settings />} />
-                    <Route path="/tokushoho" element={<Tokushoho />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
