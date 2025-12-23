@@ -14,6 +14,7 @@ import AppPage from "./pages/AppPage";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
 import SetupPassword from "./pages/SetupPassword";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                     <Route path="/pro/ja" element={<Pricing />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/setup-password" element={<SetupPassword />} />
+                    <Route path="/checkout-success" element={<CheckoutSuccess />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

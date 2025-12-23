@@ -157,11 +157,28 @@ serve(async (req) => {
     // Check if this is the free plan
     const isFreePlan = planId === 'free';
 
+    // Determine success URL based on whether user is authenticated
+    // Authenticated users: go to settings (they're already logged in)
+    // Guest users: go to checkout-success page (tell them to check email)
+    let checkoutSuccessUrl = successUrl;
+    if (!checkoutSuccessUrl) {
+      if (authHeader) {
+        // Authenticated user - go to settings
+        checkoutSuccessUrl = `${siteUrl}/settings?checkout=success`;
+      } else {
+        // Guest checkout - go to check-your-email page
+        // Include email if we have it so we can display it
+        checkoutSuccessUrl = customerEmail
+          ? `${siteUrl}/checkout-success?email=${encodeURIComponent(customerEmail)}`
+          : `${siteUrl}/checkout-success`;
+      }
+    }
+
     // Create Checkout session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl || `${siteUrl}/settings?checkout=success`,
+      success_url: checkoutSuccessUrl,
       cancel_url: cancelUrl || `${siteUrl}/pricing`,
       allow_promotion_codes: !isFreePlan, // No promo codes for free plan
     };

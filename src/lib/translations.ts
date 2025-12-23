@@ -674,6 +674,16 @@ export const translations = {
         'setupPassword.linkExpired': 'Link Expired',
         'setupPassword.linkExpiredMessage': 'This password setup link has expired or is invalid. Please request a new one.',
 
+        // Checkout Success (check your email page)
+        'checkoutSuccess.title': 'Check your email!',
+        'checkoutSuccess.description': "We've sent you a magic link to complete your account setup.",
+        'checkoutSuccess.sentTo': 'Email sent to',
+        'checkoutSuccess.step1': 'Open your email inbox',
+        'checkoutSuccess.step2': 'Click the "Set My Password" button in our email',
+        'checkoutSuccess.step3': "Create your password and you're all set!",
+        'checkoutSuccess.spamWarning': "Don't see it? Check your spam folder. The email is from team@hyokai.ai",
+        'checkoutSuccess.backToHome': 'Back to Home',
+
         // Pricing Page
         'pricing.backToWebsite': 'Back to website',
         'pricing.title': 'Simple, transparent pricing',
@@ -1321,6 +1331,16 @@ export const translations = {
         'setupPassword.successMessage': 'アカウントの準備ができました。アプリにリダイレクトしています...',
         'setupPassword.linkExpired': 'リンクの有効期限切れ',
         'setupPassword.linkExpiredMessage': 'このパスワード設定リンクは有効期限が切れているか無効です。新しいリンクをリクエストしてください。',
+
+        // Checkout Success (check your email page)
+        'checkoutSuccess.title': 'メールを確認してください！',
+        'checkoutSuccess.description': 'アカウント設定を完了するためのマジックリンクをお送りしました。',
+        'checkoutSuccess.sentTo': '送信先',
+        'checkoutSuccess.step1': 'メールの受信箱を開く',
+        'checkoutSuccess.step2': 'メール内の「パスワードを設定」ボタンをクリック',
+        'checkoutSuccess.step3': 'パスワードを作成して完了！',
+        'checkoutSuccess.spamWarning': '見つからない場合は迷惑メールフォルダをご確認ください。送信元：team@hyokai.ai',
+        'checkoutSuccess.backToHome': 'ホームに戻る',
 
         // Pricing Page
         'pricing.backToWebsite': 'ウェブサイトに戻る',
