@@ -58,7 +58,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { planId, interval, email, successUrl, cancelUrl } = body;
+    const { planId, interval, email, successUrl, cancelUrl, locale } = body;
 
     // Validate plan and interval
     if (!planId || !STRIPE_PRICE_IDS[planId]) {
@@ -181,6 +181,8 @@ serve(async (req) => {
       success_url: checkoutSuccessUrl,
       cancel_url: cancelUrl || `${siteUrl}/pricing`,
       allow_promotion_codes: !isFreePlan, // No promo codes for free plan
+      // Localization: 'ja' for Japanese, 'en' for English, 'auto' for browser detection
+      locale: locale || 'auto',
     };
 
     if (isFreePlan) {

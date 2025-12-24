@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { useLanguage } from './LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 
 // Subscription plan types
@@ -153,6 +154,7 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { user, session, isAuthenticated, isLoading: isAuthLoading, wasEverAuthenticated } = useAuth();
+  const { language } = useLanguage();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -250,7 +252,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ planId, interval }),
+          body: JSON.stringify({ planId, interval, locale: language === 'jp' ? 'ja' : 'en' }),
         }
       );
 
@@ -268,7 +270,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       console.error('Error opening checkout:', err);
       setError(err instanceof Error ? err.message : 'Failed to open checkout');
     }
-  }, [session]);
+  }, [session, language]);
 
   // Open Stripe Checkout for guests (no auth required)
   // Email is collected by Stripe Checkout, account created via webhook
@@ -285,6 +287,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           body: JSON.stringify({
             planId,
             interval,
+            locale: language === 'jp' ? 'ja' : 'en',
             successUrl: `${window.location.origin}/settings?checkout=success`,
             cancelUrl: `${window.location.origin}/pricing`,
           }),
@@ -306,7 +309,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setError(err instanceof Error ? err.message : 'Failed to open checkout');
       throw err;
     }
-  }, []);
+  }, [language]);
 
   // Open Stripe Customer Portal
   const openPortal = useCallback(async () => {

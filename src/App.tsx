@@ -22,34 +22,34 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <SubscriptionProvider>
-        <UsageProvider>
-        <LanguageProvider>
-          <ModeProvider>
-            <GitRepoProvider>
-              <UserContextProvider>
-                <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    <Route path="/" element={<AppPage />} />
-                    <Route path="/pro" element={<Pricing />} />
-                    <Route path="/pro/ja" element={<Pricing />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/setup-password" element={<SetupPassword />} />
-                    <Route path="/checkout-success" element={<CheckoutSuccess />} />
-                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-                </TooltipProvider>
-              </UserContextProvider>
-            </GitRepoProvider>
-          </ModeProvider>
-        </LanguageProvider>
-        </UsageProvider>
-      </SubscriptionProvider>
+      <LanguageProvider>
+        <SubscriptionProvider>
+          <UsageProvider>
+            <ModeProvider>
+              <GitRepoProvider>
+                <UserContextProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <BrowserRouter>
+                      <Routes>
+                        <Route path="/" element={<AppPage />} />
+                        <Route path="/pro" element={<Pricing />} />
+                        <Route path="/pro/ja" element={<Pricing />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/setup-password" element={<SetupPassword />} />
+                        <Route path="/checkout-success" element={<CheckoutSuccess />} />
+                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </TooltipProvider>
+                </UserContextProvider>
+              </GitRepoProvider>
+            </ModeProvider>
+          </UsageProvider>
+        </SubscriptionProvider>
+      </LanguageProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
