@@ -66,19 +66,20 @@ const Index = () => {
   const { mode: taskMode, isBeginnerMode } = useMode();
 
   // Auth context for database sync and auth gate
-  const { isAuthenticated, isLoading: isAuthLoading, user, signIn, signUp, resendConfirmation } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, user, signIn, signUp, resendConfirmation, resetPassword } = useAuth();
 
   // Language hook - must be before useEffects that use t()
   const { t } = useLanguage();
 
   // Auth gate state (for unauthenticated users)
-  type AuthMode = 'signIn' | 'signUp' | 'confirmation';
+  type AuthMode = 'signIn' | 'signUp' | 'confirmation' | 'forgotPassword' | 'resetSent';
   const [authMode, setAuthMode] = useState<AuthMode>('signUp');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useState<string | null>(null);
 
   // Auth gate handlers
   const handleAuthSignIn = async (e: React.FormEvent) => {
@@ -138,6 +139,24 @@ const Index = () => {
       const { error } = await resendConfirmation(confirmationEmail);
       if (error) {
         setAuthError(t('auth.resendError'));
+      }
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setIsAuthSubmitting(true);
+
+    try {
+      const { error } = await resetPassword(authEmail);
+      if (error) {
+        setAuthError(t('auth.resetPasswordError'));
+      } else {
+        setResetEmail(authEmail);
+        setAuthMode('resetSent');
       }
     } finally {
       setIsAuthSubmitting(false);
@@ -471,7 +490,100 @@ const Index = () => {
 
             {/* Auth Card */}
             <div className="frost-glass rounded-2xl p-6 md:p-8 shadow-xl">
-              {authMode === 'confirmation' ? (
+              {authMode === 'resetSent' ? (
+                /* Password reset email sent view */
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-green-100">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-foreground mb-2">
+                      {t('auth.resetEmailSent')}
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      {t('auth.resetEmailSentTo', { email: resetEmail })}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-center p-6 bg-blue-50 rounded-xl">
+                    <Mail className="w-12 h-12 text-blue-600" />
+                  </div>
+
+                  <p className="text-sm text-muted-foreground text-center">
+                    {t('auth.resetEmailInstructions')}
+                  </p>
+
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setAuthMode('signIn');
+                      setResetEmail(null);
+                      setAuthError(null);
+                    }}
+                    className="w-full h-12 touch-manipulation"
+                  >
+                    {t('auth.backToSignIn')}
+                  </Button>
+                </div>
+              ) : authMode === 'forgotPassword' ? (
+                /* Forgot password form */
+                <form onSubmit={handleForgotPassword} className="space-y-5">
+                  <div className="text-center mb-2">
+                    <h2 className="text-xl font-semibold text-foreground mb-1">
+                      {t('auth.resetPassword')}
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      {t('auth.resetPasswordSubtitle')}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email" className="text-foreground font-medium">
+                      {t('auth.email')}
+                    </Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className="h-12 bg-white/70 border-white/60 text-foreground placeholder:text-muted-foreground/60 touch-manipulation"
+                    />
+                  </div>
+
+                  {authError && (
+                    <p className="text-sm text-destructive text-center">{authError}</p>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={isAuthSubmitting}
+                    className="w-full h-12 bg-gradient-to-r from-cb-blue to-cyan-500 hover:from-cb-blue/90 hover:to-cyan-500/90 text-white font-semibold shadow-lg shadow-cb-blue/30 touch-manipulation"
+                  >
+                    {isAuthSubmitting ? (
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    ) : (
+                      <Mail className="w-5 h-5 mr-2" />
+                    )}
+                    {t('auth.sendResetLink')}
+                  </Button>
+
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signIn');
+                        setAuthError(null);
+                      }}
+                      className="text-sm text-cb-blue hover:text-cb-blue/80 font-medium hover:underline touch-manipulation"
+                    >
+                      {t('auth.backToSignIn')}
+                    </button>
+                  </div>
+                </form>
+              ) : authMode === 'confirmation' ? (
                 /* Email confirmation view */
                 <div className="space-y-6">
                   <div className="text-center">
@@ -560,6 +672,18 @@ const Index = () => {
                     />
                     {authMode === 'signUp' && (
                       <p className="text-xs text-muted-foreground">{t('auth.passwordHint')}</p>
+                    )}
+                    {authMode === 'signIn' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('forgotPassword');
+                          setAuthError(null);
+                        }}
+                        className="text-xs text-cb-blue hover:text-cb-blue/80 hover:underline touch-manipulation"
+                      >
+                        {t('auth.forgotPassword')}
+                      </button>
                     )}
                   </div>
 

@@ -20,6 +20,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resendConfirmation: (email: string) => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
   // Track if user was ever authenticated in this session (to distinguish logout from initial load)
   wasEverAuthenticated: boolean;
@@ -320,6 +321,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Reset password (send reset email)
+  const resetPassword = useCallback(async (email: string): Promise<{ error: Error | null }> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        console.error('Error sending reset password email:', error);
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Error sending reset password email:', error);
+      return { error: error as Error };
+    }
+  }, []);
+
   // Clear all user-specific localStorage data
   const clearUserData = useCallback(() => {
     USER_DATA_KEYS.forEach(key => {
@@ -394,6 +414,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signOut,
       resendConfirmation,
+      resetPassword,
       refreshProfile,
       wasEverAuthenticated: wasEverAuthenticatedRef.current,
     }}>

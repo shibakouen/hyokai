@@ -573,6 +573,15 @@ export const translations = {
         'auth.resendConfirmation': 'Resend confirmation email',
         'auth.resendError': 'Failed to resend confirmation email',
         'auth.backToSignIn': 'Back to sign in',
+        // Forgot Password
+        'auth.forgotPassword': 'Forgot password?',
+        'auth.resetPassword': 'Reset Password',
+        'auth.resetPasswordSubtitle': 'Enter your email and we\'ll send you a link to reset your password.',
+        'auth.sendResetLink': 'Send Reset Link',
+        'auth.resetPasswordError': 'Failed to send reset email. Please try again.',
+        'auth.resetEmailSent': 'Check your email',
+        'auth.resetEmailSentTo': 'We sent a password reset link to {{email}}',
+        'auth.resetEmailInstructions': 'Click the link in the email to reset your password.',
         // Auth Gate (full-screen sign-in prompt)
         'authGate.title': 'Sign in to use Hyokai',
         'authGate.subtitle': 'Transform your natural language into powerful AI prompts',
@@ -1248,6 +1257,15 @@ export const translations = {
         'auth.resendConfirmation': '確認メールを再送信',
         'auth.resendError': '確認メールの再送信に失敗しました',
         'auth.backToSignIn': 'ログインに戻る',
+        // Forgot Password
+        'auth.forgotPassword': 'パスワードをお忘れですか？',
+        'auth.resetPassword': 'パスワードをリセット',
+        'auth.resetPasswordSubtitle': 'メールアドレスを入力してください。パスワードリセットリンクをお送りします。',
+        'auth.sendResetLink': 'リセットリンクを送信',
+        'auth.resetPasswordError': 'リセットメールの送信に失敗しました。もう一度お試しください。',
+        'auth.resetEmailSent': 'メールを確認してください',
+        'auth.resetEmailSentTo': '{{email}}にパスワードリセットリンクを送信しました',
+        'auth.resetEmailInstructions': 'メールのリンクをクリックしてパスワードをリセットしてください。',
         // Auth Gate (full-screen sign-in prompt)
         'authGate.title': 'Hyokaiを使うにはログインしてください',
         'authGate.subtitle': '自然言語をAIプロンプトに変換',
