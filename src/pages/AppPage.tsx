@@ -4,10 +4,12 @@ import { ModelSelector } from "@/components/ModelSelector";
 import { PromptInput } from "@/components/PromptInput";
 import { OutputPanel } from "@/components/OutputPanel";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { usePromptTransformer } from "@/hooks/usePromptTransformer";
 import { useModelComparison } from "@/hooks/useModelComparison";
 import { useInstructions } from "@/hooks/useInstructions";
-import { Sparkles, GitCompare, ArrowLeft } from "lucide-react";
+import { Sparkles, GitCompare, ArrowLeft, Loader2, CheckCircle, Mail, Wand2, History, Cloud } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "@/hooks/use-toast";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -63,11 +65,84 @@ const Index = () => {
   // Task mode context
   const { mode: taskMode, isBeginnerMode } = useMode();
 
-  // Auth context for database sync
-  const { isAuthenticated, user } = useAuth();
+  // Auth context for database sync and auth gate
+  const { isAuthenticated, isLoading: isAuthLoading, user, signIn, signUp, resendConfirmation } = useAuth();
 
   // Language hook - must be before useEffects that use t()
   const { t } = useLanguage();
+
+  // Auth gate state (for unauthenticated users)
+  type AuthMode = 'signIn' | 'signUp' | 'confirmation';
+  const [authMode, setAuthMode] = useState<AuthMode>('signUp');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
+
+  // Auth gate handlers
+  const handleAuthSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setIsAuthSubmitting(true);
+
+    try {
+      const { error } = await signIn(authEmail, authPassword);
+      if (error) {
+        if (error.message.includes('Email not confirmed')) {
+          setConfirmationEmail(authEmail);
+          setAuthMode('confirmation');
+        } else {
+          setAuthError(t('auth.invalidCredentials'));
+        }
+      }
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
+
+  const handleAuthSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    if (authPassword.length < 6) {
+      setAuthError(t('auth.passwordTooShort'));
+      return;
+    }
+
+    setIsAuthSubmitting(true);
+
+    try {
+      const { error, needsConfirmation } = await signUp(authEmail, authPassword);
+      if (error) {
+        if (error.message.includes('already registered')) {
+          setAuthError(t('auth.emailAlreadyRegistered'));
+        } else {
+          setAuthError(error.message);
+        }
+      } else if (needsConfirmation) {
+        setConfirmationEmail(authEmail);
+        setAuthMode('confirmation');
+      }
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!confirmationEmail) return;
+    setIsAuthSubmitting(true);
+    setAuthError(null);
+
+    try {
+      const { error } = await resendConfirmation(confirmationEmail);
+      if (error) {
+        setAuthError(t('auth.resendError'));
+      }
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
 
   // Custom instructions hook
   const {
@@ -311,6 +386,248 @@ const Index = () => {
     }
     setIsCompareMode(value);
   };
+
+  // ==========================================
+  // AUTH GATE: Block unauthenticated users
+  // ==========================================
+
+  // Loading state - show minimal loading UI
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen relative overflow-hidden">
+        <div className="fixed inset-0 ice-gradient-bg" />
+        <div className="noise-overlay" />
+        <div className="relative z-10 min-h-screen flex items-center justify-center">
+          <div className="frost-glass rounded-2xl p-8 flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 text-cb-blue animate-spin" />
+            <p className="text-muted-foreground">{t('authGate.loading')}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated - show sign-in prompt (full-screen gate)
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen relative overflow-hidden">
+        {/* Animated gradient background - ice-design */}
+        <div className="fixed inset-0 ice-gradient-bg" />
+
+        {/* Dashed vertical lines - Meridian motif */}
+        <div className="ice-bg-lines">
+          <div className="ice-bg-line" />
+          <div className="ice-bg-line" />
+          <div className="ice-bg-line" />
+          <div className="ice-bg-line" />
+          <div className="ice-bg-line" />
+        </div>
+
+        {/* Animated ice blobs with glow */}
+        <div className="hidden md:block fixed top-20 left-10 w-80 h-80 rounded-full blur-3xl animate-blob mix-blend-multiply"
+             style={{ background: 'radial-gradient(circle, rgba(186,230,253,0.5) 0%, rgba(125,211,252,0.3) 50%, transparent 70%)' }} />
+        <div className="hidden md:block fixed top-40 right-20 w-96 h-96 rounded-full blur-3xl animate-blob animation-delay-2000 mix-blend-multiply"
+             style={{ background: 'radial-gradient(circle, rgba(125,211,252,0.4) 0%, rgba(56,189,248,0.2) 50%, transparent 70%)' }} />
+        <div className="hidden md:block fixed bottom-20 left-1/3 w-72 h-72 rounded-full blur-3xl animate-blob animation-delay-4000 mix-blend-multiply"
+             style={{ background: 'radial-gradient(circle, rgba(14,165,233,0.25) 0%, rgba(2,132,199,0.1) 50%, transparent 70%)' }} />
+
+        {/* Noise texture overlay */}
+        <div className="noise-overlay" />
+
+        {/* Language selector - top left */}
+        <LanguageSelector />
+
+        {/* Main content */}
+        <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-8">
+          <div className="w-full max-w-lg">
+            {/* Logo and Title */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-cb-blue to-cyan-400 shadow-lg shadow-cb-blue/30">
+                <span className="text-3xl font-bold text-white">氷</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+                {t('authGate.title')}
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                {t('authGate.subtitle')}
+              </p>
+            </div>
+
+            {/* Feature highlights */}
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 backdrop-blur-sm border border-white/60 text-sm text-foreground/80">
+                <Wand2 className="w-4 h-4 text-cb-blue" />
+                <span>{t('authGate.feature1')}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 backdrop-blur-sm border border-white/60 text-sm text-foreground/80">
+                <History className="w-4 h-4 text-cb-blue" />
+                <span>{t('authGate.feature2')}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 backdrop-blur-sm border border-white/60 text-sm text-foreground/80">
+                <Cloud className="w-4 h-4 text-cb-blue" />
+                <span>{t('authGate.feature3')}</span>
+              </div>
+            </div>
+
+            {/* Auth Card */}
+            <div className="frost-glass rounded-2xl p-6 md:p-8 shadow-xl">
+              {authMode === 'confirmation' ? (
+                /* Email confirmation view */
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-green-100">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-foreground mb-2">
+                      {t('auth.checkEmail')}
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      {t('auth.confirmationSent', { email: confirmationEmail })}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-center p-6 bg-blue-50 rounded-xl">
+                    <Mail className="w-12 h-12 text-blue-600" />
+                  </div>
+
+                  <p className="text-sm text-muted-foreground text-center">
+                    {t('auth.confirmationInstructions')}
+                  </p>
+
+                  {authError && (
+                    <p className="text-sm text-destructive text-center">{authError}</p>
+                  )}
+
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleResendConfirmation}
+                      disabled={isAuthSubmitting}
+                      className="w-full h-12 bg-cb-blue hover:bg-cb-blue/90 text-white font-medium touch-manipulation"
+                    >
+                      {isAuthSubmitting ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Mail className="w-4 h-4 mr-2" />
+                      )}
+                      {t('auth.resendConfirmation')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setAuthMode('signIn');
+                        setConfirmationEmail(null);
+                        setAuthError(null);
+                      }}
+                      className="w-full h-12 touch-manipulation"
+                    >
+                      {t('auth.backToSignIn')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Sign in / Sign up form */
+                <form onSubmit={authMode === 'signIn' ? handleAuthSignIn : handleAuthSignUp} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="auth-email" className="text-foreground font-medium">
+                      {t('auth.email')}
+                    </Label>
+                    <Input
+                      id="auth-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className="h-12 bg-white/70 border-white/60 text-foreground placeholder:text-muted-foreground/60 touch-manipulation"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="auth-password" className="text-foreground font-medium">
+                      {t('auth.password')}
+                    </Label>
+                    <Input
+                      id="auth-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      autoComplete={authMode === 'signIn' ? 'current-password' : 'new-password'}
+                      className="h-12 bg-white/70 border-white/60 text-foreground placeholder:text-muted-foreground/60 touch-manipulation"
+                    />
+                    {authMode === 'signUp' && (
+                      <p className="text-xs text-muted-foreground">{t('auth.passwordHint')}</p>
+                    )}
+                  </div>
+
+                  {authError && (
+                    <p className="text-sm text-destructive text-center">{authError}</p>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={isAuthSubmitting}
+                    className="w-full h-12 bg-gradient-to-r from-cb-blue to-cyan-500 hover:from-cb-blue/90 hover:to-cyan-500/90 text-white font-semibold shadow-lg shadow-cb-blue/30 touch-manipulation"
+                  >
+                    {isAuthSubmitting ? (
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-5 h-5 mr-2" />
+                    )}
+                    {authMode === 'signIn' ? t('auth.signIn') : t('authGate.getStarted')}
+                  </Button>
+
+                  <div className="text-center pt-2">
+                    {authMode === 'signUp' ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t('authGate.haveAccount')}{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthMode('signIn');
+                            setAuthError(null);
+                          }}
+                          className="text-cb-blue hover:text-cb-blue/80 font-medium hover:underline touch-manipulation"
+                        >
+                          {t('auth.signIn')}
+                        </button>
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {t('auth.noAccount')}{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthMode('signUp');
+                            setAuthError(null);
+                          }}
+                          className="text-cb-blue hover:text-cb-blue/80 font-medium hover:underline touch-manipulation"
+                        >
+                          {t('auth.signUp')}
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Footer */}
+            <p className="text-center text-xs text-muted-foreground/60 mt-6">
+              {t('footer.text')}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // AUTHENTICATED: Render full app
+  // ==========================================
 
   return (
     <div className="min-h-screen relative overflow-hidden">

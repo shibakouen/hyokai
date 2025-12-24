@@ -46,6 +46,14 @@ export const translations = {
         'error.rateLimitMessage': 'You have reached your usage limit. Please try again later.',
         'error.freeLimitReached': 'Free limit reached',
         'error.freeLimitMessage': 'Sign up to continue transforming prompts. It\'s free!',
+        'error.tooManyRequests': 'Too many requests',
+        'error.tooManyRequestsMessage': 'Please slow down and try again in a moment.',
+        'error.freeTierLimitReached': 'Free tier limit reached',
+        'error.freeTierLimitMessage': 'You\'ve used all 20 free transforms this month. Upgrade to continue!',
+        'error.anonymousDailyLimit': 'Daily limit reached',
+        'error.anonymousDailyMessage': 'Sign up for free to get more transformations today!',
+        'error.anonymousMonthlyLimit': 'Monthly limit reached',
+        'error.anonymousMonthlyMessage': 'Sign up for free to continue transforming prompts!',
 
         // Usage/Rate Limiting
         'usage.tokenUsage': 'Token Usage',
@@ -565,6 +573,15 @@ export const translations = {
         'auth.resendConfirmation': 'Resend confirmation email',
         'auth.resendError': 'Failed to resend confirmation email',
         'auth.backToSignIn': 'Back to sign in',
+        // Auth Gate (full-screen sign-in prompt)
+        'authGate.title': 'Sign in to use Hyokai',
+        'authGate.subtitle': 'Transform your natural language into powerful AI prompts',
+        'authGate.feature1': 'Access all AI models',
+        'authGate.feature2': 'Save your prompt history',
+        'authGate.feature3': 'Sync across devices',
+        'authGate.getStarted': 'Get Started Free',
+        'authGate.haveAccount': 'Already have an account?',
+        'authGate.loading': 'Loading...',
 
         // Custom Instructions
         'instructions.title': 'Custom Instructions',
@@ -768,6 +785,14 @@ export const translations = {
         'error.rateLimitMessage': '利用制限に達しました。しばらくしてからもう一度お試しください。',
         'error.freeLimitReached': '無料枠に達しました',
         'error.freeLimitMessage': '続けて使用するには登録してください。無料です！',
+        'error.tooManyRequests': 'リクエストが多すぎます',
+        'error.tooManyRequestsMessage': '少々お待ちいただき、もう一度お試しください。',
+        'error.freeTierLimitReached': '無料プラン制限に達しました',
+        'error.freeTierLimitMessage': '今月の無料変換20回を使い切りました。アップグレードして続けましょう！',
+        'error.anonymousDailyLimit': '本日の制限に達しました',
+        'error.anonymousDailyMessage': '無料登録して、今日さらに変換できます！',
+        'error.anonymousMonthlyLimit': '今月の制限に達しました',
+        'error.anonymousMonthlyMessage': '無料登録して、変換を続けましょう！',
 
         // Usage/Rate Limiting
         'usage.tokenUsage': 'トークン使用量',
@@ -1223,6 +1248,15 @@ export const translations = {
         'auth.resendConfirmation': '確認メールを再送信',
         'auth.resendError': '確認メールの再送信に失敗しました',
         'auth.backToSignIn': 'ログインに戻る',
+        // Auth Gate (full-screen sign-in prompt)
+        'authGate.title': 'Hyokaiを使うにはログインしてください',
+        'authGate.subtitle': '自然言語をAIプロンプトに変換',
+        'authGate.feature1': 'すべてのAIモデルにアクセス',
+        'authGate.feature2': 'プロンプト履歴を保存',
+        'authGate.feature3': 'デバイス間で同期',
+        'authGate.getStarted': '無料で始める',
+        'authGate.haveAccount': 'すでにアカウントをお持ちですか？',
+        'authGate.loading': '読み込み中...',
 
         // Custom Instructions
         'instructions.title': 'カスタム指示',
