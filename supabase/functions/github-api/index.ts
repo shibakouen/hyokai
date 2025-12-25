@@ -1,3 +1,4 @@
+// Force deployment v2 - 25KB file limit
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -39,9 +40,13 @@ serve(async (req) => {
   }
 
   try {
-    const { action, pat, owner, repo, branch, paths } = await req.json();
+    // Parse request body once - can't call req.json() multiple times
+    const requestBody = await req.json();
+    const { action, pat, owner, repo, branch, paths, prompt, tree, summary, repoFullName, keyFiles, fileContents } = requestBody;
 
-    if (!pat) {
+    // PAT is required for GitHub API actions, but not for AI-powered file selection
+    const requiresPat = action !== 'selectRelevantFiles';
+    if (requiresPat && !pat) {
       return new Response(
         JSON.stringify({ error: "Personal Access Token is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -244,11 +249,11 @@ serve(async (req) => {
                 return { path, error: "Binary file" };
               }
 
-              // Truncate large files
-              const maxSize = 10000;
+              // Truncate large files (25KB to capture edge functions fully)
+              const maxSize = 25000;
               const truncated = content.length > maxSize;
               if (truncated) {
-                content = content.slice(0, maxSize) + '\n\n... [file truncated at 10KB]';
+                content = content.slice(0, maxSize) + '\n\n... [file truncated at 25KB]';
               }
 
               return { path, content, truncated };
@@ -267,8 +272,236 @@ serve(async (req) => {
         );
       }
 
+      case "selectRelevantFiles": {
+        // AI-powered file selection with CONTENT SEARCH (like Claude Code)
+        // The AI can see actual file contents to match user's descriptions
+
+        if (!prompt || !tree || !repoFullName) {
+          return new Response(
+            JSON.stringify({ error: "prompt, tree, and repoFullName are required for selectRelevantFiles" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+        if (!OPENROUTER_API_KEY) {
+          return new Response(
+            JSON.stringify({ error: "OPENROUTER_API_KEY not configured" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Build file list (only blobs/files, not directories)
+        interface TreeItem { path: string; type: string }
+        const files = (tree as TreeItem[])
+          .filter(entry => entry.type === 'blob')
+          .map(entry => entry.path)
+          .slice(0, 500); // Limit for token budget
+
+        const fileListString = files.join('\n');
+
+        // Build searchable content from keyFiles and fileContents
+        // This lets the AI search for exact text matches like "Real Results: See the Difference"
+        const allContents: Record<string, string> = {
+          ...(keyFiles as Record<string, string> || {}),
+          ...(fileContents as Record<string, string> || {}),
+        };
+
+        // Create a searchable index showing file paths and their key content
+        // CRITICAL: Extract visible text strings so AI can find exact matches
+        let contentIndex = '';
+        const contentEntries = Object.entries(allContents);
+
+        if (contentEntries.length > 0) {
+          contentIndex = '\n\nFILE CONTENTS (search for exact text matches in these files):\n';
+
+          for (const [filePath, content] of contentEntries) {
+            if (!content || typeof content !== 'string') continue;
+
+            // Determine file importance for content allocation
+            const isHighPriority = /\.(tsx|jsx|ts|js|py|go|rs)$/i.test(filePath);
+            const isTranslationFile = /translations?|i18n|locale|lang/i.test(filePath);
+            const isConfigFile = /\.(json|yaml|yml|toml)$/i.test(filePath);
+
+            // Extract visible text for quick matching
+            const textStrings = extractVisibleText(content);
+            const textHint = textStrings.length > 0
+              ? `\n[KEY TEXT: ${textStrings.slice(0, 30).join(' | ')}]\n`
+              : '';
+
+            // Allocate more content to important files
+            let maxChars: number;
+            if (isTranslationFile) {
+              maxChars = 25000; // Translation files are critical — show almost all
+            } else if (isHighPriority) {
+              maxChars = 25000; // Code files get 25KB each (captures large edge functions)
+            } else if (isConfigFile) {
+              maxChars = 10000; // Config files get 10KB
+            } else {
+              maxChars = 5000;  // Other files get 5KB
+            }
+
+            const truncatedContent = content.length > maxChars
+              ? content.slice(0, maxChars) + '\n... [truncated at ' + Math.round(maxChars/1000) + 'KB]'
+              : content;
+
+            contentIndex += `\n--- ${filePath} ---${textHint}${truncatedContent}\n`;
+          }
+        }
+
+        // Helper function to extract visible text from JSX/HTML/Vue content
+        function extractVisibleText(code: string): string[] {
+          const texts: string[] = [];
+
+          // Extract text between JSX tags (e.g., <h1>Hello World</h1>)
+          const jsxTextRegex = />([^<>{}\n]+?)</g;
+          let match;
+          while ((match = jsxTextRegex.exec(code)) !== null) {
+            const text = match[1].trim();
+            if (text.length > 3 && text.length < 100 && !/^[\s{}()]+$/.test(text)) {
+              texts.push(text);
+            }
+          }
+
+          // Extract string literals in translation objects (t('key') or 'string')
+          const stringRegex = /['"`]([^'"`\n]{4,80})['"`]/g;
+          while ((match = stringRegex.exec(code)) !== null) {
+            const text = match[1].trim();
+            // Filter out code-like strings
+            if (!/^[a-z_]+$/i.test(text) && !/^https?:/.test(text) && !/^[./#]/.test(text)) {
+              texts.push(text);
+            }
+          }
+
+          // Deduplicate
+          return [...new Set(texts)];
+        }
+
+        const selectionPrompt = `You are an expert code analyst finding files relevant to a user's request.
+You have access to the FULL file tree AND actual file contents. Use these to find EXACT matches.
+
+Repository: ${repoFullName}
+
+${summary ? `Repository Summary:\n${summary}\n` : ''}
+
+Available Files:
+\`\`\`
+${fileListString}
+\`\`\`
+${contentIndex}
+
+User's Request:
+"${prompt}"
+
+## YOUR TASK: Find files containing what the user mentioned
+
+### Step 1: Identify what to search for
+- If user mentions a section name like "Transform natural language" → search for that exact text
+- If user mentions a heading like "Real Results" → search for that in h1/h2/h3 tags or translation keys
+- If user mentions a feature → search for related component names
+
+### Step 2: Search the FILE CONTENTS above
+- Look at [VISIBLE TEXT: ...] hints to quickly find files containing specific strings
+- Check the actual file content for the exact text the user mentioned
+- Translation files (translations.ts, i18n) often contain all visible UI text
+
+### Step 3: Return definitive matches
+Priority order:
+1. Files containing the EXACT text mentioned by user
+2. Translation files if the text could be a translated string
+3. Component files that render the section
+4. CSS files if styling is involved
+
+### CRITICAL: Be definitive, not guessing
+- If you SEE the exact text in a file's content → include that file (high confidence)
+- If the text is likely in translations.ts → include translations.ts
+- Don't just guess from file names - verify from content
+
+Return ONLY a JSON array of file paths (maximum 15). Example:
+["src/lib/translations.ts", "src/components/Hero.tsx"]
+
+If truly no relevant files found: []`;
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout (more content = more time)
+
+          let response: Response;
+          try {
+            response = await fetch(OPENROUTER_API_URL, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://hyokai.app",
+                "X-Title": "Hyokai",
+              },
+              body: JSON.stringify({
+                model: "x-ai/grok-4-fast",
+                messages: [{ role: "user", content: selectionPrompt }],
+                max_tokens: 500,
+                temperature: 0.1,
+              }),
+              signal: controller.signal,
+            });
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+              return new Response(
+                JSON.stringify({ error: "File selection timed out", selectedPaths: [] }),
+                { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            throw fetchError;
+          } finally {
+            clearTimeout(timeoutId);
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("OpenRouter API error:", errorText);
+            return new Response(
+              JSON.stringify({ error: "Failed to select files", selectedPaths: [] }),
+              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          const data = await response.json();
+          const content = data?.choices?.[0]?.message?.content || '[]';
+
+          // Parse the JSON response
+          let selectedPaths: string[] = [];
+          try {
+            // Extract JSON array from response (handle markdown code blocks)
+            const jsonMatch = content.match(/\[[\s\S]*?\]/);
+            if (jsonMatch) {
+              selectedPaths = JSON.parse(jsonMatch[0]);
+            }
+          } catch {
+            console.error("Failed to parse file selection response:", content);
+            selectedPaths = [];
+          }
+
+          // Filter to only include paths that actually exist in the tree
+          const validPaths = selectedPaths.filter((p: string) =>
+            files.includes(p)
+          ).slice(0, 15); // Enforce max 15 files
+
+          return new Response(
+            JSON.stringify({ selectedPaths: validPaths }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } catch (e) {
+          console.error("File selection error:", e);
+          return new Response(
+            JSON.stringify({ error: e instanceof Error ? e.message : "Failed to select files", selectedPaths: [] }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
       case "generateSummary": {
-        const { tree, keyFiles, repoFullName } = await req.json();
+        // Fields already extracted from requestBody at the top
 
         if (!tree || !repoFullName) {
           return new Response(
